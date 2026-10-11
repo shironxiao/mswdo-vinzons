@@ -1,0 +1,344 @@
+/* ==========================================================
+   Dashboard Page Styles
+   Matching Vinzons MSWDO Operations design
+   ========================================================== */
+
+.vin-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Page Header */
+.vin-dash-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-dash-date {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.vin-dash-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.vin-dash-desc {
+  font-size: 0.95rem;
+  color: #556960;
+  margin: 0;
+}
+
+/* Metric Cards Grid */
+.vin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.vin-metric-card {
+  background: #ffffff;
+  border: 1px solid #e7ece9;
+  border-radius: 16px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vin-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.vin-metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.vin-metric-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vin-metric-arrow {
+  color: #475569;
+}
+
+/* Color themes for icon boxes */
+.icon-box-green {
+  background: #eafaf1;
+  color: #10b981;
+}
+.icon-box-amber {
+  background: #fef7e6;
+  color: #d97706;
+}
+.icon-box-blue {
+  background: #edf5fe;
+  color: #3b82f6;
+}
+.icon-box-orange {
+  background: #feede5;
+  color: #ea580c;
+}
+
+.vin-metric-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.vin-metric-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.vin-metric-divider {
+  height: 1px;
+  background-color: #f1f5f3;
+  margin: 18px 0 12px 0;
+}
+
+.vin-metric-footer {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* Bottom 2-Column Section */
+.vin-dash-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.8fr 1.2fr;
+  gap: 20px;
+}
+
+.vin-card {
+  background: #ffffff;
+  border: 1px solid #e7ece9;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.vin-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.vin-card-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.vin-card-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 2px 0 0 0;
+}
+
+.vin-card-link {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.vin-card-link:hover {
+  color: #0b3524;
+}
+
+/* Evacuee Monitoring List */
+.vin-table-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.vin-table-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #f1f5f3;
+}
+.vin-table-row:last-child {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+
+.vin-row-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vin-badge-code {
+  width: 48px;
+  height: 40px;
+  background: #f6f8f7;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.02em;
+}
+
+.vin-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-row-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vin-row-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.vin-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.vin-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #eafaf1;
+  color: #059669;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+}
+
+.vin-status-pill.complete::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #059669;
+}
+
+.vin-row-time {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+/* Activity Log */
+.vin-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vin-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vin-activity-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vin-activity-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vin-activity-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vin-activity-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1200px) {
+  .vin-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vin-dash-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .vin-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vin-dash-title {
+    font-size: 1.7rem;
+  }
+
+  .vin-row-left {
+    gap: 10px;
+  }
+
+  .vin-badge-code {
+    width: 40px;
+    height: 36px;
+    font-size: 0.7rem;
+  }
+
+  .vin-row-name {
+    font-size: 0.85rem;
+  }
+}

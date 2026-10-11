@@ -1,0 +1,301 @@
+/* ==========================================================
+   Admin Sidebar Styles
+   Matches Vinzons MSWDO Operations design
+   ========================================================== */
+
+.vin-sidebar {
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
+  height: 100vh;
+  background-color: #0b3524;
+  color: #a3b8ac;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  user-select: none;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Scrollbar for Sidebar */
+.vin-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.vin-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.vin-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Header / Brand */
+.vin-sidebar-header {
+  padding: 26px 22px 20px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vin-sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+}
+
+.vin-brand-title {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.vin-brand-subtitle {
+  color: #7b9c8a;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.vin-sidebar-close-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #a3b8ac;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+.vin-sidebar-close-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Navigation Content */
+.vin-sidebar-nav {
+  flex: 1;
+  padding: 8px 14px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.vin-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vin-nav-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #628472;
+  padding: 6px 10px 4px 10px;
+}
+
+/* Nav Item Link/Button */
+.vin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #a3b8ac;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.vin-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.vin-nav-item:active {
+  transform: scale(0.99);
+}
+
+/* Nav Item Active State */
+.vin-nav-item.active {
+  background-color: #e5b834;
+  color: #0b2d1e;
+  font-weight: 600;
+}
+
+.vin-nav-item.active .vin-nav-icon {
+  color: #0b2d1e;
+  stroke: #0b2d1e;
+}
+
+.vin-nav-icon {
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  stroke-width: 2.1;
+  transition: color 0.15s ease;
+}
+
+.vin-nav-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-nav-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.vin-nav-item.active .vin-nav-badge {
+  background: #0b2d1e;
+  color: #e5b834;
+}
+
+/* User Profile Footer */
+.vin-sidebar-footer {
+  margin-top: auto;
+  padding: 16px 18px 20px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vin-user-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.vin-user-card:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.vin-user-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background-color: #06281a;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  color: #4ade80;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
+}
+
+.vin-user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vin-user-name {
+  color: #ffffff;
+  font-size: 0.83rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-user-role {
+  color: #7b9c8a;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-user-more-btn {
+  background: transparent;
+  border: none;
+  color: #7b9c8a;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.vin-user-more-btn:hover {
+  color: #ffffff;
+}
+
+/* Mobile backdrop */
+.vin-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .vin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .vin-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .vin-sidebar-close-btn {
+    display: flex;
+  }
+
+  .vin-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 35;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .vin-sidebar-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

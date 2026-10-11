@@ -1,0 +1,128 @@
+/* ==========================================================
+   Admin Layout Styles
+   ========================================================== */
+
+.vin-admin-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #f7f9f8;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.vin-admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Prevents overflow inside flex child */
+  min-height: 100vh;
+  background-color: #f7f9f8;
+}
+
+/* Topbar */
+.vin-admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 40px;
+  background: transparent;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.vin-admin-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vin-mobile-menu-btn {
+  display: none;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0b3524;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.vin-admin-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+/* Search Input */
+.vin-search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 280px;
+}
+
+.vin-search-icon {
+  position: absolute;
+  left: 14px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.vin-search-input {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1px solid #dbe2dd;
+  border-radius: 9999px;
+  padding: 8px 16px 8px 38px;
+  font-size: 0.85rem;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.vin-search-input::placeholder {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.vin-search-input:focus {
+  border-color: #0b3524;
+  box-shadow: 0 0 0 3px rgba(11, 53, 36, 0.1);
+}
+
+/* Main Content Area */
+.vin-admin-content {
+  flex: 1;
+  padding: 0 40px 40px 40px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .vin-mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .vin-admin-topbar {
+    padding: 16px 20px;
+  }
+
+  .vin-admin-content {
+    padding: 0 20px 30px 20px;
+  }
+
+  .vin-search-container {
+    width: 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  .vin-search-container {
+    width: 170px;
+  }
+}

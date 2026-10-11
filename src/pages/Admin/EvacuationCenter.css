@@ -1,0 +1,351 @@
+/* ==========================================================
+   Evacuation Centers Page Styles
+   Matching Vinzons MSWDO Operations design
+   ========================================================== */
+
+.vin-evac-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Page Header */
+.vin-evac-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.vin-evac-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-evac-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.vin-evac-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.vin-evac-desc {
+  font-size: 0.95rem;
+  color: #556960;
+  margin: 0;
+}
+
+/* Add Center Button */
+.vin-add-center-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #e5b834;
+  color: #0b2d1e;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.vin-add-center-btn:hover {
+  background-color: #dab02f;
+  box-shadow: 0 4px 10px rgba(229, 184, 52, 0.3);
+}
+
+.vin-add-center-btn:active {
+  transform: scale(0.98);
+}
+
+/* 3-Column Centers Grid */
+.vin-centers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+/* Center Card */
+.vin-center-card {
+  background: #ffffff;
+  border: 1px solid #e5ebe7;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.vin-center-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+  border-color: #d1ded6;
+}
+
+/* Card Top Badges */
+.vin-card-badges {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.vin-code-badge {
+  background-color: #e9f2ed;
+  color: #2b5541;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+.vin-active-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #eafaf1;
+  color: #059669;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.vin-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #059669;
+}
+
+/* Center Details */
+.vin-center-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+
+.vin-center-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-bottom: 22px;
+}
+
+.vin-loc-icon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+/* Stats Row */
+.vin-center-stats {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+  margin-bottom: 22px;
+}
+
+.vin-stat-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.vin-stat-number {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.vin-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* View Center Details Button */
+.vin-view-btn {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #ffffff;
+  border: 1px solid #d2ddd6;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.vin-view-btn:hover {
+  background-color: #f7faf8;
+  border-color: #0b3524;
+  color: #0b3524;
+}
+
+/* Modal Styling */
+.vin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(11, 53, 36, 0.4);
+  backdrop-filter: blur(3px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.vin-modal-content {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+}
+
+.vin-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.vin-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-modal-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+.vin-modal-close:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.vin-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.vin-form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.vin-form-input {
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid #d2ddd6;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #1e293b;
+  box-sizing: border-box;
+  outline: none;
+}
+.vin-form-input:focus {
+  border-color: #0b3524;
+  box-shadow: 0 0 0 3px rgba(11, 53, 36, 0.1);
+}
+
+.vin-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.vin-btn-cancel {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+.vin-btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.vin-btn-submit {
+  background: #e5b834;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0b2d1e;
+  cursor: pointer;
+}
+.vin-btn-submit:hover {
+  background: #dab02f;
+}
+
+/* Responsive Grid */
+@media (max-width: 1200px) {
+  .vin-centers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .vin-evac-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .vin-add-center-btn {
+    align-self: flex-start;
+  }
+  .vin-centers-grid {
+    grid-template-columns: 1fr;
+  }
+}
