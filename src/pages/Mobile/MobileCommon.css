@@ -1,0 +1,341 @@
+/* ==========================================================
+   Mobile Pages Common Styles (Dashboard, Households, Centers, Relief, Monitor)
+   ========================================================== */
+
+.vin-mob-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Page Header */
+.vin-mob-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vin-mob-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vin-mob-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.vin-mob-subtitle {
+  font-size: 0.88rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Header Register / Action Button */
+.vin-mob-register-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #17422d;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(23, 66, 45, 0.2);
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.vin-mob-register-btn:hover {
+  background-color: #0f2c1e;
+}
+
+.vin-mob-register-btn:active {
+  transform: scale(0.97);
+}
+
+/* Search Bar (Rounded pill) */
+.vin-mob-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1.5px solid #e1ebe5;
+  border-radius: 9999px;
+  padding: 10px 16px 10px 42px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.vin-mob-search-icon {
+  position: absolute;
+  left: 16px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.vin-mob-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  color: #1e293b;
+  outline: none;
+}
+
+.vin-mob-search-input::placeholder {
+  color: #94a3b8;
+}
+
+/* 2x2 Metric Cards Grid for Mobile Dashboard */
+.vin-mob-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.vin-mob-metric-card {
+  background: #ffffff;
+  border: 1.5px solid #eef3f0;
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.vin-mob-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vin-mob-icon-box.green {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.vin-mob-icon-box.blue {
+  background-color: #e0f2fe;
+  color: #0284c7;
+}
+
+.vin-mob-icon-box.yellow {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.vin-mob-icon-box.mint {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.vin-mob-metric-val {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.vin-mob-metric-lbl {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* Quick Access Section in Dashboard */
+.vin-mob-section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 12px 0 2px 0;
+}
+
+.vin-mob-quick-card {
+  background: #ffffff;
+  border: 1.5px solid #eef3f0;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.vin-mob-quick-card:hover {
+  border-color: #17422d;
+  transform: translateY(-1px);
+}
+
+.vin-mob-quick-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vin-mob-quick-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-mob-quick-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-mob-quick-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vin-mob-quick-sub {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.vin-mob-quick-arrow {
+  color: #64748b;
+}
+
+/* List of Cards (Households / Monitoring / Centers / Relief) */
+.vin-mob-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.vin-mob-card-item {
+  background: #ffffff;
+  border: 1.5px solid #eef3f0;
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease;
+}
+
+.vin-mob-card-item:hover {
+  border-color: #cbd5e1;
+}
+
+.vin-mob-item-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.vin-mob-avatar-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-mob-pulse-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #fef9c3;
+  color: #ca8a04;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-mob-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.vin-mob-item-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-mob-item-sub {
+  font-size: 0.82rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Edit icon button */
+.vin-mob-edit-btn {
+  background: transparent;
+  border: none;
+  color: #16a34a;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.vin-mob-edit-btn:hover {
+  background-color: #f0fdf4;
+}
+
+/* Monitoring status pill (Recorded / Absent) */
+.vin-mob-badge-recorded {
+  background-color: #17422d;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.vin-mob-badge-absent {
+  background-color: #ffffff;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}

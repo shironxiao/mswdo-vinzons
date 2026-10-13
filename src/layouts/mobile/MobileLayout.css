@@ -1,0 +1,290 @@
+/* ==========================================================
+   Mobile Layout Styles
+   Unified container, Topbar, and Bottom Navigation Bar
+   ========================================================== */
+
+.vin-mobile-root {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background-color: #f1f5f3;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  box-sizing: border-box;
+}
+
+.vin-mobile-shell {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  background-color: #f7faf8;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------
+   Mobile Topbar (Header)
+   --------------------------------------------------------- */
+.vin-mobile-topbar {
+  background-color: #17422d;
+  color: #ffffff;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.vin-mobile-brand-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.vin-mobile-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Offline/Online status pill */
+.vin-mobile-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ffffff;
+  color: #c25e1a;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  user-select: none;
+}
+
+.vin-mobile-status-pill.online {
+  color: #15803d;
+}
+
+/* Hamburger button */
+.vin-mobile-hamburger-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.vin-mobile-hamburger-btn:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------------------------------------------------------
+   Mobile Drawer Menu (Slide out on hamburger click matching screenshot 1)
+   --------------------------------------------------------- */
+.vin-mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.vin-mobile-drawer {
+  width: 290px;
+  max-width: 82%;
+  height: 100%;
+  background-color: #ffffff;
+  color: #0f172a;
+  padding: 26px 20px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  animation: slideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.vin-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 18px;
+}
+
+.vin-drawer-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-drawer-close-btn {
+  background: #f8fafc;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vin-drawer-close-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.vin-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.vin-drawer-link {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 12px;
+  border-radius: 10px;
+  color: #0f172a;
+  text-decoration: none;
+  font-size: 1.05rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-drawer-link:hover {
+  background-color: #f8fafc;
+}
+
+.vin-drawer-link:active {
+  transform: scale(0.98);
+}
+
+/* Red-Bordered Pill Logout button matching Screenshot 1 */
+.vin-drawer-logout-btn {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background-color: #ffffff;
+  color: #dc2626;
+  border: 1.8px solid #dc2626;
+  font-weight: 700;
+  font-size: 0.98rem;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.vin-drawer-logout-btn:hover {
+  background-color: #fef2f2;
+}
+
+.vin-drawer-logout-btn:active {
+  transform: scale(0.98);
+}
+
+/* ---------------------------------------------------------
+   Mobile Content Area
+   --------------------------------------------------------- */
+.vin-mobile-content {
+  flex: 1;
+  padding: 22px 18px 90px 18px; /* space for bottom nav bar */
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* ---------------------------------------------------------
+   Mobile Bottom Navigation Bar
+   --------------------------------------------------------- */
+.vin-mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 440px;
+  height: 68px;
+  background-color: #ffffff;
+  border-top: 1px solid #e2ece5;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 40;
+  box-sizing: border-box;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.vin-mobile-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 6px 0;
+  transition: color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.vin-mobile-nav-item:hover {
+  color: #17422d;
+}
+
+.vin-mobile-nav-item.active {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.vin-mobile-nav-item.active svg {
+  stroke: #1d4ed8;
+}
+
+.vin-mobile-nav-label {
+  letter-spacing: -0.01em;
+}

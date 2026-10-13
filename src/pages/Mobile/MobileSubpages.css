@@ -1,0 +1,383 @@
+/* ==========================================================
+   Mobile Subpages Styles
+   (Profile, Reports, Sync Status, Settings, Modals, Details)
+   ========================================================== */
+
+/* White Profile Card */
+.vin-mob-profile-card {
+  background: #ffffff;
+  border: 1.5px solid #eef3f0;
+  border-radius: 18px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.vin-mob-profile-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vin-mob-avatar-gold {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #dfb235;
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-mob-profile-title-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vin-mob-profile-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-mob-role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: #eafaf1;
+  color: #15803d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.vin-mob-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-mob-field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vin-mob-field-val {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vin-mob-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background-color: #f8faf9;
+  border-radius: 12px;
+  border: 1px solid #eef2f0;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.vin-mob-logout-outline-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #dc2626;
+  border: 1.5px solid #dc2626;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+/* Settings & Sync Status Card */
+.vin-mob-settings-card {
+  background: #ffffff;
+  border: 1.5px solid #eef3f0;
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vin-mob-toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vin-mob-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-mob-toggle-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vin-mob-toggle-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.vin-mob-sync-btn {
+  width: 100%;
+  background-color: #17422d;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.vin-mob-sync-btn:hover {
+  background-color: #0f2c1e;
+}
+
+/* Reports Form Card */
+.vin-mob-report-card {
+  background: #ffffff;
+  border: 1.5px solid #eef3f0;
+  border-radius: 18px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vin-mob-report-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-mob-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-mob-input-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.vin-mob-select, .vin-mob-input-date {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid #e1ebe5;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #0f172a;
+  outline: none;
+  background-color: #ffffff;
+  box-sizing: border-box;
+}
+
+.vin-mob-generate-btn {
+  width: 100%;
+  background-color: #17422d;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+/* Fullscreen Modal / Bottom Sheet (Register, Edit, Stub Detail, Monitoring) */
+.vin-mob-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.vin-mob-sheet-content {
+  width: 100%;
+  max-width: 440px;
+  max-height: 92vh;
+  background-color: #ffffff;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 24px 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideUp 0.22s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.vin-mob-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vin-mob-sheet-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-mob-sheet-close {
+  background: #f1f5f9;
+  border: none;
+  color: #475569;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vin-mob-member-box {
+  background-color: #f8faf9;
+  border: 1px solid #e1ebe5;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vin-mob-member-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vin-mob-add-member-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ffffff;
+  color: #17422d;
+  border: 1.5px solid #17422d;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.vin-mob-sheet-submit-btn {
+  width: 100%;
+  background-color: #17422d;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.vin-mob-sheet-blue-btn {
+  width: 100%;
+  background-color: #1d4ed8;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Attendance Buttons Segmented (Accounted For, Late, Absent) */
+.vin-mob-attendance-group {
+  display: flex;
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.vin-mob-att-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.vin-mob-att-btn.active-accounted {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+
+.vin-mob-att-btn.active-late {
+  background-color: #d97706;
+  color: #ffffff;
+}
+
+.vin-mob-att-btn.active-absent {
+  background-color: #dc2626;
+  color: #ffffff;
+}

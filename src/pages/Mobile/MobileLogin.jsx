@@ -18,8 +18,8 @@ export default function MobileLogin() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // UI placeholder action (no backend yet)
-    alert(`Signing in as ${formData.username}`);
+    // Navigate to Mobile Dashboard on click
+    navigate('/mobile/dashboard');
   };
 
   const handleSwitchToAdmin = () => {
