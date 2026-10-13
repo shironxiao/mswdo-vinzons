@@ -1,0 +1,198 @@
+/* ==========================================================
+   Mobile Login Screen Styles
+   ========================================================== */
+
+.vin-mobile-login-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background-color: #f1f5f3;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  box-sizing: border-box;
+}
+
+.vin-mobile-login-card {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Header with dark green brand background */
+.vin-mobile-login-header {
+  background-color: #17422d;
+  color: #ffffff;
+  padding: 44px 24px 36px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.vin-mobile-system-subtitle {
+  color: #7fa890;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.vin-mobile-system-title {
+  color: #ffffff;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/* Form Container */
+.vin-mobile-login-body {
+  flex: 1;
+  padding: 36px 28px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+}
+
+.vin-mobile-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.vin-mobile-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vin-mobile-field-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #556960;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vin-mobile-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1.5px solid #d8e2dc;
+  border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vin-mobile-input-wrapper:focus-within {
+  border-color: #1b5338;
+  box-shadow: 0 0 0 3px rgba(27, 83, 56, 0.12);
+}
+
+.vin-mobile-field-icon {
+  position: absolute;
+  left: 14px;
+  color: #61796c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.vin-mobile-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 14px 14px 14px 44px;
+  font-size: 0.95rem;
+  color: #1e293b;
+  outline: none;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.vin-mobile-input::placeholder {
+  color: #94a3b8;
+}
+
+/* Password eye button */
+.vin-mobile-eye-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #61796c;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.vin-mobile-eye-btn:hover {
+  color: #17422d;
+}
+
+/* Sign In Button */
+.vin-mobile-submit-btn {
+  margin-top: 10px;
+  width: 100%;
+  background-color: #2b743a;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 6px rgba(43, 116, 58, 0.2);
+}
+
+.vin-mobile-submit-btn:hover {
+  background-color: #236130;
+  box-shadow: 0 4px 12px rgba(43, 116, 58, 0.3);
+}
+
+.vin-mobile-submit-btn:active {
+  transform: scale(0.99);
+}
+
+/* Switch to admin link */
+.vin-mobile-switch-box {
+  margin-top: auto;
+  padding-top: 28px;
+  text-align: center;
+}
+
+.vin-mobile-switch-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #2b743a;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.vin-mobile-switch-link:hover {
+  color: #17422d;
+  background-color: #edf5f0;
+}

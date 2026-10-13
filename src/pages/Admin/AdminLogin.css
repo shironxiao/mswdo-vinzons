@@ -1,0 +1,216 @@
+/* ==========================================================
+   Admin Login Screen Styles
+   ========================================================== */
+
+.vin-admin-login-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8faf9;
+  padding: 40px 20px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  box-sizing: border-box;
+}
+
+.vin-admin-login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 60px;
+  max-width: 960px;
+  width: 100%;
+}
+
+/* Left Illustration / Logo Placeholder */
+.vin-admin-login-visual {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vin-image-placeholder-box {
+  width: 320px;
+  height: 320px;
+  border: 2px solid #111827;
+  border-radius: 40px;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.vin-placeholder-circle {
+  position: absolute;
+  top: 65px;
+  left: 65px;
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  border: 2px solid #111827;
+}
+
+.vin-placeholder-hill {
+  position: absolute;
+  bottom: -20px;
+  left: 30px;
+  width: 320px;
+  height: 180px;
+  border-top-left-radius: 120px 80px;
+  border-top-right-radius: 60px 40px;
+  border-top: 2px solid #111827;
+  border-left: 2px solid #111827;
+  transform: rotate(-10deg);
+}
+
+/* Right Admin Login Card */
+.vin-admin-card-box {
+  flex: 1;
+  max-width: 420px;
+  background-color: #0d3824;
+  border-radius: 36px;
+  padding: 48px 36px 40px 36px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 36px rgba(13, 56, 36, 0.25);
+  box-sizing: border-box;
+}
+
+.vin-admin-card-title {
+  color: #dfb235;
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-align: center;
+  margin: 0 0 28px 0;
+  text-transform: uppercase;
+}
+
+.vin-admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vin-admin-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vin-admin-label {
+  color: #dfb235;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.vin-admin-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 14px;
+}
+
+.vin-admin-input {
+  width: 100%;
+  border: none;
+  background-color: #ffffff;
+  padding: 13px 44px 13px 18px;
+  border-radius: 14px;
+  font-size: 0.92rem;
+  color: #1e293b;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.vin-admin-input::placeholder {
+  color: #a0aec0;
+}
+
+.vin-admin-eye-btn {
+  position: absolute;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: #1e293b;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* White Pill Log In Button with Yellow text */
+.vin-admin-submit-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.vin-admin-submit-btn {
+  background-color: #ffffff;
+  color: #dfb235;
+  border: none;
+  border-radius: 9999px;
+  padding: 11px 48px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.1s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.vin-admin-submit-btn:hover {
+  background-color: #fafafa;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.vin-admin-submit-btn:active {
+  transform: translateY(1px);
+}
+
+/* Switch back to Mobile */
+.vin-admin-switch-box {
+  margin-top: 26px;
+  text-align: center;
+}
+
+.vin-admin-switch-btn {
+  background: none;
+  border: none;
+  color: #a3b8ac;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.vin-admin-switch-btn:hover {
+  color: #ffffff;
+}
+
+/* Responsive */
+@media (max-width: 820px) {
+  .vin-admin-login-container {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .vin-image-placeholder-box {
+    width: 200px;
+    height: 200px;
+  }
+  .vin-placeholder-circle {
+    top: 40px;
+    left: 40px;
+    width: 50px;
+    height: 50px;
+  }
+  .vin-placeholder-hill {
+    width: 220px;
+    height: 120px;
+  }
+}

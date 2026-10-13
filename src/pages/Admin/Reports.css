@@ -1,0 +1,270 @@
+/* ==========================================================
+   Reports Page Styles
+   Matching MSWDO Operations Reports UI
+   ========================================================== */
+
+.vin-reports-page {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+/* Header */
+.vin-reports-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-reports-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.vin-reports-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.vin-reports-desc {
+  font-size: 0.95rem;
+  color: #556960;
+  margin: 0;
+}
+
+/* 4 Metric Summary Cards */
+.vin-reports-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.vin-rep-metric-card {
+  border-radius: 14px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid transparent;
+}
+
+.vin-rep-metric-card.card-green {
+  background-color: #f1f8f4;
+  border-color: #dbebe2;
+}
+
+.vin-rep-metric-card.card-yellow {
+  background-color: #fdfaf0;
+  border-color: #faefce;
+}
+
+.vin-rep-metric-number {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.vin-rep-metric-card.card-green .vin-rep-metric-number {
+  color: #1e7046;
+}
+
+.vin-rep-metric-card.card-yellow .vin-rep-metric-number {
+  color: #a67c13;
+}
+
+.vin-rep-metric-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.vin-rep-metric-card.card-green .vin-rep-metric-label {
+  color: #2b5c40;
+}
+
+.vin-rep-metric-card.card-yellow .vin-rep-metric-label {
+  color: #795d17;
+}
+
+/* Filter Controls Toolbar */
+.vin-reports-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vin-filter-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+.vin-filter-pill-btn {
+  background: #ffffff;
+  border: 1.5px solid #d2ded5;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-filter-pill-btn:hover {
+  border-color: #0d3824;
+  background-color: #f8faf9;
+}
+
+.vin-filter-pill-btn.active {
+  background-color: #ffffff;
+  border-color: #0d3824;
+  color: #0d3824;
+  font-weight: 700;
+}
+
+/* Reports Table Container */
+.vin-reports-table-card {
+  background: #ffffff;
+  border: 1px solid #e7ece9;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.vin-reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.vin-reports-table th {
+  padding: 16px 22px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f3;
+  background-color: #ffffff;
+}
+
+.vin-reports-table td {
+  padding: 20px 22px;
+  border-bottom: 1px solid #f1f5f3;
+  vertical-align: middle;
+  font-size: 0.88rem;
+}
+
+.vin-reports-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Report Title column */
+.vin-rep-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vin-rep-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: #f1f8f4;
+  color: #1e7046;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-rep-name {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+/* Description */
+.vin-rep-desc {
+  color: #64748b;
+  font-size: 0.86rem;
+  max-width: 420px;
+}
+
+/* Format Pills */
+.vin-rep-formats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vin-format-tag {
+  background-color: #e9f0fc;
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* Last Generated */
+.vin-rep-time {
+  color: #334155;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+/* Download Button */
+.vin-download-btn {
+  background-color: #dfb235;
+  color: #0d3824;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 24px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.vin-download-btn:hover {
+  background-color: #d1a52b;
+}
+
+.vin-download-btn:active {
+  transform: scale(0.98);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .vin-reports-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .vin-reports-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .vin-reports-table-card {
+    overflow-x: auto;
+  }
+}
