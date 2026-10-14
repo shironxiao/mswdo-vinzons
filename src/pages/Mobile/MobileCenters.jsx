@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Search, Building, MapPin, Users, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Building, MapPin, Users, Plus, X, ChevronRight } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileCenters.css';
 
-/* ────────────────────────────────────────────
-   Seed data — replace with Dexie in production
-   ──────────────────────────────────────────── */
+/* ──────────────────────────────────────────────
+   Seed data
+   ────────────────────────────────────────────── */
 const CENTERS_DATA = [
   {
     id: 1,
-    name: 'Vinzons Central Elementary School',
+    name: 'Vinzons Central Elem.',
+    fullName: 'Vinzons Central Elementary School',
     location: 'Poblacion, Vinzons',
     count: 364,
     status: 'Active',
@@ -26,6 +27,7 @@ const CENTERS_DATA = [
   {
     id: 2,
     name: 'Vinzons Gymnasium',
+    fullName: 'Vinzons Gymnasium',
     location: 'Brgy. San Jose, Vinzons',
     count: 120,
     status: 'Active',
@@ -36,7 +38,8 @@ const CENTERS_DATA = [
   },
   {
     id: 3,
-    name: 'Calaguas National High School',
+    name: 'Calaguas Natl. HS',
+    fullName: 'Calaguas National High School',
     location: 'Calaguas, Vinzons',
     count: 129,
     status: 'Active',
@@ -48,12 +51,9 @@ const CENTERS_DATA = [
   },
 ];
 
-/**
- * Returns room color class:
- *  green  = space available (occupied > 0 but < capacity)
- *  red    = full (occupied >= capacity)
- *  gray   = empty (occupied === 0)
- */
+/* ──────────────────────────────────────────────
+   Helpers
+   ────────────────────────────────────────────── */
 function roomColorClass(room) {
   if (room.occupied === 0) return 'room-gray';
   if (room.occupied >= room.capacity) return 'room-red';
@@ -63,19 +63,102 @@ function roomColorClass(room) {
 function roomLabel(room) {
   if (room.occupied === 0) return 'Empty';
   if (room.occupied >= room.capacity) return 'Full';
-  return `${room.capacity - room.occupied} slots`;
+  return `${room.capacity - room.occupied} left`;
 }
 
+/** Returns overall center fill level for tile color */
+function centerColorClass(center) {
+  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
+  const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
+  if (totalOcc === 0) return 'ctr-tile--empty';
+  if (totalOcc >= totalCap) return 'ctr-tile--full';
+  return 'ctr-tile--available';
+}
+
+function centerStatusLabel(center) {
+  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
+  const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
+  if (totalOcc === 0) return 'Empty';
+  if (totalOcc >= totalCap) return 'Full';
+  return 'Available';
+}
+
+/* ──────────────────────────────────────────────
+   Room Detail Sheet
+   ────────────────────────────────────────────── */
+function RoomsSheet({ center, onClose }) {
+  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
+  const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
+
+  return (
+    <div className="vin-mob-sheet-overlay" onClick={onClose}>
+      <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
+        <div className="vin-mob-sheet-header">
+          <div>
+            <h2 className="vin-mob-sheet-title">{center.fullName}</h2>
+            <span style={{ fontSize: '.78rem', color: '#64748b' }}>
+              <MapPin size={12} style={{ display: 'inline', marginRight: 3 }} />
+              {center.location}
+            </span>
+          </div>
+          <button type="button" className="vin-mob-sheet-close" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Summary row */}
+        <div className="vin-ctr-summary-row">
+          <div className="vin-ctr-summary-item">
+            <span className="vin-mob-field-label">EVACUEES</span>
+            <div>{totalOcc} / {totalCap}</div>
+          </div>
+          <div className="vin-ctr-summary-item">
+            <span className="vin-mob-field-label">ROOMS</span>
+            <div>{center.rooms.length}</div>
+          </div>
+          <div className="vin-ctr-summary-item">
+            <span className="vin-mob-field-label">STATUS</span>
+            <div>{center.status}</div>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="vin-ctr-legend" style={{ padding: '0 0 10px' }}>
+          <span className="vin-ctr-dot green" /> Available
+          <span className="vin-ctr-dot red" /> Full
+          <span className="vin-ctr-dot gray" /> Empty
+        </div>
+
+        {/* Room grid */}
+        <span className="vin-mob-input-label">ROOMS</span>
+        <div className="vin-ctr-room-grid" style={{ marginTop: 8 }}>
+          {center.rooms.map((room) => (
+            <div key={room.id} className={`vin-ctr-room-tile ${roomColorClass(room)}`}>
+              <div className="vin-ctr-room-id">{room.id}</div>
+              <div className="vin-ctr-room-occ">{room.occupied}/{room.capacity}</div>
+              <div className="vin-ctr-room-label">{roomLabel(room)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   MAIN PAGE
+   ────────────────────────────────────────────── */
 export default function MobileCenters() {
   const [centers, setCenters] = useState(CENTERS_DATA);
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
+  const [selectedCenter, setSelectedCenter] = useState(null);
   const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '2', capacity: '30' });
 
   const filtered = centers.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.fullName.toLowerCase().includes(search.toLowerCase()) ||
       c.location.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -92,6 +175,7 @@ export default function MobileCenters() {
     const item = {
       id: Date.now(),
       name: newCenter.name,
+      fullName: newCenter.name,
       location: newCenter.location || 'Vinzons',
       rooms,
       count: 0,
@@ -107,10 +191,10 @@ export default function MobileCenters() {
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Centers</h1>
-          <p className="vin-mob-subtitle">Active evacuation facilities in Vinzons</p>
+          <p className="vin-mob-subtitle">Tap a center to view its rooms</p>
         </div>
         <button type="button" className="vin-mob-register-btn" onClick={() => setIsAddOpen(true)}>
-          <Plus size={16} /><span>Add Center</span>
+          <Plus size={16} /><span>Add</span>
         </button>
       </header>
 
@@ -125,71 +209,71 @@ export default function MobileCenters() {
         />
       </div>
 
-      {/* Room grid legend */}
+      {/* Legend */}
       <div className="vin-ctr-legend">
         <span className="vin-ctr-dot green" /> Available
-        <span className="vin-ctr-dot red" />  Full
+        <span className="vin-ctr-dot red" /> Full
         <span className="vin-ctr-dot gray" /> Empty
       </div>
 
-      <div className="vin-mob-list">
+      {/* ── CENTER GRID ── */}
+      <div className="vin-ctr-grid">
         {filtered.map((item) => {
-          const isExpanded = expandedId === item.id;
           const totalCap = item.rooms.reduce((a, r) => a + r.capacity, 0);
           const totalOcc = item.rooms.reduce((a, r) => a + r.occupied, 0);
+          const pct = totalCap > 0 ? Math.round((totalOcc / totalCap) * 100) : 0;
+          const colorCls = centerColorClass(item);
+          const statusLabel = centerStatusLabel(item);
 
           return (
-            <div key={item.id} className="vin-ctr-center-card">
-              {/* Center header row */}
-              <div
-                className="vin-ctr-center-header"
-                onClick={() => setExpandedId(isExpanded ? null : item.id)}
-              >
-                <div className="vin-mob-item-left">
-                  <div className="vin-mob-avatar-circle" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                    <Building size={20} />
-                  </div>
-                  <div className="vin-mob-item-details">
-                    <span className="vin-mob-item-name">{item.name}</span>
-                    <span className="vin-mob-item-sub">
-                      <MapPin size={12} style={{ display: 'inline', marginRight: 3 }} />
-                      {item.location} &nbsp;•&nbsp;
-                      <Users size={12} style={{ display: 'inline', margin: '0 2px' }} />
-                      {totalOcc}/{totalCap} evacuees
-                    </span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="vin-mob-badge-recorded" style={{ fontSize: '.72rem', padding: '4px 10px' }}>
-                    {item.status}
-                  </span>
-                  {isExpanded ? <ChevronUp size={16} color="#64748b" /> : <ChevronDown size={16} color="#64748b" />}
-                </div>
+            <div
+              key={item.id}
+              className={`vin-ctr-tile ${colorCls}`}
+              onClick={() => setSelectedCenter(item)}
+            >
+              {/* Icon */}
+              <div className="vin-ctr-tile-icon">
+                <Building size={26} />
               </div>
 
-              {/* Expandable room grid */}
-              {isExpanded && (
-                <div className="vin-ctr-rooms-section">
-                  <span className="vin-mob-input-label">ROOMS — tap card to view</span>
-                  <div className="vin-ctr-room-grid">
-                    {item.rooms.map((room) => (
-                      <div key={room.id} className={`vin-ctr-room-tile ${roomColorClass(room)}`}>
-                        <div className="vin-ctr-room-id">{room.id}</div>
-                        <div className="vin-ctr-room-occ">
-                          {room.occupied}/{room.capacity}
-                        </div>
-                        <div className="vin-ctr-room-label">{roomLabel(room)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Status badge */}
+              <span className={`vin-ctr-status-badge badge-${colorCls.replace('ctr-tile--', '')}`}>
+                {statusLabel}
+              </span>
+
+              <div className="vin-ctr-tile-name">{item.name}</div>
+
+              <div className="vin-ctr-tile-loc">
+                <MapPin size={11} style={{ display: 'inline', marginRight: 3 }} />
+                {item.location}
+              </div>
+
+              {/* Capacity bar */}
+              <div className="vin-ctr-bar-wrap">
+                <div
+                  className={`vin-ctr-bar-fill fill-${colorCls.replace('ctr-tile--', '')}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <div className="vin-ctr-tile-meta">
+                <Users size={12} style={{ display: 'inline', marginRight: 3 }} />
+                {totalOcc}/{totalCap} &nbsp;•&nbsp; {item.rooms.length} rooms
+              </div>
+
+              <div className="vin-ctr-tile-tap">
+                View Rooms <ChevronRight size={13} />
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* ADD CENTER SHEET */}
+      {/* ── ROOM DETAIL SHEET ── */}
+      {selectedCenter && (
+        <RoomsSheet center={selectedCenter} onClose={() => setSelectedCenter(null)} />
+      )}
+
+      {/* ── ADD CENTER SHEET ── */}
       {isAddOpen && (
         <div className="vin-mob-sheet-overlay" onClick={() => setIsAddOpen(false)}>
           <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
@@ -221,7 +305,7 @@ export default function MobileCenters() {
                     onChange={(e) => setNewCenter({ ...newCenter, rooms: e.target.value })} />
                 </div>
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label">CAPACITY/ROOM</label>
+                  <label className="vin-mob-input-label">CAPACITY / ROOM</label>
                   <input type="number" min="1" placeholder="30" className="vin-mob-select"
                     value={newCenter.capacity}
                     onChange={(e) => setNewCenter({ ...newCenter, capacity: e.target.value })} />

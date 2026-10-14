@@ -1,8 +1,8 @@
 /* ===================================================
-   MobileCenters.css — Color-coded room grid styles
+   MobileCenters.css — Color-coded center & room grids
    =================================================== */
 
-/* Legend */
+/* ── Legend ── */
 .vin-ctr-legend {
   display: flex;
   align-items: center;
@@ -22,47 +22,138 @@
 .vin-ctr-dot.red   { background: #dc2626; }
 .vin-ctr-dot.gray  { background: #94a3b8; }
 
-/* Center card wrapper */
-.vin-ctr-center-card {
-  background: #fff;
+/* ══════════════════════════════════════
+   CENTER GRID (top-level)
+   ══════════════════════════════════════ */
+.vin-ctr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 0 16px 20px;
+}
+
+.vin-ctr-tile {
+  position: relative;
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  margin: 0 16px 12px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,.05);
-}
-
-.vin-ctr-center-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
+  padding: 14px;
   cursor: pointer;
-  gap: 8px;
-}
-.vin-ctr-center-header:active { background: #f8fafc; }
-
-/* Rooms section */
-.vin-ctr-rooms-section {
-  padding: 0 14px 14px;
+  border: 2px solid transparent;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid #f1f5f9;
+  gap: 5px;
+  transition: transform .1s;
 }
-.vin-ctr-rooms-section .vin-mob-input-label {
-  display: block;
-  padding-top: 10px;
+.vin-ctr-tile:active { transform: scale(0.97); }
+
+/* Color variants */
+.ctr-tile--available {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
+}
+.ctr-tile--full {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border-color: #fca5a5;
+}
+.ctr-tile--empty {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-color: #cbd5e1;
 }
 
-/* Room grid */
+/* Icon */
+.vin-ctr-tile-icon {
+  margin-bottom: 4px;
+}
+.ctr-tile--available .vin-ctr-tile-icon { color: #16a34a; }
+.ctr-tile--full      .vin-ctr-tile-icon { color: #dc2626; }
+.ctr-tile--empty     .vin-ctr-tile-icon { color: #94a3b8; }
+
+/* Status badge */
+.vin-ctr-status-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.badge-available {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+.badge-full {
+  background: #ffe4e6;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+.badge-empty {
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+/* Name */
+.vin-ctr-tile-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+/* Location */
+.vin-ctr-tile-loc {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+/* Capacity bar */
+.vin-ctr-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 2px 0;
+}
+.vin-ctr-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+.fill-available { background: #16a34a; }
+.fill-full      { background: #dc2626; }
+.fill-empty     { background: #94a3b8; }
+
+/* Meta (evacuees / rooms) */
+.vin-ctr-tile-meta {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Tap hint */
+.vin-ctr-tile-tap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-top: 4px;
+  opacity: 0.6;
+  color: #0f172a;
+}
+
+/* ══════════════════════════════════════
+   ROOM GRID (inside bottom sheet)
+   ══════════════════════════════════════ */
 .vin-ctr-room-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
-/* Room tile */
 .vin-ctr-room-tile {
   border-radius: 12px;
   padding: 12px 8px;
@@ -76,34 +167,31 @@
 }
 .vin-ctr-room-tile:active { transform: scale(0.95); }
 
-.vin-ctr-room-id {
+.vin-ctr-room-id    { font-weight: 800; font-size: 0.92rem; }
+.vin-ctr-room-occ   { font-size: 0.78rem; font-weight: 600; }
+.vin-ctr-room-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.room-green { background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; }
+.room-red   { background: #fff1f2; border: 1.5px solid #fca5a5; color: #991b1b; }
+.room-gray  { background: #f1f5f9; border: 1.5px solid #cbd5e1; color: #64748b; }
+
+/* ── Summary row in room sheet ── */
+.vin-ctr-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.vin-ctr-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vin-ctr-summary-item > div {
   font-weight: 800;
   font-size: 0.92rem;
-}
-.vin-ctr-room-occ {
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-.vin-ctr-room-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* Color variants */
-.room-green {
-  background: #f0fdf4;
-  border: 1.5px solid #86efac;
-  color: #166534;
-}
-.room-red {
-  background: #fff1f2;
-  border: 1.5px solid #fca5a5;
-  color: #991b1b;
-}
-.room-gray {
-  background: #f1f5f9;
-  border: 1.5px solid #cbd5e1;
-  color: #64748b;
+  color: #0f172a;
 }
