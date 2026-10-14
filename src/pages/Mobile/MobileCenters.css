@@ -1,0 +1,109 @@
+/* ===================================================
+   MobileCenters.css — Color-coded room grid styles
+   =================================================== */
+
+/* Legend */
+.vin-ctr-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px 10px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.vin-ctr-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.vin-ctr-dot.green { background: #16a34a; }
+.vin-ctr-dot.red   { background: #dc2626; }
+.vin-ctr-dot.gray  { background: #94a3b8; }
+
+/* Center card wrapper */
+.vin-ctr-center-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  margin: 0 16px 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+
+.vin-ctr-center-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  gap: 8px;
+}
+.vin-ctr-center-header:active { background: #f8fafc; }
+
+/* Rooms section */
+.vin-ctr-rooms-section {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+.vin-ctr-rooms-section .vin-mob-input-label {
+  display: block;
+  padding-top: 10px;
+}
+
+/* Room grid */
+.vin-ctr-room-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* Room tile */
+.vin-ctr-room-tile {
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform .1s;
+}
+.vin-ctr-room-tile:active { transform: scale(0.95); }
+
+.vin-ctr-room-id {
+  font-weight: 800;
+  font-size: 0.92rem;
+}
+.vin-ctr-room-occ {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.vin-ctr-room-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Color variants */
+.room-green {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  color: #166534;
+}
+.room-red {
+  background: #fff1f2;
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
+}
+.room-gray {
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  color: #64748b;
+}

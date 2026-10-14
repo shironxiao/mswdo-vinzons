@@ -19,7 +19,6 @@ import MobileLogin from './pages/Mobile/MobileLogin';
 import MobileDashboard from './pages/Mobile/MobileDashboard';
 import MobileHouseholds from './pages/Mobile/MobileHouseholds';
 import MobileCenters from './pages/Mobile/MobileCenters';
-import MobileRelief from './pages/Mobile/MobileRelief';
 import MobileMonitor from './pages/Mobile/MobileMonitor';
 import MobileProfile from './pages/Mobile/MobileProfile';
 import MobileSettings from './pages/Mobile/MobileSettings';
@@ -51,7 +50,6 @@ export default function App() {
           <Route path="dashboard" element={<MobileDashboard />} />
           <Route path="households" element={<MobileHouseholds />} />
           <Route path="centers" element={<MobileCenters />} />
-          <Route path="relief" element={<MobileRelief />} />
           <Route path="monitor" element={<MobileMonitor />} />
 
           {/* Hamburger Menu Destinations */}

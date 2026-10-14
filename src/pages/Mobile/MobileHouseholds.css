@@ -1,0 +1,342 @@
+/* ===================================================
+   MobileHouseholds.css
+   Color-coded stub issuance UI styles
+   =================================================== */
+
+/* ── Toolbar (search + scan btn row) ── */
+.vin-hh-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 10px;
+}
+
+.vin-hh-scan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.vin-hh-scan-btn:active { opacity: 0.85; }
+
+.vin-hh-scan-error {
+  margin: 0 16px 10px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── View Toggle ── */
+.vin-hh-view-toggle {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 6px;
+}
+.vin-hh-toggle-btn {
+  padding: 6px 18px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+.vin-hh-toggle-btn.active {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+
+/* ── Legend ── */
+.vin-hh-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px 10px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.vin-hh-legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.vin-hh-legend-dot.issued    { background: #16a34a; }
+.vin-hh-legend-dot.notissued { background: #dc2626; }
+
+/* ── Grid of tiles ── */
+.vin-hh-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 0 16px 20px;
+}
+
+.vin-hh-tile {
+  position: relative;
+  border-radius: 16px;
+  padding: 14px 14px 40px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform .1s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vin-hh-tile:active { transform: scale(0.97); }
+
+.vin-hh-tile--issued {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
+}
+.vin-hh-tile--notissued {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border-color: #fca5a5;
+}
+
+.vin-hh-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.vin-hh-tile-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 0.8rem;
+}
+.vin-hh-tile-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.vin-hh-tile-meta {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+.vin-hh-tile-code {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #16a34a;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+.vin-hh-tile-edit {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5px 7px;
+  cursor: pointer;
+  color: #475569;
+}
+
+/* ── List view overrides ── */
+.vin-hh-list-item {
+  border-left: 4px solid transparent;
+}
+.vin-hh-list-item.list-issued    { border-left-color: #16a34a; }
+.vin-hh-list-item.list-notissued { border-left-color: #dc2626; }
+
+/* ── Badges ── */
+.vin-hh-badge-issued {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.vin-hh-badge-notissued {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #ffe4e6;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Stub card inside bottom sheet ── */
+.vin-hh-stub-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vin-hh-stub-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.vin-hh-stub-meta > div { display: flex; flex-direction: column; gap: 2px; }
+.vin-hh-stub-meta > div > div { font-weight: 700; font-size: 0.88rem; }
+
+/* ── Members section ── */
+.vin-hh-members-section {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vin-hh-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.vin-hh-member-icon { color: #94a3b8; flex-shrink: 0; }
+.vin-hh-member-meta { margin-left: auto; font-size: 0.76rem; color: #94a3b8; font-weight: 500; }
+
+/* ── Duplicate warning banner ── */
+.vin-hh-dup-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  font-size: 0.83rem;
+  color: #92400e;
+  line-height: 1.5;
+}
+.vin-hh-dup-banner svg { flex-shrink: 0; margin-top: 2px; color: #d97706; }
+
+/* ── Issued block (QR + code) ── */
+.vin-hh-issued-block {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.vin-hh-stub-code-display {
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #166534;
+}
+.vin-hh-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1.5px solid #16a34a;
+  color: #15803d;
+  border-radius: 10px;
+  padding: 9px 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── Big Issue Stub button ── */
+.vin-hh-issue-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #fff;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+}
+.vin-hh-issue-btn--disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ── QR Scanner overlay ── */
+.vin-hh-qr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.vin-hh-qr-box {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 380px;
+  overflow: hidden;
+}
+.vin-hh-qr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.vin-hh-qr-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.vin-hh-qr-hint {
+  padding: 10px 16px 16px;
+  font-size: 0.78rem;
+  color: #64748b;
+  text-align: center;
+}

@@ -2,13 +2,13 @@ import {
   LayoutDashboard,
   Home,
   Building,
-  Ticket,
   Activity,
 } from 'lucide-react';
 
 /**
  * Mobile Bottom Navigation Items
  * Synchronized across all mobile views!
+ * Relief merged into Households — only 4 tabs remain.
  */
 export const MOBILE_NAV_ITEMS = [
   {
@@ -28,12 +28,6 @@ export const MOBILE_NAV_ITEMS = [
     label: 'Centers',
     path: '/mobile/centers',
     icon: Building,
-  },
-  {
-    id: 'relief',
-    label: 'Relief',
-    path: '/mobile/relief',
-    icon: Ticket,
   },
   {
     id: 'monitor',

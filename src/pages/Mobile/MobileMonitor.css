@@ -1,0 +1,88 @@
+/* ===================================================
+   MobileMonitor.css — Color-coded monitoring grid
+   =================================================== */
+
+/* Legend */
+.vin-mon-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 10px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* Grid */
+.vin-mon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 0 16px 20px;
+}
+
+/* Tile */
+.vin-mon-tile {
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  transition: transform .1s;
+  border: 2px solid transparent;
+}
+.vin-mon-tile:active { transform: scale(0.97); }
+
+.mon-tile-present {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
+}
+.mon-tile-absent {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border-color: #fca5a5;
+}
+
+.vin-mon-tile-icon { margin-bottom: 2px; }
+.mon-tile-present .vin-mon-tile-icon { color: #16a34a; }
+.mon-tile-absent  .vin-mon-tile-icon { color: #dc2626; }
+
+.vin-mon-tile-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.vin-mon-tile-ratio {
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+.mon-tile-present .vin-mon-tile-ratio { color: #15803d; }
+.mon-tile-absent  .vin-mon-tile-ratio { color: #dc2626; }
+
+.vin-mon-tile-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.badge-present {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.badge-absent {
+  background: #ffe4e6;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.vin-mon-tile-time {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
