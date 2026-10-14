@@ -137,26 +137,21 @@
 .vin-hh-filter-clear:hover { background: #f8fafc; }
 
 /* Active filter chips */
-.vin-hh-chip {
+.vin-hh-clear-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: #e0f2fe;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
+  gap: 3px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
   border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 0.75rem;
+  padding: 5px 10px;
+  font-size: 0.76rem;
   font-weight: 700;
-}
-.vin-hh-chip-x {
-  background: none;
-  border: none;
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  color: #0369a1;
-  display: inline-flex;
+}
+.vin-hh-clear-pill:hover {
+  background: #fecaca;
 }
 
 /* Print All button */

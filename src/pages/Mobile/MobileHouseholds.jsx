@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2, QrCode,
-  AlertTriangle, Ticket, Printer, Filter, ChevronDown,
+  AlertTriangle, Ticket, Printer, Filter, ChevronDown, Building,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './MobileCommon.css';
@@ -457,37 +457,43 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
 /* ──────────────────────────────────────────────
    Filter Dropdown
    ────────────────────────────────────────────── */
-function FilterDropdown({ filterStub, filterCenter, onStub, onCenter, onClose }) {
+function StatusFilterDropdown({ value, onChange, onClose }) {
   return (
     <div className="vin-hh-filter-dropdown" onClick={(e) => e.stopPropagation()}>
       <div className="vin-hh-filter-section-title">STUB STATUS</div>
-      {['All', 'Issued', 'Not Issued'].map((opt) => (
+      {[
+        { id: 'All', label: 'All Status', dot: 'all' },
+        { id: 'Issued', label: 'Issued (Green)', dot: 'issued' },
+        { id: 'Not Issued', label: 'Not Issued (Red)', dot: 'notissued' },
+      ].map((opt) => (
         <button
-          key={opt}
+          key={opt.id}
           type="button"
-          className={`vin-hh-filter-opt ${filterStub === opt ? 'active' : ''}`}
-          onClick={() => onStub(opt)}
+          className={`vin-hh-filter-opt ${value === opt.id ? 'active' : ''}`}
+          onClick={() => { onChange(opt.id); onClose(); }}
         >
-          <span className={`vin-hh-filter-dot ${opt === 'Issued' ? 'issued' : opt === 'Not Issued' ? 'notissued' : 'all'}`} />
-          {opt}
+          <span className={`vin-hh-filter-dot ${opt.dot}`} />
+          {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
 
-      <div className="vin-hh-filter-section-title" style={{ marginTop: 10 }}>EVACUATION CENTER</div>
+function CenterFilterDropdown({ value, onChange, onClose }) {
+  return (
+    <div className="vin-hh-filter-dropdown" onClick={(e) => e.stopPropagation()}>
+      <div className="vin-hh-filter-section-title">EVACUATION CENTER</div>
       {CENTERS.map((c) => (
         <button
           key={c}
           type="button"
-          className={`vin-hh-filter-opt ${filterCenter === c ? 'active' : ''}`}
-          onClick={() => onCenter(c)}
+          className={`vin-hh-filter-opt ${value === c ? 'active' : ''}`}
+          onClick={() => { onChange(c); onClose(); }}
         >
           {c}
         </button>
       ))}
-
-      <button type="button" className="vin-hh-filter-clear" onClick={() => { onStub('All'); onCenter('All Centers'); onClose(); }}>
-        Clear Filters
-      </button>
     </div>
   );
 }
@@ -500,7 +506,7 @@ export default function MobileHouseholds() {
   const [search, setSearch] = useState('');
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
-  const [showFilter, setShowFilter] = useState(false);
+  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [modalMode, setModalMode] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -592,7 +598,7 @@ export default function MobileHouseholds() {
 
   /* ── RENDER ── */
   return (
-    <div className="vin-mob-page" onClick={() => showFilter && setShowFilter(false)}>
+    <div className="vin-mob-page" onClick={() => openFilter && setOpenFilter(null)}>
 
       {/* Header */}
       <header className="vin-mob-header">
@@ -627,44 +633,65 @@ export default function MobileHouseholds() {
         <div className="vin-hh-scan-error"><AlertTriangle size={14} /> {scanError}</div>
       )}
 
-      {/* Filter bar */}
+      {/* Filter bar with separate Status and Center buttons */}
       <div className="vin-hh-filter-bar">
-        {/* Filter button */}
+        {/* Status Filter Button */}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
-            className={`vin-hh-filter-btn ${activeFilters > 0 ? 'vin-hh-filter-btn--active' : ''}`}
-            onClick={(e) => { e.stopPropagation(); setShowFilter((v) => !v); }}
+            className={`vin-hh-filter-btn ${filterStub !== 'All' ? 'vin-hh-filter-btn--active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenFilter(openFilter === 'status' ? null : 'status');
+            }}
           >
-            <Filter size={15} />
-            Filter
-            {activeFilters > 0 && <span className="vin-hh-filter-badge">{activeFilters}</span>}
+            <span className={`vin-hh-filter-dot ${filterStub === 'Issued' ? 'issued' : filterStub === 'Not Issued' ? 'notissued' : 'all'}`} />
+            <span>{filterStub === 'All' ? 'Status' : filterStub}</span>
             <ChevronDown size={13} />
           </button>
 
-          {showFilter && (
-            <FilterDropdown
-              filterStub={filterStub}
-              filterCenter={filterCenter}
-              onStub={setFilterStub}
-              onCenter={setFilterCenter}
-              onClose={() => setShowFilter(false)}
+          {openFilter === 'status' && (
+            <StatusFilterDropdown
+              value={filterStub}
+              onChange={setFilterStub}
+              onClose={() => setOpenFilter(null)}
             />
           )}
         </div>
 
-        {/* Active filter chips */}
-        {filterStub !== 'All' && (
-          <span className="vin-hh-chip">
-            {filterStub}
-            <button type="button" onClick={() => setFilterStub('All')} className="vin-hh-chip-x"><X size={11} /></button>
-          </span>
-        )}
-        {filterCenter !== 'All Centers' && (
-          <span className="vin-hh-chip">
-            {filterCenter.split(' ').slice(0, 2).join(' ')}…
-            <button type="button" onClick={() => setFilterCenter('All Centers')} className="vin-hh-chip-x"><X size={11} /></button>
-          </span>
+        {/* Evacuation Center Filter Button */}
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className={`vin-hh-filter-btn ${filterCenter !== 'All Centers' ? 'vin-hh-filter-btn--active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenFilter(openFilter === 'center' ? null : 'center');
+            }}
+          >
+            <Building size={14} />
+            <span>{filterCenter === 'All Centers' ? 'Center' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
+            <ChevronDown size={13} />
+          </button>
+
+          {openFilter === 'center' && (
+            <CenterFilterDropdown
+              value={filterCenter}
+              onChange={setFilterCenter}
+              onClose={() => setOpenFilter(null)}
+            />
+          )}
+        </div>
+
+        {/* Clear Filters Button if any filter is active */}
+        {(filterStub !== 'All' || filterCenter !== 'All Centers') && (
+          <button
+            type="button"
+            className="vin-hh-clear-pill"
+            onClick={() => { setFilterStub('All'); setFilterCenter('All Centers'); }}
+          >
+            Clear <X size={11} />
+          </button>
         )}
 
         {/* Spacer + Print All */}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Activity, X, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown, Building } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileMonitor.css';
@@ -8,6 +8,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 1,
     name: 'Antonio Magno',
+    center: 'Vinzons Central Elementary School',
+    room: 'C-1',
     ratio: '4/4',
     timestamp: '9/17/2026, 5:00:00 PM',
     status: 'Recorded',
@@ -16,6 +18,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 2,
     name: 'Rosa Santos',
+    center: 'Vinzons Central Elementary School',
+    room: 'A-2',
     ratio: '4/4',
     timestamp: '9/17/2026, 4:30:00 PM',
     status: 'Recorded',
@@ -24,6 +28,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 3,
     name: 'Patricia Cruz',
+    center: 'Vinzons Gymnasium',
+    room: 'B-1',
     ratio: '0/3',
     timestamp: '9/17/2026, 1:00:00 PM',
     status: 'Absent',
@@ -32,6 +38,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 4,
     name: 'Juan Dela Cruz',
+    center: 'Calaguas National High School',
+    room: 'A-1',
     ratio: '5/5',
     timestamp: '9/17/2026, 3:00:00 PM',
     status: 'Recorded',
@@ -39,15 +47,34 @@ const INITIAL_MONITOR_DATA = [
   },
 ];
 
+const CENTERS = [
+  'All Centers',
+  'Vinzons Central Elementary School',
+  'Vinzons Gymnasium',
+  'Calaguas National High School',
+];
+
 export default function MobileMonitor() {
   const [records] = useState(INITIAL_MONITOR_DATA);
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Recorded' | 'Absent'
+  const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
   const [activeFamily, setActiveFamily] = useState(null);
   const [attendance, setAttendance] = useState({});
 
-  const filtered = records.filter((r) =>
-    r.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = records.filter((r) => {
+    const matchSearch =
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.room.toLowerCase().includes(search.toLowerCase());
+    const matchStatus =
+      filterStatus === 'All' ||
+      (filterStatus === 'Recorded' && r.status === 'Recorded') ||
+      (filterStatus === 'Absent' && r.status === 'Absent');
+    const matchCenter =
+      filterCenter === 'All Centers' || r.center === filterCenter;
+    return matchSearch && matchStatus && matchCenter;
+  });
 
   const openMonitoringSheet = (family) => {
     setActiveFamily(family);
@@ -62,7 +89,7 @@ export default function MobileMonitor() {
   };
 
   return (
-    <div className="vin-mob-page">
+    <div className="vin-mob-page" onClick={() => openFilter && setOpenFilter(null)}>
       {/* Header */}
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
@@ -76,11 +103,115 @@ export default function MobileMonitor() {
         <Search size={18} className="vin-mob-search-icon" />
         <input
           type="text"
-          placeholder="Search household…"
+          placeholder="Search household or room…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="vin-mob-search-input"
         />
+      </div>
+
+      {/* Separate Filter Buttons Bar */}
+      <div className="vin-mon-filter-bar">
+        {/* Status Filter Button */}
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenFilter(openFilter === 'status' ? null : 'status');
+            }}
+          >
+            <span
+              className={`vin-mon-filter-dot ${
+                filterStatus === 'Recorded'
+                  ? 'present'
+                  : filterStatus === 'Absent'
+                  ? 'absent'
+                  : 'all'
+              }`}
+            />
+            <span>{filterStatus === 'All' ? 'Status' : filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
+            <ChevronDown size={13} />
+          </button>
+
+          {openFilter === 'status' && (
+            <div className="vin-mon-filter-dropdown" onClick={(e) => e.stopPropagation()}>
+              <div className="vin-mon-filter-title">MONITORING STATUS</div>
+              {[
+                { id: 'All', label: 'All Status', dot: 'all' },
+                { id: 'Recorded', label: 'Present / Recorded (Green)', dot: 'present' },
+                { id: 'Absent', label: 'Absent (Red)', dot: 'absent' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setFilterStatus(opt.id);
+                    setOpenFilter(null);
+                  }}
+                >
+                  <span className={`vin-mon-filter-dot ${opt.dot}`} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Evacuation Center Filter Button */}
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className={`vin-mon-filter-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenFilter(openFilter === 'center' ? null : 'center');
+            }}
+          >
+            <Building size={14} />
+            <span>{filterCenter === 'All Centers' ? 'Center' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
+            <ChevronDown size={13} />
+          </button>
+
+          {openFilter === 'center' && (
+            <div className="vin-mon-filter-dropdown" onClick={(e) => e.stopPropagation()}>
+              <div className="vin-mon-filter-title">EVACUATION CENTER</div>
+              {CENTERS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`vin-mon-filter-opt ${filterCenter === c ? 'active' : ''}`}
+                  onClick={() => {
+                    setFilterCenter(c);
+                    setOpenFilter(null);
+                  }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Clear Filters Button if any active */}
+        {(filterStatus !== 'All' || filterCenter !== 'All Centers') && (
+          <button
+            type="button"
+            className="vin-mon-clear-pill"
+            onClick={() => {
+              setFilterStatus('All');
+              setFilterCenter('All Centers');
+            }}
+          >
+            Clear <X size={11} />
+          </button>
+        )}
+
+        <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
+          {filtered.length} family{filtered.length !== 1 ? 'ies' : ''}
+        </span>
       </div>
 
       {/* Legend */}
@@ -91,6 +222,11 @@ export default function MobileMonitor() {
 
       {/* Monitoring Grid */}
       <div className="vin-mon-grid">
+        {filtered.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '.88rem' }}>
+            No families match the current filter.
+          </div>
+        )}
         {filtered.map((item) => {
           const isPresent = item.status === 'Recorded';
           return (
@@ -106,6 +242,9 @@ export default function MobileMonitor() {
                   : <XCircle size={22} />}
               </div>
               <div className="vin-mon-tile-name">{item.name}</div>
+              <div className="vin-mon-tile-loc">
+                Room {item.room} • {item.center.split(' ').slice(0, 2).join(' ')}
+              </div>
               <div className="vin-mon-tile-ratio">{item.ratio}</div>
               <div className={`vin-mon-tile-badge ${isPresent ? 'badge-present' : 'badge-absent'}`}>
                 {item.status}
@@ -124,7 +263,7 @@ export default function MobileMonitor() {
               <div>
                 <h2 className="vin-mob-sheet-title">Evacuee Monitoring</h2>
                 <span style={{ fontSize: '.78rem', color: '#64748b' }}>
-                  Vinzons Evacuation Center • Group A
+                  {activeFamily.center} • Room {activeFamily.room}
                 </span>
               </div>
               <button type="button" className="vin-mob-sheet-close" onClick={() => setActiveFamily(null)}>
