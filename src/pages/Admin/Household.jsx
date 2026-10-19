@@ -1075,9 +1075,18 @@ export default function Household() {
                     >
                       <Edit size={14} />
                     </button>
-                    <span className="vin-admin-tile-issue-hint">
+                    <button
+                      type="button"
+                      className={`vin-admin-tile-action-btn ${
+                        item.stubCode ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedHousehold(item);
+                      }}
+                    >
                       {item.stubCode ? 'View QR' : 'Issue Stub'} →
-                    </span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1135,13 +1144,28 @@ export default function Household() {
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      className="vin-admin-tile-edit-btn"
-                      onClick={(e) => openEdit(item, e)}
-                    >
-                      <Edit size={14} />
-                    </button>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        className={`vin-admin-tile-action-btn ${
+                          item.stubCode ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedHousehold(item);
+                        }}
+                      >
+                        {item.stubCode ? 'View QR' : 'Issue Stub'} →
+                      </button>
+                      <button
+                        type="button"
+                        className="vin-admin-tile-edit-btn"
+                        onClick={(e) => openEdit(item, e)}
+                        title={`Edit ${item.name}`}
+                      >
+                        <Edit size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
