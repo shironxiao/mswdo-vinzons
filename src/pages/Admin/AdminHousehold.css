@@ -1,0 +1,878 @@
+/* ==========================================================
+   Admin Household & Stub Issuance Styles
+   ========================================================== */
+
+/* Page header */
+.vin-admin-hh-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.vin-admin-hh-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vin-admin-hh-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #15803d;
+}
+
+.vin-admin-hh-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.vin-admin-hh-desc {
+  font-size: 0.92rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Header action group */
+.vin-admin-hh-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vin-admin-btn-register {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #dfb235;
+  color: #0d3824;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(223, 178, 53, 0.25);
+}
+
+.vin-admin-btn-register:hover {
+  background-color: #d1a52b;
+  transform: translateY(-1px);
+}
+
+/* Metric stats summary row */
+.vin-admin-hh-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.vin-admin-hh-stat-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.vin-admin-hh-stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-admin-hh-stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+
+.vin-admin-hh-stat-value {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.vin-admin-hh-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vin-admin-hh-stat-icon.total {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.vin-admin-hh-stat-icon.issued {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.vin-admin-hh-stat-icon.pending {
+  background: #ffe4e6;
+  color: #dc2626;
+}
+
+/* Toolbar & Filter Bar */
+.vin-admin-hh-toolbar-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.vin-admin-hh-toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vin-admin-hh-search-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 280px;
+  max-width: 480px;
+}
+
+.vin-admin-hh-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 8px 14px;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+
+.vin-admin-hh-search-input-wrap:focus-within {
+  border-color: #15803d;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+}
+
+.vin-admin-hh-search-input-wrap input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.vin-admin-hh-scan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e40af;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 9px 16px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.vin-admin-hh-scan-btn:hover {
+  background: #1d4ed8;
+}
+
+.vin-admin-hh-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vin-admin-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.vin-admin-filter-btn:hover {
+  background: #f1f5f9;
+}
+
+.vin-admin-filter-btn.active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.vin-admin-filter-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.vin-admin-filter-dot.issued { background: #16a34a; }
+.vin-admin-filter-dot.notissued { background: #dc2626; }
+.vin-admin-filter-dot.all { background: linear-gradient(90deg, #16a34a 50%, #dc2626 50%); }
+
+.vin-admin-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px;
+  min-width: 220px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vin-admin-filter-section-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.vin-admin-filter-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vin-admin-filter-opt:hover {
+  background: #f8fafc;
+}
+
+.vin-admin-filter-opt.active {
+  background: #f0fdf4;
+  color: #166534;
+  font-weight: 800;
+}
+
+.vin-admin-clear-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vin-admin-clear-pill:hover {
+  background: #fecaca;
+}
+
+.vin-admin-print-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #166534;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.vin-admin-print-all-btn:hover:not(:disabled) {
+  background: #14532d;
+}
+
+.vin-admin-print-all-btn:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Legend row */
+.vin-admin-hh-legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+  font-size: 0.82rem;
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vin-admin-hh-legend-items {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vin-admin-hh-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+/* View Mode Switcher */
+.vin-admin-view-toggle {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.vin-admin-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.vin-admin-view-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ══════════════════════════════════════════════
+   VISUAL GRID OF HOUSEHOLD TILES
+   ══════════════════════════════════════════════ */
+.vin-admin-hh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+
+.vin-admin-hh-tile {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.vin-admin-hh-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+
+/* Tile color variants */
+.vin-admin-hh-tile--issued {
+  background: linear-gradient(145deg, #f0fdf4 0%, #e6fced 100%);
+  border-color: #86efac;
+}
+
+.vin-admin-hh-tile--notissued {
+  background: linear-gradient(145deg, #fff1f2 0%, #ffe4e6 100%);
+  border-color: #fca5a5;
+}
+
+.vin-admin-hh-tile-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vin-admin-hh-avatar-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.vin-admin-hh-tile--issued .vin-admin-hh-avatar-wrap {
+  color: #16a34a;
+}
+
+.vin-admin-hh-tile--notissued .vin-admin-hh-avatar-wrap {
+  color: #dc2626;
+}
+
+.vin-admin-hh-badge-issued {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.vin-admin-hh-badge-notissued {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffe4e6;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.vin-admin-hh-tile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vin-admin-hh-tile-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.vin-admin-hh-tile-meta {
+  font-size: 0.8rem;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.vin-admin-hh-tile-center {
+  font-size: 0.78rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-admin-hh-tile-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.vin-admin-hh-tile-code {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #166534;
+  letter-spacing: 0.05em;
+}
+
+.vin-admin-hh-tile-nocode {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.vin-admin-hh-tile-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vin-admin-tile-edit-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 5px 8px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vin-admin-tile-edit-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.vin-admin-tile-issue-hint {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  opacity: 0.8;
+}
+
+/* ══════════════════════════════════════════════
+   MODAL OVERLAY (Stub Issuance & Register/Edit)
+   ══════════════════════════════════════════════ */
+.vin-admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.vin-admin-modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.vin-admin-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.vin-admin-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-admin-modal-close-btn {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.15s ease;
+}
+
+.vin-admin-modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.vin-admin-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Stub Panel Cards inside modal */
+.vin-admin-stub-profile-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vin-admin-stub-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .vin-admin-stub-meta-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.vin-admin-stub-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-admin-stub-meta-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.vin-admin-stub-meta-val {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* Members list in modal */
+.vin-admin-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-admin-member-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* Duplicate warning banner */
+.vin-admin-dup-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: #92400e;
+  line-height: 1.45;
+}
+
+.vin-admin-dup-banner svg {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Issued Stub Block (QR code display) */
+.vin-admin-issued-block {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.vin-admin-issued-code {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #166534;
+}
+
+.vin-admin-print-stub-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1.5px solid #16a34a;
+  color: #15803d;
+  border-radius: 10px;
+  padding: 9px 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-admin-print-stub-btn:hover {
+  background: #f0fdf4;
+}
+
+/* Big issue stub button */
+.vin-admin-big-issue-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border: none;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+  transition: all 0.15s ease;
+}
+
+.vin-admin-big-issue-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35);
+}
+
+.vin-admin-big-issue-btn:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Form controls inside modal */
+.vin-admin-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-admin-form-label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vin-admin-form-input,
+.vin-admin-form-select {
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.vin-admin-form-input:focus,
+.vin-admin-form-select:focus {
+  border-color: #15803d;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+}
+
+.vin-admin-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.vin-admin-member-form-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vin-admin-modal-submit-btn {
+  background: #0d3824;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.vin-admin-modal-submit-btn:hover {
+  background: #092618;
+}
+
+/* QR Camera Scanner Box */
+.vin-admin-qr-scanner-box {
+  background: #0f172a;
+  border-radius: 16px;
+  overflow: hidden;
+  width: 100%;
+}
