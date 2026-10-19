@@ -6,7 +6,6 @@ import {
   ArrowUpRight,
   Gift,
   CheckCircle2,
-  Truck,
   MapPin,
 } from 'lucide-react';
 import './Dashboard.css';
@@ -177,17 +176,6 @@ export default function Dashboard() {
             </div>
 
             {/* Activity 3 */}
-            <div className="vin-activity-item">
-              <div className="vin-activity-icon icon-box-blue">
-                <Truck size={18} />
-              </div>
-              <div className="vin-activity-details">
-                <div className="vin-activity-title">Household transferred</div>
-                <div className="vin-activity-sub">H2 moved to VCES, Room 4</div>
-              </div>
-            </div>
-
-            {/* Activity 4 */}
             <div className="vin-activity-item">
               <div className="vin-activity-icon icon-box-orange">
                 <MapPin size={18} />

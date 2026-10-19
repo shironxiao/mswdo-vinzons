@@ -15,8 +15,7 @@ import {
  */
 export const DEFAULT_ADMIN_NAV_SECTIONS = [
   {
-    id: 'main',
-    title: 'MAIN',
+    id: 'navigation',
     items: [
       {
         id: 'dashboard',
@@ -54,12 +53,6 @@ export const DEFAULT_ADMIN_NAV_SECTIONS = [
         path: '/admin/relief-goods-stubs',
         icon: Package,
       },
-    ],
-  },
-  {
-    id: 'administration',
-    title: 'ADMINISTRATION',
-    items: [
       {
         id: 'reports',
         label: 'Reports',
