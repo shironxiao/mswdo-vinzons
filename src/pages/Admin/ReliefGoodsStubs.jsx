@@ -19,11 +19,64 @@ const CENTERS = [
 const STATUSES = ['All Status', 'Distributed', 'Completed', 'Queued'];
 
 export default function ReliefGoodsStubs() {
+  const [stubs, setStubs] = useState(STUBS_DATA);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [openFilter, setOpenFilter] = useState(null);
 
-  const filtered = STUBS_DATA.filter((s) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState({
+    center: 'VCES',
+    allocated: '',
+    date: 'Sept 19, 2024',
+    status: 'Queued',
+  });
+
+  const getTodayFormatted = () => {
+    const d = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  };
+
+  const getNextBatchId = () => {
+    const nums = stubs.map((s) => {
+      const match = s.batchId.match(/BATCH-\d+-(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    const max = nums.length > 0 ? Math.max(...nums) : 0;
+    const next = String(max + 1).padStart(3, '0');
+    return `BATCH-2024-${next}`;
+  };
+
+  const handleOpenModal = () => {
+    setForm({
+      center: filterCenter !== 'All Centers' ? filterCenter : 'VCES',
+      allocated: '',
+      date: getTodayFormatted(),
+      status: 'Queued',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleIssueBatch = (e) => {
+    e.preventDefault();
+    const allocatedNum = Number(form.allocated);
+    if (!allocatedNum || allocatedNum <= 0) return;
+
+    const newBatch = {
+      batchId: getNextBatchId(),
+      center: form.center,
+      allocated: allocatedNum,
+      distributed: 0,
+      date: form.date.trim() || getTodayFormatted(),
+      status: form.status,
+    };
+
+    setStubs([newBatch, ...stubs]);
+    setIsModalOpen(false);
+  };
+
+  const filtered = stubs.filter((s) => {
     const matchCenter = filterCenter === 'All Centers' || s.center === filterCenter;
     const matchStatus = filterStatus === 'All Status' || s.status === filterStatus;
     return matchCenter && matchStatus;
@@ -39,7 +92,11 @@ export default function ReliefGoodsStubs() {
             Issue, validate, and track relief good claim stubs and distribution batches.
           </p>
         </div>
-        <button type="button" className="vin-feature-action-btn">
+        <button
+          type="button"
+          className="vin-feature-action-btn"
+          onClick={handleOpenModal}
+        >
           <Plus size={18} />
           <span>Issue Stubs Batch</span>
         </button>
@@ -174,6 +231,103 @@ export default function ReliefGoodsStubs() {
           </tbody>
         </table>
       </div>
+
+      {/* ── Issue Stubs Batch Modal Popup ── */}
+      {isModalOpen && (
+        <div className="vin-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="vin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-modal-head">
+              <div>
+                <h2>Issue Stubs Batch</h2>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  Allocate a new batch of relief goods claim stubs to an evacuation center.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="vin-modal-close"
+                onClick={() => setIsModalOpen(false)}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleIssueBatch}>
+              {/* Evacuation Center */}
+              <div className="vin-form-group">
+                <label className="vin-form-label">Evacuation Center</label>
+                <select
+                  className="vin-form-select"
+                  value={form.center}
+                  onChange={(e) => setForm({ ...form, center: e.target.value })}
+                  required
+                >
+                  <option value="VCES">VCES (Central Elem)</option>
+                  <option value="VCC">VCC (Covered Court)</option>
+                  <option value="CNHS">CNHS (High School)</option>
+                  <option value="VG">Vinzons Gymnasium (VG)</option>
+                </select>
+              </div>
+
+              {/* Allocated Stubs */}
+              <div className="vin-form-group">
+                <label className="vin-form-label">Allocated Stubs (Quantity)</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="vin-form-input"
+                  placeholder="e.g. 100"
+                  value={form.allocated}
+                  onChange={(e) => setForm({ ...form, allocated: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Date & Status */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="vin-form-group">
+                  <label className="vin-form-label">Date Issued</label>
+                  <input
+                    type="text"
+                    className="vin-form-input"
+                    placeholder="e.g. Sept 19, 2024"
+                    value={form.date}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="vin-form-group">
+                  <label className="vin-form-label">Batch Status</label>
+                  <select
+                    className="vin-form-select"
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  >
+                    <option value="Queued">Queued</option>
+                    <option value="Distributed">Distributed</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="vin-modal-actions">
+                <button
+                  type="button"
+                  className="vin-btn-cancel"
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="vin-btn-submit">
+                  Allocate Stubs Batch
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
