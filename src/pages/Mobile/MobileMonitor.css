@@ -45,9 +45,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.vin-mon-filter-dot.present { background: #16a34a; }
-.vin-mon-filter-dot.absent  { background: #dc2626; }
-.vin-mon-filter-dot.all     { background: linear-gradient(90deg, #16a34a 50%, #dc2626 50%); }
+.vin-mon-filter-dot.present { background: #2d7a57; }
+.vin-mon-filter-dot.absent  { background: #9c4444; }
+.vin-mon-filter-dot.all     { background: linear-gradient(90deg, #2d7a57 50%, #9c4444 50%); }
 
 .vin-mon-filter-dropdown {
   position: absolute;
@@ -140,17 +140,17 @@
 .vin-mon-tile:active { transform: scale(0.97); }
 
 .mon-tile-present {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border-color: #86efac;
+  background: linear-gradient(135deg, #f6fbf8 0%, #ebf5f0 100%);
+  border-color: #bddad0;
 }
 .mon-tile-absent {
-  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
-  border-color: #fca5a5;
+  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
+  border-color: #ebd3d3;
 }
 
 .vin-mon-tile-icon { margin-bottom: 2px; }
-.mon-tile-present .vin-mon-tile-icon { color: #16a34a; }
-.mon-tile-absent  .vin-mon-tile-icon { color: #dc2626; }
+.mon-tile-present .vin-mon-tile-icon { color: #2d7a57; }
+.mon-tile-absent  .vin-mon-tile-icon { color: #9c4444; }
 
 .vin-mon-tile-name {
   font-size: 0.88rem;
@@ -171,8 +171,8 @@
   letter-spacing: 0.5px;
   margin-top: 2px;
 }
-.mon-tile-present .vin-mon-tile-ratio { color: #15803d; }
-.mon-tile-absent  .vin-mon-tile-ratio { color: #dc2626; }
+.mon-tile-present .vin-mon-tile-ratio { color: #1b593f; }
+.mon-tile-absent  .vin-mon-tile-ratio { color: #843232; }
 
 .vin-mon-tile-badge {
   display: inline-flex;
@@ -185,14 +185,14 @@
   margin-top: 2px;
 }
 .badge-present {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #86efac;
+  background: #eaf4ef;
+  color: #1b593f;
+  border: 1px solid #bddad0;
 }
 .badge-absent {
-  background: #ffe4e6;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  background: #f7eded;
+  color: #843232;
+  border: 1px solid #ebd3d3;
 }
 
 .vin-mon-tile-time {

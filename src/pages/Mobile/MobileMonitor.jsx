@@ -206,8 +206,8 @@ export default function MobileMonitor() {
 
       {/* Legend */}
       <div className="vin-mon-legend">
-        <CheckCircle2 size={14} color="#16a34a" /> Present / Recorded
-        <XCircle size={14} color="#dc2626" style={{ marginLeft: 12 }} /> Absent
+        <CheckCircle2 size={14} color="#2d7a57" /> Present / Recorded
+        <XCircle size={14} color="#9c4444" style={{ marginLeft: 12 }} /> Absent
       </div>
 
       {/* Monitoring Grid */}
