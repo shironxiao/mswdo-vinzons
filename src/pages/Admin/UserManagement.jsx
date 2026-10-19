@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Shield, UserCheck, X, MoreVertical } from 'lucide-react';
+import { Plus, Shield, UserCheck, X, MoreVertical, ChevronDown } from 'lucide-react';
 import './UserManagement.css';
 
 const INITIAL_USERS = [
@@ -45,9 +45,27 @@ const INITIAL_USERS = [
   },
 ];
 
+const ROLES = [
+  'All Roles',
+  'Head of MSWDO',
+  'Field Coordinator',
+  'Relief Goods Staff',
+  'Evacuee Monitor',
+];
+
+const CENTERS = [
+  'All Centers',
+  'All Centers (Command)',
+  'Vinzons Central Elementary School',
+  'Vinzons Covered Court',
+  'Calaguas National High School',
+];
+
 export default function UserManagement() {
   const [users, setUsers] = useState(INITIAL_USERS);
-  const [search, setSearch] = useState('');
+  const [filterRole, setFilterRole] = useState('All Roles');
+  const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [openFilter, setOpenFilter] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -56,12 +74,11 @@ export default function UserManagement() {
     assignedCenter: 'Vinzons Central Elementary School',
   });
 
-  const filtered = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.role.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = users.filter((u) => {
+    const matchRole = filterRole === 'All Roles' || u.role === filterRole;
+    const matchCenter = filterCenter === 'All Centers' || u.assignedCenter === filterCenter;
+    return matchRole && matchCenter;
+  });
 
   const handleAddUser = (e) => {
     e.preventDefault();
@@ -91,7 +108,7 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="vin-users-page">
+    <div className="vin-users-page" onClick={() => openFilter && setOpenFilter(null)}>
       {/* Header */}
       <header className="vin-users-header">
         <div className="vin-users-header-text">
@@ -114,14 +131,88 @@ export default function UserManagement() {
       {/* Table Card */}
       <div className="vin-users-table-card">
         <div className="vin-users-toolbar">
-          <div className="vin-users-search-box">
-            <Search size={16} color="#64748b" />
-            <input
-              type="text"
-              placeholder="Search by name, email, or role..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="vin-filter-pill-group">
+            {/* Role Filter */}
+            <div className="vin-filter-pill-wrapper">
+              <button
+                type="button"
+                className={`vin-filter-pill-btn ${filterRole !== 'All Roles' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'role' ? null : 'role');
+                }}
+              >
+                <span>{filterRole === 'All Roles' ? 'All roles' : filterRole}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'role' && (
+                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-filter-pill-dropdown-title">User Role</div>
+                  {ROLES.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`vin-filter-pill-opt ${filterRole === r ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterRole(r);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      <span>{r}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Center Filter */}
+            <div className="vin-filter-pill-wrapper">
+              <button
+                type="button"
+                className={`vin-filter-pill-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'center' ? null : 'center');
+                }}
+              >
+                <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'center' && (
+                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-filter-pill-dropdown-title">Assigned Center</div>
+                  {CENTERS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`vin-filter-pill-opt ${filterCenter === c ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterCenter(c);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      <span>{c}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Clear Filter */}
+            {(filterRole !== 'All Roles' || filterCenter !== 'All Centers') && (
+              <button
+                type="button"
+                className="vin-filter-pill-clear"
+                onClick={() => {
+                  setFilterRole('All Roles');
+                  setFilterCenter('All Centers');
+                }}
+              >
+                Clear <X size={12} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -137,7 +228,14 @@ export default function UserManagement() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item) => (
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  No users match the current filter criteria.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
               <tr key={item.id}>
                 <td>
                   <div className="vin-user-avatar-cell">
@@ -169,7 +267,7 @@ export default function UserManagement() {
                   </button>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

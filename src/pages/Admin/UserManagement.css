@@ -1,6 +1,7 @@
 /* ==========================================================
    User Management Page Styles
    ========================================================== */
+@import './AdminFeatures.css';
 
 .vin-users-page {
   display: flex;

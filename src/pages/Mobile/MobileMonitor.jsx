@@ -122,16 +122,7 @@ export default function MobileMonitor() {
               setOpenFilter(openFilter === 'status' ? null : 'status');
             }}
           >
-            <span
-              className={`vin-mon-filter-dot ${
-                filterStatus === 'Recorded'
-                  ? 'present'
-                  : filterStatus === 'Absent'
-                  ? 'absent'
-                  : 'all'
-              }`}
-            />
-            <span>{filterStatus === 'All' ? 'Status' : filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
+            <span>{filterStatus === 'All' ? 'All status' : filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
             <ChevronDown size={13} />
           </button>
 
@@ -170,8 +161,7 @@ export default function MobileMonitor() {
               setOpenFilter(openFilter === 'center' ? null : 'center');
             }}
           >
-            <Building size={14} />
-            <span>{filterCenter === 'All Centers' ? 'Center' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
+            <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
             <ChevronDown size={13} />
           </button>
 

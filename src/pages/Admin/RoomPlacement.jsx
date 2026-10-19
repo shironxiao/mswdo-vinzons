@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Building } from 'lucide-react';
+import { Plus, Building, ChevronDown, X } from 'lucide-react';
 import './AdminFeatures.css';
 
 const ROOMS_DATA = [
@@ -9,15 +9,22 @@ const ROOMS_DATA = [
   { id: 'CR-B', center: 'VCC', name: 'Vinzons Covered Court - Sector B', capacity: 80, occupied: 65, status: 'Active' },
 ];
 
-export default function RoomPlacement() {
-  const [search, setSearch] = useState('');
+const CENTERS = ['All Centers', 'VCES', 'CNHS', 'VCC'];
+const STATUSES = ['All Status', 'Active', 'Full'];
 
-  const filtered = ROOMS_DATA.filter(
-    (r) => r.name.toLowerCase().includes(search.toLowerCase()) || r.center.toLowerCase().includes(search.toLowerCase())
-  );
+export default function RoomPlacement() {
+  const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [filterStatus, setFilterStatus] = useState('All Status');
+  const [openFilter, setOpenFilter] = useState(null);
+
+  const filtered = ROOMS_DATA.filter((r) => {
+    const matchCenter = filterCenter === 'All Centers' || r.center === filterCenter;
+    const matchStatus = filterStatus === 'All Status' || r.status === filterStatus;
+    return matchCenter && matchStatus;
+  });
 
   return (
-    <div className="vin-feature-page">
+    <div className="vin-feature-page" onClick={() => openFilter && setOpenFilter(null)}>
       <header className="vin-feature-header">
         <div className="vin-feature-header-left">
           <span className="vin-feature-eyebrow">FACILITIES & ALLOCATIONS</span>
@@ -34,14 +41,88 @@ export default function RoomPlacement() {
 
       <div className="vin-feature-content-card">
         <div className="vin-feature-toolbar">
-          <div className="vin-feature-search-box">
-            <Search size={16} color="#64748b" />
-            <input
-              type="text"
-              placeholder="Search room or center..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="vin-filter-pill-group">
+            {/* Center Filter */}
+            <div className="vin-filter-pill-wrapper">
+              <button
+                type="button"
+                className={`vin-filter-pill-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'center' ? null : 'center');
+                }}
+              >
+                <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'center' && (
+                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-filter-pill-dropdown-title">Evacuation Center</div>
+                  {CENTERS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`vin-filter-pill-opt ${filterCenter === c ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterCenter(c);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      <span>{c}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Status Filter */}
+            <div className="vin-filter-pill-wrapper">
+              <button
+                type="button"
+                className={`vin-filter-pill-btn ${filterStatus !== 'All Status' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'status' ? null : 'status');
+                }}
+              >
+                <span>{filterStatus === 'All Status' ? 'All status' : filterStatus}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'status' && (
+                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-filter-pill-dropdown-title">Room Status</div>
+                  {STATUSES.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`vin-filter-pill-opt ${filterStatus === s ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterStatus(s);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      <span>{s}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Clear Filter */}
+            {(filterCenter !== 'All Centers' || filterStatus !== 'All Status') && (
+              <button
+                type="button"
+                className="vin-filter-pill-clear"
+                onClick={() => {
+                  setFilterCenter('All Centers');
+                  setFilterStatus('All Status');
+                }}
+              >
+                Clear <X size={12} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -57,27 +138,35 @@ export default function RoomPlacement() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id}>
-                <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.id}</td>
-                <td>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                    <Building size={15} color="#2563eb" />
-                    {item.center}
-                  </span>
-                </td>
-                <td style={{ fontWeight: 600 }}>{item.name}</td>
-                <td style={{ fontWeight: 700, color: item.occupied >= item.capacity ? '#b91c1c' : '#15803d' }}>
-                  {item.occupied} persons
-                </td>
-                <td>{item.capacity} max</td>
-                <td>
-                  <span className={`vin-status-tag ${item.occupied >= item.capacity ? 'pending' : 'active'}`}>
-                    {item.status}
-                  </span>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  No rooms match the current filter criteria.
                 </td>
               </tr>
-            ))}
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id}>
+                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.id}</td>
+                  <td>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                      <Building size={15} color="#2563eb" />
+                      {item.center}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 600 }}>{item.name}</td>
+                  <td style={{ fontWeight: 700, color: item.occupied >= item.capacity ? '#b91c1c' : '#15803d' }}>
+                    {item.occupied} persons
+                  </td>
+                  <td>{item.capacity} max</td>
+                  <td>
+                    <span className={`vin-status-tag ${item.occupied >= item.capacity ? 'pending' : 'active'}`}>
+                      {item.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

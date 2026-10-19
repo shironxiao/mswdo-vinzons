@@ -718,17 +718,8 @@ export default function Household() {
                   setOpenFilter(openFilter === 'status' ? null : 'status');
                 }}
               >
-                <span
-                  className={`vin-admin-filter-dot ${
-                    filterStub === 'Issued'
-                      ? 'issued'
-                      : filterStub === 'Not Issued'
-                      ? 'notissued'
-                      : 'all'
-                  }`}
-                />
-                <span>{filterStub === 'All' ? 'Status: All' : filterStub}</span>
-                <ChevronDown size={14} />
+                <span>{filterStub === 'All' ? 'All status' : filterStub}</span>
+                <ChevronDown size={13} />
               </button>
 
               {openFilter === 'status' && (
@@ -766,13 +757,12 @@ export default function Household() {
                   setOpenFilter(openFilter === 'center' ? null : 'center');
                 }}
               >
-                <Building size={15} />
                 <span>
                   {filterCenter === 'All Centers'
-                    ? 'Center: All'
+                    ? 'All centers'
                     : filterCenter.split(' ').slice(0, 2).join(' ')}
                 </span>
-                <ChevronDown size={14} />
+                <ChevronDown size={13} />
               </button>
 
               {openFilter === 'center' && (

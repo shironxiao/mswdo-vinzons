@@ -652,8 +652,7 @@ export default function MobileHouseholds() {
               setOpenFilter(openFilter === 'status' ? null : 'status');
             }}
           >
-            <span className={`vin-hh-filter-dot ${filterStub === 'Issued' ? 'issued' : filterStub === 'Not Issued' ? 'notissued' : 'all'}`} />
-            <span>{filterStub === 'All' ? 'Status' : filterStub}</span>
+            <span>{filterStub === 'All' ? 'All status' : filterStub}</span>
             <ChevronDown size={13} />
           </button>
 
@@ -676,8 +675,7 @@ export default function MobileHouseholds() {
               setOpenFilter(openFilter === 'center' ? null : 'center');
             }}
           >
-            <Building size={14} />
-            <span>{filterCenter === 'All Centers' ? 'Center' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
+            <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
             <ChevronDown size={13} />
           </button>
 

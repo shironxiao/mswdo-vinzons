@@ -219,26 +219,27 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 7px 14px;
+  background: #ffffff;
+  border: 1.5px solid #14532d;
+  border-radius: 9999px;
+  padding: 6px 16px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #475569;
+  color: #0d3824;
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
+  white-space: nowrap;
 }
 
 .vin-admin-filter-btn:hover {
-  background: #f1f5f9;
+  background: #f0fdf4;
 }
 
 .vin-admin-filter-btn.active {
-  background: #0f172a;
+  background: #14532d;
   color: #ffffff;
-  border-color: #0f172a;
+  border-color: #14532d;
 }
 
 .vin-admin-filter-dot {
