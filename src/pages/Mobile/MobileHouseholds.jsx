@@ -7,6 +7,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileHouseholds.css';
+import checkIcon from '../../assets/check.png';
+import removeIcon from '../../assets/remove.png';
 
 /* ──────────────────────────────────────────────
    Seed data – replace with Dexie in production
@@ -384,7 +386,12 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
               <div style={{ fontSize: '.78rem', color: '#64748b' }}>Household Head</div>
             </div>
             <span className={alreadyIssued ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'} style={{ marginLeft: 'auto' }}>
-              {alreadyIssued ? '✅ Issued' : '❌ Not Issued'}
+              <img
+                src={alreadyIssued ? checkIcon : removeIcon}
+                alt=""
+                className="vin-badge-img-icon"
+              />
+              <span>{alreadyIssued ? 'Issued' : 'Not Issued'}</span>
             </span>
           </div>
           <div className="vin-hh-stub-meta">
@@ -733,7 +740,11 @@ export default function MobileHouseholds() {
             <div className="vin-hh-tile-top">
               <div className="vin-mob-avatar-circle vin-hh-tile-avatar"><User size={18} /></div>
               <span className={item.stubCode ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
-                {item.stubCode ? '✅' : '❌'}
+                <img
+                  src={item.stubCode ? checkIcon : removeIcon}
+                  alt=""
+                  className="vin-badge-img-icon"
+                />
               </span>
             </div>
             <div className="vin-hh-tile-name">{item.name}</div>

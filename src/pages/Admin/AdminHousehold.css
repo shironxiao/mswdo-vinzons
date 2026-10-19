@@ -497,6 +497,14 @@
   white-space: nowrap;
 }
 
+.vin-badge-img-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
 .vin-admin-hh-tile-main {
   display: flex;
   flex-direction: column;

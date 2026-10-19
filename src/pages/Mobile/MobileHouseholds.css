@@ -326,6 +326,14 @@
   white-space: nowrap;
 }
 
+.vin-badge-img-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
 /* ── Stub card inside bottom sheet ── */
 .vin-hh-stub-card {
   background: #f8fafc;

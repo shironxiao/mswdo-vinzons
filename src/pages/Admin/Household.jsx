@@ -5,6 +5,8 @@ import {
   LayoutGrid, List, CheckCircle2, Clock, Users, Home,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import checkIcon from '../../assets/check.png';
+import removeIcon from '../../assets/remove.png';
 import './AdminFeatures.css';
 import './AdminHousehold.css';
 
@@ -473,7 +475,12 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
                 </div>
               </div>
               <span className={alreadyIssued ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                {alreadyIssued ? '✅ Issued' : '❌ Not Issued'}
+                <img
+                  src={alreadyIssued ? checkIcon : removeIcon}
+                  alt=""
+                  className="vin-badge-img-icon"
+                />
+                <span>{alreadyIssued ? 'Issued' : 'Not Issued'}</span>
               </span>
             </div>
 
@@ -1028,7 +1035,12 @@ export default function Household() {
                     <User size={22} />
                   </div>
                   <span className={item.stubCode ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                    {item.stubCode ? '✅ Issued' : '❌ Not Issued'}
+                    <img
+                      src={item.stubCode ? checkIcon : removeIcon}
+                      alt=""
+                      className="vin-badge-img-icon"
+                    />
+                    <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
                   </span>
                 </div>
 
@@ -1114,7 +1126,12 @@ export default function Household() {
                   </td>
                   <td>
                     <span className={item.stubCode ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                      {item.stubCode ? '✅ Issued' : '❌ Not Issued'}
+                      <img
+                        src={item.stubCode ? checkIcon : removeIcon}
+                        alt=""
+                        className="vin-badge-img-icon"
+                      />
+                      <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
