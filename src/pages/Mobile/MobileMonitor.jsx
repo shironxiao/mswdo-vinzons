@@ -200,7 +200,7 @@ export default function MobileMonitor() {
         )}
 
         <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
-          {filtered.length} family{filtered.length !== 1 ? 'ies' : ''}
+          {filtered.length} {filtered.length === 1 ? 'family' : 'families'}
         </span>
       </div>
 

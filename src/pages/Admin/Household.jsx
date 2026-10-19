@@ -654,7 +654,7 @@ export default function Household() {
           <span className="vin-admin-hh-eyebrow">REGISTRY &amp; RELIEF ISSUANCE</span>
           <h1 className="vin-admin-hh-title">Household &amp; Stub Issuance</h1>
           <p className="vin-admin-hh-desc">
-            Single unified screen for managing family records, scanning QR stubs, and issuing relief claim passes.
+            Manage family registry records, verify stub issuance statuses, and issue official relief goods claim passes.
           </p>
         </div>
 
