@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Search, Plus, User, Edit, X, Trash2, QrCode,
+  Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, ChevronDown, Building,
   CheckCircle2, Clock, Users, Home,
 } from 'lucide-react';
@@ -351,90 +351,6 @@ function printStub(household) {
 }
 
 /* ──────────────────────────────────────────────
-   QR Scanner Modal
-   ────────────────────────────────────────────── */
-function QrScannerModal({ onScan, onClose }) {
-  const instanceRef = useRef(null);
-  const [manualCode, setManualCode] = useState('');
-
-  useEffect(() => {
-    let scanner;
-    import('html5-qrcode').then(({ Html5Qrcode }) => {
-      scanner = new Html5Qrcode('admin-qr-reader-el');
-      instanceRef.current = scanner;
-      scanner
-        .start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          (text) => {
-            scanner.stop().catch(() => {});
-            onScan(text);
-          },
-          () => {}
-        )
-        .catch((err) => console.warn('QR camera error:', err));
-    });
-
-    return () => {
-      if (instanceRef.current) {
-        instanceRef.current.stop().catch(() => {});
-      }
-    };
-  }, [onScan]);
-
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (manualCode.trim()) {
-      if (instanceRef.current) {
-        instanceRef.current.stop().catch(() => {});
-      }
-      onScan(manualCode.trim());
-    }
-  };
-
-  return (
-    <div className="vin-admin-modal-overlay" onClick={onClose}>
-      <div className="vin-admin-modal-card" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="vin-admin-modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <QrCode size={20} color="#15803d" />
-            <h3 className="vin-admin-modal-title">Scan Stub QR Code</h3>
-          </div>
-          <button type="button" className="vin-admin-modal-close-btn" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="vin-admin-modal-body" style={{ alignItems: 'center' }}>
-          <div id="admin-qr-reader-el" className="vin-admin-qr-scanner-box" style={{ width: '100%', minHeight: 240 }} />
-          <p style={{ fontSize: '0.82rem', color: '#64748b', textAlign: 'center', margin: '4px 0' }}>
-            Point camera at the printed stub QR code, or enter the code manually below.
-          </p>
-
-          <form onSubmit={handleManualSubmit} style={{ width: '100%', display: 'flex', gap: 8, marginTop: 4 }}>
-            <input
-              type="text"
-              placeholder="e.g. STB-001002"
-              className="vin-admin-form-input"
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button
-              type="submit"
-              className="vin-admin-btn-register"
-              style={{ padding: '8px 16px', borderRadius: 10 }}
-            >
-              Verify
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────
    Stub Issuance Modal
    ────────────────────────────────────────────── */
 function StubIssuanceModal({ household, households, onIssue, onClose }) {
@@ -596,15 +512,12 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
    ────────────────────────────────────────────── */
 export default function Household() {
   const [households, setHouseholds] = useState(INITIAL_HOUSEHOLDS);
-  const [search, setSearch] = useState('');
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
-  const [showScanner, setShowScanner] = useState(false);
-  const [scanMessage, setScanMessage] = useState({ text: '', type: '' });
 
   const [activeForm, setActiveForm] = useState({
     id: '',
@@ -619,36 +532,19 @@ export default function Household() {
 
   /* ── Filter logic ── */
   const filtered = households.filter((h) => {
-    const matchSearch =
-      h.name.toLowerCase().includes(search.toLowerCase()) ||
-      h.id.toLowerCase().includes(search.toLowerCase()) ||
-      h.room.toLowerCase().includes(search.toLowerCase()) ||
-      (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
     const matchStub =
       filterStub === 'All' ||
       (filterStub === 'Issued' && !!h.stubCode) ||
       (filterStub === 'Not Issued' && !h.stubCode);
     const matchCenter =
       filterCenter === 'All Centers' || h.center === filterCenter;
-    return matchSearch && matchStub && matchCenter;
+    return matchStub && matchCenter;
   });
 
   const totalCount = households.length;
   const issuedCount = households.filter((h) => h.stubCode).length;
   const pendingCount = totalCount - issuedCount;
   const filteredIssued = filtered.filter((h) => h.stubCode);
-
-  /* ── QR scan handler ── */
-  const handleScan = useCallback((code) => {
-    setShowScanner(false);
-    const found = households.find((h) => h.stubCode === code || h.id === code);
-    if (found) {
-      setSelectedHousehold(found);
-      setScanMessage({ text: `Matched household: ${found.name} (${code})`, type: 'success' });
-    } else {
-      setScanMessage({ text: `No household found matching code: "${code}"`, type: 'error' });
-    }
-  }, [households]);
 
   /* ── Issue stub ── */
   const issueStub = (hhId) => {
@@ -810,27 +706,6 @@ export default function Household() {
       {/* ── Toolbar & Filter Controls ── */}
       <div className="vin-admin-hh-toolbar-card">
         <div className="vin-admin-hh-toolbar-top">
-          {/* Search box & QR Scan button */}
-          <div className="vin-admin-hh-search-group">
-            <div className="vin-admin-hh-search-input-wrap">
-              <Search size={18} color="#64748b" />
-              <input
-                type="text"
-                placeholder="Search by ID, name, room, or stub code…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <button
-              type="button"
-              className="vin-admin-hh-scan-btn"
-              onClick={() => setShowScanner(true)}
-            >
-              <QrCode size={18} />
-              <span>Scan QR</span>
-            </button>
-          </div>
-
           {/* Filter dropdowns & Print all button */}
           <div className="vin-admin-hh-filter-controls">
             {/* Status Filter */}
@@ -948,33 +823,6 @@ export default function Household() {
           </div>
         </div>
 
-        {/* Scan / Status Alert Notification */}
-        {scanMessage.text && (
-          <div
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: scanMessage.type === 'success' ? '#f0fdf4' : '#fef2f2',
-              color: scanMessage.type === 'success' ? '#15803d' : '#dc2626',
-              border: `1px solid ${scanMessage.type === 'success' ? '#86efac' : '#fca5a5'}`,
-            }}
-          >
-            <span>{scanMessage.text}</span>
-            <button
-              type="button"
-              onClick={() => setScanMessage({ text: '', type: '' })}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
         {/* Legend row */}
         <div className="vin-admin-hh-legend-row">
           <div className="vin-admin-hh-legend-items">
@@ -1076,11 +924,6 @@ export default function Household() {
           </tbody>
         </table>
       </div>
-
-      {/* ── QR Scanner Modal ── */}
-      {showScanner && (
-        <QrScannerModal onScan={handleScan} onClose={() => setShowScanner(false)} />
-      )}
 
       {/* ── Stub Issuance Modal ── */}
       {selectedHousehold && (
