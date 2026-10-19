@@ -3,10 +3,10 @@ import { Plus, Building, ChevronDown, X } from 'lucide-react';
 import './AdminFeatures.css';
 
 const INITIAL_ROOMS = [
-  { id: 'RM-101', center: 'VCES', name: 'Room 101 - Grade 1 Sampaguita', capacity: 30, occupied: 24, status: 'Active' },
-  { id: 'RM-102', center: 'VCES', name: 'Room 102 - Grade 1 Rosal', capacity: 30, occupied: 30, status: 'Full' },
-  { id: 'RM-201', center: 'CNHS', name: 'Bldg 2 Room 4', capacity: 25, occupied: 18, status: 'Active' },
-  { id: 'CR-B', center: 'VCC', name: 'Vinzons Covered Court - Sector B', capacity: 80, occupied: 65, status: 'Active' },
+  { id: 'RM-101', center: 'VCES', name: 'Room 101 - Grade 1 Sampaguita', occupied: 24, status: 'Active' },
+  { id: 'RM-102', center: 'VCES', name: 'Room 102 - Grade 1 Rosal', occupied: 30, status: 'Full' },
+  { id: 'RM-201', center: 'CNHS', name: 'Bldg 2 Room 4', occupied: 18, status: 'Active' },
+  { id: 'CR-B', center: 'VCC', name: 'Vinzons Covered Court - Sector B', occupied: 65, status: 'Active' },
 ];
 
 const EVACUATION_CENTERS = [
@@ -29,8 +29,8 @@ export default function RoomPlacement() {
     center: 'VCES',
     id: '',
     name: '',
-    capacity: 30,
     occupied: 0,
+    status: 'Active',
   });
 
   const centerFilterOptions = ['All Centers', ...Array.from(new Set(rooms.map((r) => r.center)))];
@@ -47,8 +47,8 @@ export default function RoomPlacement() {
       center: filterCenter !== 'All Centers' ? filterCenter : 'VCES',
       id: `RM-${nextNum}`,
       name: '',
-      capacity: 30,
       occupied: 0,
+      status: 'Active',
     });
     setIsModalOpen(true);
   };
@@ -57,7 +57,6 @@ export default function RoomPlacement() {
     e.preventDefault();
     if (!form.name.trim()) return;
 
-    const capacityNum = Number(form.capacity) || 20;
     const occupiedNum = Number(form.occupied) || 0;
     const code = form.id.trim() || `RM-${rooms.length + 101}`;
 
@@ -65,9 +64,8 @@ export default function RoomPlacement() {
       id: code,
       center: form.center,
       name: form.name.trim(),
-      capacity: capacityNum,
       occupied: occupiedNum,
-      status: occupiedNum >= capacityNum ? 'Full' : 'Active',
+      status: form.status,
     };
 
     setRooms([newRoom, ...rooms]);
@@ -81,7 +79,7 @@ export default function RoomPlacement() {
           <span className="vin-feature-eyebrow">FACILITIES & ALLOCATIONS</span>
           <h1 className="vin-feature-title">Room Placement</h1>
           <p className="vin-feature-desc">
-            Organize evacuee room allocations, bed capacities, and designated spaces across evacuation centers.
+            Organize evacuee room allocations and designated spaces across evacuation centers.
           </p>
         </div>
         <button
@@ -188,14 +186,13 @@ export default function RoomPlacement() {
               <th>CENTER</th>
               <th>ROOM NAME / DESIGNATION</th>
               <th>OCCUPANCY</th>
-              <th>CAPACITY</th>
               <th>STATUS</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No rooms match the current filter criteria.
                 </td>
               </tr>
@@ -210,12 +207,11 @@ export default function RoomPlacement() {
                     </span>
                   </td>
                   <td style={{ fontWeight: 600 }}>{item.name}</td>
-                  <td style={{ fontWeight: 700, color: item.occupied >= item.capacity ? '#b91c1c' : '#15803d' }}>
+                  <td style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#15803d' }}>
                     {item.occupied} persons
                   </td>
-                  <td>{item.capacity} max</td>
                   <td>
-                    <span className={`vin-status-tag ${item.occupied >= item.capacity ? 'pending' : 'active'}`}>
+                    <span className={`vin-status-tag ${item.status === 'Full' ? 'pending' : 'active'}`}>
                       {item.status}
                     </span>
                   </td>
@@ -265,31 +261,17 @@ export default function RoomPlacement() {
                 </select>
               </div>
 
-              {/* Room Code & Capacity Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="vin-form-group">
-                  <label className="vin-form-label">Room Code</label>
-                  <input
-                    type="text"
-                    className="vin-form-input"
-                    placeholder="e.g. RM-103"
-                    value={form.id}
-                    onChange={(e) => setForm({ ...form, id: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="vin-form-group">
-                  <label className="vin-form-label">Max Capacity (Persons)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="vin-form-input"
-                    placeholder="30"
-                    value={form.capacity}
-                    onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-                    required
-                  />
-                </div>
+              {/* Room Code */}
+              <div className="vin-form-group">
+                <label className="vin-form-label">Room Code</label>
+                <input
+                  type="text"
+                  className="vin-form-input"
+                  placeholder="e.g. RM-103"
+                  value={form.id}
+                  onChange={(e) => setForm({ ...form, id: e.target.value })}
+                  required
+                />
               </div>
 
               {/* Room Name / Designation */}
@@ -305,18 +287,30 @@ export default function RoomPlacement() {
                 />
               </div>
 
-              {/* Initial Occupancy */}
-              <div className="vin-form-group">
-                <label className="vin-form-label">Initial Occupancy (Current)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max={form.capacity || 999}
-                  className="vin-form-input"
-                  placeholder="0"
-                  value={form.occupied}
-                  onChange={(e) => setForm({ ...form, occupied: e.target.value })}
-                />
+              {/* Occupancy & Status Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="vin-form-group">
+                  <label className="vin-form-label">Occupancy (Persons)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="vin-form-input"
+                    placeholder="0"
+                    value={form.occupied}
+                    onChange={(e) => setForm({ ...form, occupied: e.target.value })}
+                  />
+                </div>
+                <div className="vin-form-group">
+                  <label className="vin-form-label">Room Status</label>
+                  <select
+                    className="vin-form-select"
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Full">Full</option>
+                  </select>
+                </div>
               </div>
 
               {/* Modal Actions */}
