@@ -123,9 +123,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.vin-hh-filter-dot.issued    { background: #16a34a; }
-.vin-hh-filter-dot.notissued { background: #dc2626; }
-.vin-hh-filter-dot.all       { background: linear-gradient(90deg, #16a34a 50%, #dc2626 50%); }
+.vin-hh-filter-dot.issued    { background: #2d7a57; }
+.vin-hh-filter-dot.notissued { background: #9c4444; }
+.vin-hh-filter-dot.all       { background: linear-gradient(90deg, #2d7a57 50%, #9c4444 50%); }
 
 .vin-hh-filter-clear {
   margin-top: 6px;
@@ -223,8 +223,8 @@
   border-radius: 50%;
   margin-right: 4px;
 }
-.vin-hh-legend-dot.issued    { background: #16a34a; }
-.vin-hh-legend-dot.notissued { background: #dc2626; }
+.vin-hh-legend-dot.issued    { background: #2d7a57; }
+.vin-hh-legend-dot.notissued { background: #9c4444; }
 
 /* ── Grid of tiles ── */
 .vin-hh-grid {
@@ -248,12 +248,12 @@
 .vin-hh-tile:active { transform: scale(0.97); }
 
 .vin-hh-tile--issued {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border-color: #86efac;
+  background: linear-gradient(135deg, #f6fbf8 0%, #ebf5f0 100%);
+  border-color: #bddad0;
 }
 .vin-hh-tile--notissued {
-  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
-  border-color: #fca5a5;
+  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
+  border-color: #ebd3d3;
 }
 
 .vin-hh-tile-top {
@@ -280,7 +280,7 @@
 .vin-hh-tile-code {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #16a34a;
+  color: #1b593f;
   margin-top: 2px;
   letter-spacing: 0.5px;
 }
@@ -300,17 +300,17 @@
 .vin-hh-list-item {
   border-left: 4px solid transparent;
 }
-.vin-hh-list-item.list-issued    { border-left-color: #16a34a; }
-.vin-hh-list-item.list-notissued { border-left-color: #dc2626; }
+.vin-hh-list-item.list-issued    { border-left-color: #2d7a57; }
+.vin-hh-list-item.list-notissued { border-left-color: #9c4444; }
 
 /* ── Badges ── */
 .vin-hh-badge-issued {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #86efac;
+  background: #eaf4ef;
+  color: #1b593f;
+  border: 1px solid #bddad0;
   border-radius: 20px;
   padding: 3px 9px;
   font-size: 0.72rem;
@@ -321,9 +321,9 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: #ffe4e6;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  background: #f7eded;
+  color: #843232;
+  border: 1px solid #ebd3d3;
   border-radius: 20px;
   padding: 3px 9px;
   font-size: 0.72rem;

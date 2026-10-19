@@ -153,7 +153,7 @@ export default function MobileCenters() {
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedCenter, setSelectedCenter] = useState(null);
-  const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '2', capacity: '30' });
+  const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '2' });
 
   const filtered = centers.filter(
     (c) =>
@@ -166,10 +166,9 @@ export default function MobileCenters() {
     e.preventDefault();
     if (!newCenter.name) return;
     const roomCount = Number(newCenter.rooms) || 2;
-    const cap = Number(newCenter.capacity) || 30;
     const rooms = Array.from({ length: roomCount }, (_, i) => ({
       id: `R-${i + 1}`,
-      capacity: cap,
+      capacity: 30,
       occupied: 0,
     }));
     const item = {
@@ -182,7 +181,7 @@ export default function MobileCenters() {
       status: 'Active',
     };
     setCenters([item, ...centers]);
-    setNewCenter({ name: '', location: '', rooms: '2', capacity: '30' });
+    setNewCenter({ name: '', location: '', rooms: '2' });
     setIsAddOpen(false);
   };
 
@@ -297,19 +296,11 @@ export default function MobileCenters() {
                   value={newCenter.location}
                   onChange={(e) => setNewCenter({ ...newCenter, location: e.target.value })} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label">NUMBER OF ROOMS</label>
-                  <input type="number" min="1" placeholder="2" className="vin-mob-select"
-                    value={newCenter.rooms}
-                    onChange={(e) => setNewCenter({ ...newCenter, rooms: e.target.value })} />
-                </div>
-                <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label">CAPACITY / ROOM</label>
-                  <input type="number" min="1" placeholder="30" className="vin-mob-select"
-                    value={newCenter.capacity}
-                    onChange={(e) => setNewCenter({ ...newCenter, capacity: e.target.value })} />
-                </div>
+              <div className="vin-mob-input-group">
+                <label className="vin-mob-input-label">NUMBER OF ROOMS</label>
+                <input type="number" min="1" placeholder="2" className="vin-mob-select"
+                  value={newCenter.rooms}
+                  onChange={(e) => setNewCenter({ ...newCenter, rooms: e.target.value })} />
               </div>
               <button type="submit" className="vin-mob-sheet-blue-btn" style={{ marginTop: 8 }}>
                 Create Evacuation Center

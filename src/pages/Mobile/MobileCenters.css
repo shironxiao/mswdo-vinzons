@@ -18,8 +18,8 @@
   border-radius: 50%;
   margin-right: 4px;
 }
-.vin-ctr-dot.green { background: #16a34a; }
-.vin-ctr-dot.red   { background: #dc2626; }
+.vin-ctr-dot.green { background: #2d7a57; }
+.vin-ctr-dot.red   { background: #9c4444; }
 .vin-ctr-dot.gray  { background: #94a3b8; }
 
 /* ══════════════════════════════════════
@@ -45,14 +45,14 @@
 }
 .vin-ctr-tile:active { transform: scale(0.97); }
 
-/* Color variants */
+/* Color variants - softened, less vibrant tones */
 .ctr-tile--available {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border-color: #86efac;
+  background: linear-gradient(135deg, #f6fbf8 0%, #ebf5f0 100%);
+  border-color: #bddad0;
 }
 .ctr-tile--full {
-  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
-  border-color: #fca5a5;
+  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
+  border-color: #ebd3d3;
 }
 .ctr-tile--empty {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -63,8 +63,8 @@
 .vin-ctr-tile-icon {
   margin-bottom: 4px;
 }
-.ctr-tile--available .vin-ctr-tile-icon { color: #16a34a; }
-.ctr-tile--full      .vin-ctr-tile-icon { color: #dc2626; }
+.ctr-tile--available .vin-ctr-tile-icon { color: #2d7a57; }
+.ctr-tile--full      .vin-ctr-tile-icon { color: #9c4444; }
 .ctr-tile--empty     .vin-ctr-tile-icon { color: #94a3b8; }
 
 /* Status badge */
@@ -78,14 +78,14 @@
   border: 1px solid transparent;
 }
 .badge-available {
-  background: #dcfce7;
-  color: #15803d;
-  border-color: #86efac;
+  background: #eaf4ef;
+  color: #1b593f;
+  border-color: #bddad0;
 }
 .badge-full {
-  background: #ffe4e6;
-  color: #dc2626;
-  border-color: #fca5a5;
+  background: #f7eded;
+  color: #843232;
+  border-color: #ebd3d3;
 }
 .badge-empty {
   background: #f1f5f9;
@@ -122,8 +122,8 @@
   border-radius: 99px;
   transition: width .4s ease;
 }
-.fill-available { background: #16a34a; }
-.fill-full      { background: #dc2626; }
+.fill-available { background: #368461; }
+.fill-full      { background: #a84d4d; }
 .fill-empty     { background: #94a3b8; }
 
 /* Meta (evacuees / rooms) */
@@ -171,8 +171,8 @@
 .vin-ctr-room-occ   { font-size: 0.78rem; font-weight: 600; }
 .vin-ctr-room-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
-.room-green { background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; }
-.room-red   { background: #fff1f2; border: 1.5px solid #fca5a5; color: #991b1b; }
+.room-green { background: #f6fbf8; border: 1.5px solid #bddad0; color: #1b593f; }
+.room-red   { background: #fdf8f8; border: 1.5px solid #ebd3d3; color: #843232; }
 .room-gray  { background: #f1f5f9; border: 1.5px solid #cbd5e1; color: #64748b; }
 
 /* ── Summary row in room sheet ── */
