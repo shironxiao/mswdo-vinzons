@@ -56,30 +56,24 @@ const CENTERS_DATA = [
    ────────────────────────────────────────────── */
 function roomColorClass(room) {
   if (room.occupied === 0) return 'room-gray';
-  if (room.occupied >= room.capacity) return 'room-red';
   return 'room-green';
 }
 
 function roomLabel(room) {
   if (room.occupied === 0) return 'Empty';
-  if (room.occupied >= room.capacity) return 'Full';
-  return `${room.capacity - room.occupied} left`;
+  return 'Occupied';
 }
 
 /** Returns overall center fill level for tile color */
 function centerColorClass(center) {
-  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
   const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
   if (totalOcc === 0) return 'ctr-tile--empty';
-  if (totalOcc >= totalCap) return 'ctr-tile--full';
   return 'ctr-tile--available';
 }
 
 function centerStatusLabel(center) {
-  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
   const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
   if (totalOcc === 0) return 'Empty';
-  if (totalOcc >= totalCap) return 'Full';
   return 'Available';
 }
 
@@ -87,7 +81,6 @@ function centerStatusLabel(center) {
    Room Detail Sheet
    ────────────────────────────────────────────── */
 function RoomsSheet({ center, onClose }) {
-  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
   const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
 
   return (
@@ -110,7 +103,7 @@ function RoomsSheet({ center, onClose }) {
         <div className="vin-ctr-summary-row">
           <div className="vin-ctr-summary-item">
             <span className="vin-mob-field-label">EVACUEES</span>
-            <div>{totalOcc} / {totalCap}</div>
+            <div>{totalOcc}</div>
           </div>
           <div className="vin-ctr-summary-item">
             <span className="vin-mob-field-label">ROOMS</span>
@@ -124,8 +117,7 @@ function RoomsSheet({ center, onClose }) {
 
         {/* Legend */}
         <div className="vin-ctr-legend" style={{ padding: '0 0 10px' }}>
-          <span className="vin-ctr-dot green" /> Available
-          <span className="vin-ctr-dot red" /> Full
+          <span className="vin-ctr-dot green" /> Occupied
           <span className="vin-ctr-dot gray" /> Empty
         </div>
 
@@ -135,7 +127,7 @@ function RoomsSheet({ center, onClose }) {
           {center.rooms.map((room) => (
             <div key={room.id} className={`vin-ctr-room-tile ${roomColorClass(room)}`}>
               <div className="vin-ctr-room-id">{room.id}</div>
-              <div className="vin-ctr-room-occ">{room.occupied}/{room.capacity}</div>
+              <div className="vin-ctr-room-occ">{room.occupied}</div>
               <div className="vin-ctr-room-label">{roomLabel(room)}</div>
             </div>
           ))}
@@ -211,16 +203,13 @@ export default function MobileCenters() {
       {/* Legend */}
       <div className="vin-ctr-legend">
         <span className="vin-ctr-dot green" /> Available
-        <span className="vin-ctr-dot red" /> Full
         <span className="vin-ctr-dot gray" /> Empty
       </div>
 
       {/* ── CENTER GRID ── */}
       <div className="vin-ctr-grid">
         {filtered.map((item) => {
-          const totalCap = item.rooms.reduce((a, r) => a + r.capacity, 0);
           const totalOcc = item.rooms.reduce((a, r) => a + r.occupied, 0);
-          const pct = totalCap > 0 ? Math.round((totalOcc / totalCap) * 100) : 0;
           const colorCls = centerColorClass(item);
           const statusLabel = centerStatusLabel(item);
 
@@ -230,37 +219,35 @@ export default function MobileCenters() {
               className={`vin-ctr-tile ${colorCls}`}
               onClick={() => setSelectedCenter(item)}
             >
-              {/* Icon */}
-              <div className="vin-ctr-tile-icon">
-                <Building size={26} />
+              {/* Top Row: Icon left, Status badge top right */}
+              <div className="vin-ctr-tile-top">
+                <div className="vin-ctr-tile-icon">
+                  <Building size={22} />
+                </div>
+                <span className={`vin-ctr-status-badge badge-${colorCls.replace('ctr-tile--', '')}`}>
+                  {statusLabel}
+                </span>
               </div>
 
-              {/* Status badge */}
-              <span className={`vin-ctr-status-badge badge-${colorCls.replace('ctr-tile--', '')}`}>
-                {statusLabel}
-              </span>
+              {/* Body: evenly arranged content */}
+              <div className="vin-ctr-tile-body">
+                <div className="vin-ctr-tile-name">{item.name}</div>
 
-              <div className="vin-ctr-tile-name">{item.name}</div>
+                <div className="vin-ctr-tile-loc">
+                  <MapPin size={11} style={{ display: 'inline', marginRight: 3, flexShrink: 0 }} />
+                  <span>{item.location}</span>
+                </div>
 
-              <div className="vin-ctr-tile-loc">
-                <MapPin size={11} style={{ display: 'inline', marginRight: 3 }} />
-                {item.location}
+                <div className="vin-ctr-tile-meta">
+                  <Users size={12} style={{ display: 'inline', marginRight: 4, flexShrink: 0 }} />
+                  <span>{totalOcc} evacuees &bull; {item.rooms.length} rooms</span>
+                </div>
               </div>
 
-              {/* Capacity bar */}
-              <div className="vin-ctr-bar-wrap">
-                <div
-                  className={`vin-ctr-bar-fill fill-${colorCls.replace('ctr-tile--', '')}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <div className="vin-ctr-tile-meta">
-                <Users size={12} style={{ display: 'inline', marginRight: 3 }} />
-                {totalOcc}/{totalCap} &nbsp;•&nbsp; {item.rooms.length} rooms
-              </div>
-
+              {/* Bottom tap action */}
               <div className="vin-ctr-tile-tap">
-                View Rooms <ChevronRight size={13} />
+                <span>View Rooms</span>
+                <ChevronRight size={13} />
               </div>
             </div>
           );
