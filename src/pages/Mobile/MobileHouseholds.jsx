@@ -384,7 +384,7 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
               <div style={{ fontSize: '.78rem', color: '#64748b' }}>Household Head</div>
             </div>
             <span className={alreadyIssued ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'} style={{ marginLeft: 'auto' }}>
-              {alreadyIssued ? '✅ Issued' : '⬜ Not Issued'}
+              {alreadyIssued ? '✅ Issued' : '❌ Not Issued'}
             </span>
           </div>
           <div className="vin-hh-stub-meta">
@@ -733,7 +733,7 @@ export default function MobileHouseholds() {
             <div className="vin-hh-tile-top">
               <div className="vin-mob-avatar-circle vin-hh-tile-avatar"><User size={18} /></div>
               <span className={item.stubCode ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
-                {item.stubCode ? '✅' : '⬜'}
+                {item.stubCode ? '✅' : '❌'}
               </span>
             </div>
             <div className="vin-hh-tile-name">{item.name}</div>

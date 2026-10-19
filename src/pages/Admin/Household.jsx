@@ -473,7 +473,7 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
                 </div>
               </div>
               <span className={alreadyIssued ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                {alreadyIssued ? '✅ Issued' : '⬜ Not Issued'}
+                {alreadyIssued ? '✅ Issued' : '❌ Not Issued'}
               </span>
             </div>
 
@@ -1028,15 +1028,13 @@ export default function Household() {
                     <User size={22} />
                   </div>
                   <span className={item.stubCode ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                    {item.stubCode ? '✅ Issued' : '⬜ Not Issued'}
+                    {item.stubCode ? '✅ Issued' : '❌ Not Issued'}
                   </span>
                 </div>
 
                 <div className="vin-admin-hh-tile-main">
                   <div className="vin-admin-hh-tile-name">{item.name}</div>
                   <div className="vin-admin-hh-tile-meta">
-                    <span>{item.id}</span>
-                    <span>•</span>
                     <span>Room {item.room}</span>
                     <span>•</span>
                     <span>{item.familyCount} members</span>
@@ -1082,7 +1080,6 @@ export default function Household() {
           <table className="vin-feature-table" style={{ margin: 0 }}>
             <thead>
               <tr>
-                <th>HOUSEHOLD ID</th>
                 <th>HEAD OF FAMILY</th>
                 <th>CENTER</th>
                 <th>ROOM</th>
@@ -1099,7 +1096,6 @@ export default function Household() {
                   onClick={() => setSelectedHousehold(item)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.id}</td>
                   <td style={{ fontWeight: 700 }}>{item.name}</td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
@@ -1118,7 +1114,7 @@ export default function Household() {
                   </td>
                   <td>
                     <span className={item.stubCode ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                      {item.stubCode ? 'Issued' : 'Pending'}
+                      {item.stubCode ? '✅ Issued' : '❌ Not Issued'}
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
