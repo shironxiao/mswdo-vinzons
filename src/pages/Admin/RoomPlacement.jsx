@@ -2,26 +2,77 @@ import { useState } from 'react';
 import { Plus, Building, ChevronDown, X } from 'lucide-react';
 import './AdminFeatures.css';
 
-const ROOMS_DATA = [
+const INITIAL_ROOMS = [
   { id: 'RM-101', center: 'VCES', name: 'Room 101 - Grade 1 Sampaguita', capacity: 30, occupied: 24, status: 'Active' },
   { id: 'RM-102', center: 'VCES', name: 'Room 102 - Grade 1 Rosal', capacity: 30, occupied: 30, status: 'Full' },
   { id: 'RM-201', center: 'CNHS', name: 'Bldg 2 Room 4', capacity: 25, occupied: 18, status: 'Active' },
   { id: 'CR-B', center: 'VCC', name: 'Vinzons Covered Court - Sector B', capacity: 80, occupied: 65, status: 'Active' },
 ];
 
-const CENTERS = ['All Centers', 'VCES', 'CNHS', 'VCC'];
+const EVACUATION_CENTERS = [
+  { code: 'VCES', name: 'Vinzons Central Elementary School (VCES)' },
+  { code: 'CNHS', name: 'Calaguas National High School (CNHS)' },
+  { code: 'VCC',  name: 'Vinzons Covered Court (VCC)' },
+  { code: 'VG',   name: 'Vinzons Gymnasium (VG)' },
+];
+
 const STATUSES = ['All Status', 'Active', 'Full'];
 
 export default function RoomPlacement() {
+  const [rooms, setRooms] = useState(INITIAL_ROOMS);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [openFilter, setOpenFilter] = useState(null);
 
-  const filtered = ROOMS_DATA.filter((r) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState({
+    center: 'VCES',
+    id: '',
+    name: '',
+    capacity: 30,
+    occupied: 0,
+  });
+
+  const centerFilterOptions = ['All Centers', ...Array.from(new Set(rooms.map((r) => r.center)))];
+
+  const filtered = rooms.filter((r) => {
     const matchCenter = filterCenter === 'All Centers' || r.center === filterCenter;
     const matchStatus = filterStatus === 'All Status' || r.status === filterStatus;
     return matchCenter && matchStatus;
   });
+
+  const handleOpenAddModal = () => {
+    const nextNum = rooms.length + 101;
+    setForm({
+      center: filterCenter !== 'All Centers' ? filterCenter : 'VCES',
+      id: `RM-${nextNum}`,
+      name: '',
+      capacity: 30,
+      occupied: 0,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleAddRoom = (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+
+    const capacityNum = Number(form.capacity) || 20;
+    const occupiedNum = Number(form.occupied) || 0;
+    const code = form.id.trim() || `RM-${rooms.length + 101}`;
+
+    const newRoom = {
+      id: code,
+      center: form.center,
+      name: form.name.trim(),
+      capacity: capacityNum,
+      occupied: occupiedNum,
+      status: occupiedNum >= capacityNum ? 'Full' : 'Active',
+    };
+
+    setRooms([newRoom, ...rooms]);
+    setIsModalOpen(false);
+  };
 
   return (
     <div className="vin-feature-page" onClick={() => openFilter && setOpenFilter(null)}>
@@ -33,7 +84,11 @@ export default function RoomPlacement() {
             Organize evacuee room allocations, bed capacities, and designated spaces across evacuation centers.
           </p>
         </div>
-        <button type="button" className="vin-feature-action-btn">
+        <button
+          type="button"
+          className="vin-feature-action-btn"
+          onClick={handleOpenAddModal}
+        >
           <Plus size={18} />
           <span>Add Room/Space</span>
         </button>
@@ -59,7 +114,7 @@ export default function RoomPlacement() {
               {openFilter === 'center' && (
                 <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="vin-filter-pill-dropdown-title">Evacuation Center</div>
-                  {CENTERS.map((c) => (
+                  {centerFilterOptions.map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -170,6 +225,117 @@ export default function RoomPlacement() {
           </tbody>
         </table>
       </div>
+
+      {/* ── Add Room Modal Popup ── */}
+      {isModalOpen && (
+        <div className="vin-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="vin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-modal-head">
+              <div>
+                <h2>Add Room / Space</h2>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  Assign a new room or designated space to an evacuation center.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="vin-modal-close"
+                onClick={() => setIsModalOpen(false)}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddRoom}>
+              {/* Evacuation Center Selection */}
+              <div className="vin-form-group">
+                <label className="vin-form-label">Evacuation Center</label>
+                <select
+                  className="vin-form-select"
+                  value={form.center}
+                  onChange={(e) => setForm({ ...form, center: e.target.value })}
+                  required
+                >
+                  {EVACUATION_CENTERS.map((ec) => (
+                    <option key={ec.code} value={ec.code}>
+                      {ec.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Room Code & Capacity Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="vin-form-group">
+                  <label className="vin-form-label">Room Code</label>
+                  <input
+                    type="text"
+                    className="vin-form-input"
+                    placeholder="e.g. RM-103"
+                    value={form.id}
+                    onChange={(e) => setForm({ ...form, id: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="vin-form-group">
+                  <label className="vin-form-label">Max Capacity (Persons)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="vin-form-input"
+                    placeholder="30"
+                    value={form.capacity}
+                    onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Room Name / Designation */}
+              <div className="vin-form-group">
+                <label className="vin-form-label">Room Name / Designation</label>
+                <input
+                  type="text"
+                  className="vin-form-input"
+                  placeholder="e.g. Room 103 - Grade 2 Gumamela"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Initial Occupancy */}
+              <div className="vin-form-group">
+                <label className="vin-form-label">Initial Occupancy (Current)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max={form.capacity || 999}
+                  className="vin-form-input"
+                  placeholder="0"
+                  value={form.occupied}
+                  onChange={(e) => setForm({ ...form, occupied: e.target.value })}
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div className="vin-modal-actions">
+                <button
+                  type="button"
+                  className="vin-btn-cancel"
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="vin-btn-submit">
+                  Save Room
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

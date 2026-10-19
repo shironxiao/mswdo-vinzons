@@ -256,3 +256,132 @@
 .vin-filter-pill-clear:hover {
   background: #fecaca;
 }
+
+/* ── Generic Admin Modal Styles ── */
+.vin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.vin-modal-card {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 520px;
+  padding: 26px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+}
+
+.vin-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.vin-modal-head h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-modal-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.vin-modal-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.vin-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.vin-form-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vin-form-input, .vin-form-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #d2ddd6;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #1e293b;
+  outline: none;
+  box-sizing: border-box;
+  background: #ffffff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vin-form-input:focus, .vin-form-select:focus {
+  border-color: #14532d;
+  box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.12);
+}
+
+.vin-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.vin-btn-cancel {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-btn-cancel:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.vin-btn-submit {
+  background: #dfb235;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0d3824;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.vin-btn-submit:hover {
+  background: #d1a52b;
+}
