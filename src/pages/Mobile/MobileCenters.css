@@ -53,6 +53,10 @@
   background: linear-gradient(135deg, #f6fbf8 0%, #ebf5f0 100%);
   border-color: #bddad0;
 }
+.ctr-tile--occupied {
+  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
+  border-color: #ebd3d3;
+}
 .ctr-tile--full {
   background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
   border-color: #ebd3d3;
@@ -76,6 +80,7 @@
   justify-content: center;
 }
 .ctr-tile--available .vin-ctr-tile-icon { color: #2d7a57; }
+.ctr-tile--occupied  .vin-ctr-tile-icon { color: #9c4444; }
 .ctr-tile--full      .vin-ctr-tile-icon { color: #9c4444; }
 .ctr-tile--empty     .vin-ctr-tile-icon { color: #94a3b8; }
 
@@ -94,6 +99,11 @@
   background: #eaf4ef;
   color: #1b593f;
   border-color: #bddad0;
+}
+.badge-occupied {
+  background: #f7eded;
+  color: #843232;
+  border-color: #ebd3d3;
 }
 .badge-full {
   background: #f7eded;

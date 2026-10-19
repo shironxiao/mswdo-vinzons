@@ -56,24 +56,30 @@ const CENTERS_DATA = [
    ────────────────────────────────────────────── */
 function roomColorClass(room) {
   if (room.occupied === 0) return 'room-gray';
+  if (room.occupied >= room.capacity) return 'room-red';
   return 'room-green';
 }
 
 function roomLabel(room) {
   if (room.occupied === 0) return 'Empty';
+  if (room.occupied >= room.capacity) return 'Full';
   return 'Occupied';
 }
 
 /** Returns overall center fill level for tile color */
 function centerColorClass(center) {
+  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
   const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
   if (totalOcc === 0) return 'ctr-tile--empty';
+  if (totalOcc >= totalCap) return 'ctr-tile--occupied';
   return 'ctr-tile--available';
 }
 
 function centerStatusLabel(center) {
+  const totalCap = center.rooms.reduce((a, r) => a + r.capacity, 0);
   const totalOcc = center.rooms.reduce((a, r) => a + r.occupied, 0);
   if (totalOcc === 0) return 'Empty';
+  if (totalOcc >= totalCap) return 'Occupied';
   return 'Available';
 }
 
@@ -118,6 +124,7 @@ function RoomsSheet({ center, onClose }) {
         {/* Legend */}
         <div className="vin-ctr-legend" style={{ padding: '0 0 10px' }}>
           <span className="vin-ctr-dot green" /> Occupied
+          <span className="vin-ctr-dot red" /> Full
           <span className="vin-ctr-dot gray" /> Empty
         </div>
 
@@ -203,6 +210,7 @@ export default function MobileCenters() {
       {/* Legend */}
       <div className="vin-ctr-legend">
         <span className="vin-ctr-dot green" /> Available
+        <span className="vin-ctr-dot red" /> Occupied
         <span className="vin-ctr-dot gray" /> Empty
       </div>
 
