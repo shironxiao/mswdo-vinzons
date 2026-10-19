@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2, QrCode,
   AlertTriangle, Ticket, Printer, ChevronDown, Building,
-  LayoutGrid, List, CheckCircle2, Clock, Users, Home,
+  CheckCircle2, Clock, Users, Home,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import checkIcon from '../../assets/check.png';
@@ -600,7 +600,6 @@ export default function Household() {
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
-  const [viewMode, setViewMode] = useState('grid');            // 'grid' | 'table'
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
@@ -946,27 +945,6 @@ export default function Household() {
               <span>Print All ({filteredIssued.length})</span>
             </button>
 
-            {/* View Mode Switcher */}
-            <div className="vin-admin-view-toggle">
-              <button
-                type="button"
-                className={`vin-admin-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                onClick={() => setViewMode('grid')}
-                title="Grid Tile View"
-              >
-                <LayoutGrid size={16} />
-                <span>Grid</span>
-              </button>
-              <button
-                type="button"
-                className={`vin-admin-view-btn ${viewMode === 'table' ? 'active' : ''}`}
-                onClick={() => setViewMode('table')}
-                title="Table Density View"
-              >
-                <List size={16} />
-                <span>Table</span>
-              </button>
-            </div>
           </div>
         </div>
 
@@ -1014,104 +992,29 @@ export default function Household() {
         </div>
       </div>
 
-      {/* ── VISUAL GRID VIEW (Color-coded Cards) ── */}
-      {viewMode === 'grid' && (
-        <div className="vin-admin-hh-grid">
-          {filtered.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-              No households match the current search &amp; filter criteria.
-            </div>
-          ) : (
-            filtered.map((item) => (
-              <div
-                key={item.id}
-                className={`vin-admin-hh-tile ${
-                  item.stubCode ? 'vin-admin-hh-tile--issued' : 'vin-admin-hh-tile--notissued'
-                }`}
-                onClick={() => setSelectedHousehold(item)}
-              >
-                <div className="vin-admin-hh-tile-top">
-                  <div className="vin-admin-hh-avatar-wrap">
-                    <User size={22} />
-                  </div>
-                  <span className={item.stubCode ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                    <img
-                      src={item.stubCode ? checkIcon : removeIcon}
-                      alt=""
-                      className="vin-badge-img-icon"
-                    />
-                    <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
-                  </span>
-                </div>
-
-                <div className="vin-admin-hh-tile-main">
-                  <div className="vin-admin-hh-tile-name">{item.name}</div>
-                  <div className="vin-admin-hh-tile-meta">
-                    <span>Room {item.room}</span>
-                    <span>•</span>
-                    <span>{item.familyCount} members</span>
-                  </div>
-                  <div className="vin-admin-hh-tile-center" title={item.center}>
-                    <Building size={12} style={{ display: 'inline', marginRight: 4 }} />
-                    {item.center}
-                  </div>
-                </div>
-
-                <div className="vin-admin-hh-tile-bottom">
-                  <div>
-                    {item.stubCode ? (
-                      <span className="vin-admin-hh-tile-code">{item.stubCode}</span>
-                    ) : (
-                      <span className="vin-admin-hh-tile-nocode">No Stub Issued</span>
-                    )}
-                  </div>
-
-                  <div className="vin-admin-hh-tile-actions">
-                    <button
-                      type="button"
-                      className="vin-admin-tile-edit-btn"
-                      onClick={(e) => openEdit(item, e)}
-                      title={`Edit ${item.name}`}
-                    >
-                      <Edit size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className={`vin-admin-tile-action-btn ${
-                        item.stubCode ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedHousehold(item);
-                      }}
-                    >
-                      {item.stubCode ? 'View QR' : 'Issue Stub'} →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* ── TABLE VIEW (Optional Admin Density View) ── */}
-      {viewMode === 'table' && (
-        <div className="vin-feature-content-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table className="vin-feature-table" style={{ margin: 0 }}>
-            <thead>
+      {/* ── HOUSEHOLD DATA TABLE ── */}
+      <div className="vin-feature-content-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table className="vin-feature-table" style={{ margin: 0 }}>
+          <thead>
+            <tr>
+              <th>HEAD OF FAMILY</th>
+              <th>CENTER</th>
+              <th>ROOM</th>
+              <th>MEMBERS</th>
+              <th>STUB CODE</th>
+              <th>STUB STATUS</th>
+              <th style={{ textAlign: 'right' }}>ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
               <tr>
-                <th>HEAD OF FAMILY</th>
-                <th>CENTER</th>
-                <th>ROOM</th>
-                <th>MEMBERS</th>
-                <th>STUB CODE</th>
-                <th>STUB STATUS</th>
-                <th style={{ textAlign: 'right' }}>ACTION</th>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  No households match the current search &amp; filter criteria.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
+            ) : (
+              filtered.map((item) => (
                 <tr
                   key={item.id}
                   onClick={() => setSelectedHousehold(item)}
@@ -1168,11 +1071,11 @@ export default function Household() {
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* ── QR Scanner Modal ── */}
       {showScanner && (
