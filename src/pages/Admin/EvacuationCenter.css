@@ -348,4 +348,103 @@
   .vin-centers-grid {
     grid-template-columns: 1fr;
   }
+  .vin-admin-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+/* ==========================================================
+   Admin Evacuation Center Pagination
+   ========================================================== */
+.vin-admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  background: #ffffff;
+  border: 1px solid #e5ebe7;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  margin-top: 10px;
+}
+
+.vin-pagination-info {
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.vin-pagination-info strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.vin-pagination-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vin-page-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1.5px solid #d2ddd6;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-page-nav-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #0b3524;
+  color: #0b3524;
+}
+
+.vin-page-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
+.vin-page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vin-page-num-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1.5px solid #d2ddd6;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-page-num-btn:hover:not(.active) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.vin-page-num-btn.active {
+  background: #17422d;
+  color: #ffffff;
+  border-color: #17422d;
+  box-shadow: 0 2px 6px rgba(23, 66, 45, 0.25);
 }
