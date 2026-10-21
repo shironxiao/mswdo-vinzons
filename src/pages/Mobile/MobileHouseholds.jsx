@@ -240,6 +240,7 @@ function printAllStubs(issuedList) {
           <div class="stub-footer">
             <span class="stub-head-label">Household Head</span>
             <span class="stub-head-name">${h.name}</span>
+            <span class="stub-room-badge">Room: ${h.room && h.room !== 'Unassigned' ? h.room : 'Unassigned'}</span>
           </div>
         </div>
       `;
@@ -362,6 +363,18 @@ function printAllStubs(issuedList) {
           overflow: hidden;
           text-overflow: ellipsis;
         }
+        .stub-room-badge {
+          display: inline-block;
+          font-size: 8px;
+          font-weight: 700;
+          color: #166534;
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          border-radius: 3px;
+          padding: 1px 4px;
+          margin-top: 2px;
+          line-height: 1.1;
+        }
         @media print {
           body {
             background: #fff;
@@ -421,6 +434,7 @@ function printStub(household) {
       .head-box{width:100%;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px}
       .head-label{font-size:.72rem;color:#64748b;text-transform:uppercase}
       .head-name{font-size:1.05rem;font-weight:800;color:#0f172a;margin-top:2px}
+      .head-room{margin-top:6px;font-size:.82rem;font-weight:700;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:3px 10px;display:inline-block}
     </style></head><body>
     <div class="card">
       <h2>Relief Goods Stub</h2>
@@ -430,6 +444,7 @@ function printStub(household) {
       <div class="head-box">
         <div class="head-label">Household Head</div>
         <div class="head-name">${household.name}</div>
+        <div class="head-room">Room: ${household.room && household.room !== 'Unassigned' ? household.room : 'Unassigned'}</div>
       </div>
     </div>
     <script>window.onload=()=>setTimeout(()=>window.print(), 200);<\/script>
@@ -553,6 +568,9 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
               <div style={{ marginTop: 12 }}>
                 <QRCodeSVG id={`panel-qr-${household.id}`} value={household.stubCode}
                   size={140} level="M" bgColor="#ffffff" fgColor="#166534" />
+              </div>
+              <div style={{ marginTop: 8, fontSize: '0.84rem', fontWeight: 700, color: '#166534' }}>
+                Room: {household.room && household.room !== 'Unassigned' ? household.room : 'Unassigned'}
               </div>
             </div>
             <button type="button" className="vin-hh-print-btn" onClick={() => printStub(household)}>
@@ -763,7 +781,7 @@ function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
             className="vin-auto-assign-action-btn"
             onClick={handleAutoAssign}
           >
-            ⚡ Auto-Assign
+            Auto-Assign
           </button>
         </div>
 
