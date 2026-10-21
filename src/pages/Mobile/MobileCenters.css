@@ -215,3 +215,24 @@
   font-size: 0.92rem;
   color: #0f172a;
 }
+
+/* ══════════════════════════════════════
+   CENTER TABLE — avatar icon color
+   ══════════════════════════════════════ */
+.vin-ctr-table-icon {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.vin-ctr-table-icon.ctr-tile--available {
+  background: #eaf4ef;
+  color: #2d7a57;
+}
+.vin-ctr-table-icon.ctr-tile--occupied,
+.vin-ctr-table-icon.ctr-tile--full {
+  background: #f7eded;
+  color: #9c4444;
+}
+.vin-ctr-table-icon.ctr-tile--empty {
+  background: #f1f5f9;
+  color: #94a3b8;
+}

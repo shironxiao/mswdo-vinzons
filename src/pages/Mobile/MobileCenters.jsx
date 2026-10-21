@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Building, MapPin, Users, Plus, X, ChevronRight,
+  Search, Building, MapPin, Plus, X, ChevronRight,
   ChevronLeft, ChevronDown,
 } from 'lucide-react';
 import './MobileCommon.css';
@@ -220,7 +220,7 @@ export default function MobileCenters() {
 
   /* ── Pagination ── */
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 4;
+  const pageSize = 3;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -341,98 +341,117 @@ export default function MobileCenters() {
         </div>
       </div>
 
-      {/* ── CENTER GRID ── */}
-      <div className="vin-ctr-grid">
-        {paginatedCenters.length === 0 ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '.88rem' }}>
-            No evacuation centers match the current filter.
-          </div>
-        ) : (
-          paginatedCenters.map((item) => {
-            const totalOcc = item.rooms.reduce((a, r) => a + r.occupied, 0);
-            const colorCls = centerColorClass(item);
-            const statusLabel = centerStatusLabel(item);
+      {/* ── CENTER TABLE ── */}
+      <div className="vin-mob-table-card">
+        <div className="vin-mob-table-responsive">
+          <table className="vin-mob-table">
+            <thead>
+              <tr>
+                <th>CENTER</th>
+                <th style={{ textAlign: 'right' }}>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedCenters.length === 0 ? (
+                <tr>
+                  <td colSpan={2} className="vin-mob-table-empty">
+                    No evacuation centers match the current filter.
+                  </td>
+                </tr>
+              ) : (
+                paginatedCenters.map((item) => {
+                  const totalOcc = item.rooms.reduce((a, r) => a + r.occupied, 0);
+                  const colorCls = centerColorClass(item);
+                  const statusLabel = centerStatusLabel(item);
 
-            return (
-              <div
-                key={item.id}
-                className={`vin-ctr-tile ${colorCls}`}
-                onClick={() => setSelectedCenter(item)}
+                  return (
+                    <tr
+                      key={item.id}
+                      onClick={() => setSelectedCenter(item)}
+                      className="vin-mob-table-row"
+                    >
+                      <td>
+                        <div className="vin-mob-td-name">
+                          <div className={`vin-mob-avatar-circle vin-mob-table-avatar vin-ctr-table-icon ${colorCls}`}>
+                            <Building size={16} />
+                          </div>
+                          <div className="vin-mob-head-details">
+                            <div className="vin-mob-head-name">{item.name}</div>
+                            <div className="vin-mob-head-sub">
+                              <MapPin size={11} style={{ display: 'inline', marginRight: 2 }} />
+                              <span>{item.location}</span>
+                              <span className="vin-mob-sub-dot">•</span>
+                              <span>{item.rooms.length} rooms</span>
+                              <span className="vin-mob-sub-dot">•</span>
+                              <span>{totalOcc} evacuees</span>
+                            </div>
+                            <div className="vin-mob-head-badges">
+                              <span className={`vin-ctr-status-badge badge-${colorCls.replace('ctr-tile--', '')}`}>
+                                {statusLabel}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
+                        <button
+                          type="button"
+                          className="vin-mob-row-btn update"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCenter(item);
+                          }}
+                        >
+                          Rooms
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── PAGINATION CONTROLS ── */}
+        {filtered.length > 0 && (
+          <div className="vin-mob-pagination">
+            <span className="vin-mob-pagination-info">
+              Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length} centers
+            </span>
+            <div className="vin-mob-pagination-btns">
+              <button
+                type="button"
+                className="vin-mob-page-btn"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
               >
-                {/* Top Row: Icon left, Status badge top right */}
-                <div className="vin-ctr-tile-top">
-                  <div className="vin-ctr-tile-icon">
-                    <Building size={22} />
-                  </div>
-                  <span className={`vin-ctr-status-badge badge-${colorCls.replace('ctr-tile--', '')}`}>
-                    {statusLabel}
-                  </span>
-                </div>
-
-                {/* Body: evenly arranged content */}
-                <div className="vin-ctr-tile-body">
-                  <div className="vin-ctr-tile-name">{item.name}</div>
-
-                  <div className="vin-ctr-tile-loc">
-                    <MapPin size={11} style={{ display: 'inline', marginRight: 3, flexShrink: 0 }} />
-                    <span>{item.location}</span>
-                  </div>
-
-                  <div className="vin-ctr-tile-meta">
-                    <Users size={12} style={{ display: 'inline', marginRight: 4, flexShrink: 0 }} />
-                    <span>{totalOcc} evacuees &bull; {item.rooms.length} rooms</span>
-                  </div>
-                </div>
-
-                {/* Bottom tap action */}
-                <div className="vin-ctr-tile-tap">
-                  <span>View Rooms</span>
-                  <ChevronRight size={13} />
-                </div>
-              </div>
-            );
-          })
+                <ChevronLeft size={15} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`vin-mob-page-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="vin-mob-page-btn"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
-
-      {/* ── PAGINATION CONTROLS ── */}
-      {filtered.length > 0 && (
-        <div className="vin-mob-pagination" style={{ margin: '0 16px 20px', borderRadius: '14px', border: '1.5px solid #e2e8f0' }}>
-          <span className="vin-mob-pagination-info">
-            Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length} centers
-          </span>
-          <div className="vin-mob-pagination-btns">
-            <button
-              type="button"
-              className="vin-mob-page-btn"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              aria-label="Previous page"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                type="button"
-                className={`vin-mob-page-btn ${pageNum === currentPage ? 'active' : ''}`}
-                onClick={() => setCurrentPage(pageNum)}
-              >
-                {pageNum}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="vin-mob-page-btn"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              aria-label="Next page"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── ROOM DETAIL SHEET ── */}
       {selectedCenter && (
