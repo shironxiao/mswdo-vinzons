@@ -790,17 +790,13 @@ export default function MobileHouseholds() {
             <thead>
               <tr>
                 <th>HEAD OF FAMILY</th>
-                <th>CENTER</th>
-                <th>ROOM</th>
-                <th>MEMBERS</th>
-                <th>STUB STATUS</th>
                 <th style={{ textAlign: 'right' }}>ACTION</th>
               </tr>
             </thead>
             <tbody>
               {paginatedHouseholds.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="vin-mob-table-empty">
+                  <td colSpan={2} className="vin-mob-table-empty">
                     No households match the current filter.
                   </td>
                 </tr>
@@ -814,37 +810,34 @@ export default function MobileHouseholds() {
                     <td>
                       <div className="vin-mob-td-name">
                         <div className="vin-mob-avatar-circle vin-mob-table-avatar">
-                          <User size={15} />
+                          <User size={16} />
                         </div>
-                        <div>
+                        <div className="vin-mob-head-details">
                           <div className="vin-mob-head-name">{item.name}</div>
-                          {item.stubCode && (
-                            <div className="vin-mob-stub-code">{item.stubCode}</div>
-                          )}
+                          <div className="vin-mob-head-sub">
+                            <span>Room {item.room}</span>
+                            <span className="vin-mob-sub-dot">•</span>
+                            <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
+                            <span className="vin-mob-sub-dot">•</span>
+                            <span>{item.familyCount} pers.</span>
+                          </div>
+                          <div className="vin-mob-head-badges">
+                            <span className={item.stubCode ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
+                              <img
+                                src={item.stubCode ? checkIcon : removeIcon}
+                                alt=""
+                                className="vin-badge-img-icon"
+                              />
+                              <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
+                            </span>
+                            {item.stubCode && (
+                              <span className="vin-mob-stub-code-badge">{item.stubCode}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <span className="vin-mob-table-center">
-                        <Building size={13} color="#15803d" />
-                        <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
-                      </span>
-                    </td>
-                    <td>
-                      <span className="vin-mob-room-tag">Room {item.room}</span>
-                    </td>
-                    <td>{item.familyCount} pers.</td>
-                    <td>
-                      <span className={item.stubCode ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
-                        <img
-                          src={item.stubCode ? checkIcon : removeIcon}
-                          alt=""
-                          className="vin-badge-img-icon"
-                        />
-                        <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
                       <div className="vin-mob-table-actions">
                         <button
                           type="button"

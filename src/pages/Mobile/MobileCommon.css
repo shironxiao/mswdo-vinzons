@@ -354,16 +354,13 @@
 }
 
 .vin-mob-table-responsive {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   width: 100%;
+  overflow-x: hidden;
 }
 
 .vin-mob-table {
   width: 100%;
   border-collapse: collapse;
-  white-space: nowrap;
-  min-width: 540px;
 }
 
 .vin-mob-table th {
@@ -410,7 +407,7 @@
 /* Cell content helpers */
 .vin-mob-td-name {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
@@ -420,6 +417,14 @@
   min-width: 32px !important;
   font-size: 0.8rem;
   flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.vin-mob-head-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .vin-mob-head-name {
@@ -427,6 +432,44 @@
   color: #0f172a;
   font-size: 0.88rem;
   line-height: 1.2;
+}
+
+.vin-mob-head-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.74rem;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+.vin-mob-sub-dot {
+  color: #cbd5e1;
+}
+
+.vin-mob-head-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.vin-mob-stub-code-badge {
+  font-size: 0.7rem;
+  font-weight: 750;
+  color: #1b593f;
+  background: #f1f8f4;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid #d1e5db;
+  letter-spacing: 0.4px;
+}
+
+.vin-mon-table-time {
+  font-size: 0.7rem;
+  color: #94a3b8;
 }
 
 .vin-mob-stub-code {

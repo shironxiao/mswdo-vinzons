@@ -272,18 +272,13 @@ export default function MobileMonitor() {
             <thead>
               <tr>
                 <th>FAMILY HEAD</th>
-                <th>CENTER</th>
-                <th>ROOM</th>
-                <th>ATTENDANCE</th>
-                <th>STATUS</th>
-                <th>TIMESTAMP</th>
                 <th style={{ textAlign: 'right' }}>ACTION</th>
               </tr>
             </thead>
             <tbody>
               {paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="vin-mob-table-empty">
+                  <td colSpan={2} className="vin-mob-table-empty">
                     No families match the current filter.
                   </td>
                 </tr>
@@ -301,32 +296,23 @@ export default function MobileMonitor() {
                           <div className={`vin-mon-table-icon ${isPresent ? 'present' : 'absent'}`}>
                             {isPresent ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
                           </div>
-                          <div className="vin-mob-head-name">{item.name}</div>
+                          <div className="vin-mob-head-details">
+                            <div className="vin-mob-head-name">{item.name}</div>
+                            <div className="vin-mob-head-sub">
+                              <span>Room {item.room}</span>
+                              <span className="vin-mob-sub-dot">•</span>
+                              <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
+                            </div>
+                            <div className="vin-mob-head-badges">
+                              <span className={`vin-mon-tile-badge ${isPresent ? 'badge-present' : 'badge-absent'}`}>
+                                {item.status} ({item.ratio})
+                              </span>
+                              <span className="vin-mon-table-time">{item.timestamp}</span>
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td>
-                        <span className="vin-mob-table-center">
-                          <Building size={13} color="#15803d" />
-                          <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
-                        </span>
-                      </td>
-                      <td>
-                        <span className="vin-mob-room-tag">Room {item.room}</span>
-                      </td>
-                      <td>
-                        <strong className={`vin-mon-ratio ${isPresent ? 'present' : 'absent'}`}>
-                          {item.ratio}
-                        </strong>
-                      </td>
-                      <td>
-                        <span className={`vin-mon-tile-badge ${isPresent ? 'badge-present' : 'badge-absent'}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.74rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-                        {item.timestamp}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
                         <button
                           type="button"
                           className="vin-mob-row-btn update"
