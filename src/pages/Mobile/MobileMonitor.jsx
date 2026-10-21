@@ -137,12 +137,20 @@ const CENTERS = [
   'Calaguas National High School',
 ];
 
+const ROOMS = [
+  'All Rooms',
+  'A-1', 'A-2', 'B-1', 'B-2', 'C-1', 'C-2',
+  'Hall A', 'Hall B',
+  'Rm-1', 'Rm-2', 'Rm-3',
+];
+
 export default function MobileMonitor() {
   const [records] = useState(INITIAL_MONITOR_DATA);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Recorded' | 'Absent'
   const [filterCenter, setFilterCenter] = useState('All Centers');
-  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
+  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | 'room' | null
   const [activeFamily, setActiveFamily] = useState(null);
   const [attendance, setAttendance] = useState({});
 
@@ -156,7 +164,9 @@ export default function MobileMonitor() {
       (filterStatus === 'Absent' && r.status === 'Absent');
     const matchCenter =
       filterCenter === 'All Centers' || r.center === filterCenter;
-    return matchSearch && matchStatus && matchCenter;
+    const matchRoom =
+      filterRoom === 'All Rooms' || r.room === filterRoom;
+    return matchSearch && matchStatus && matchCenter && matchRoom;
   });
 
   /* ── Pagination ── */
@@ -165,7 +175,7 @@ export default function MobileMonitor() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterStatus, filterCenter]);
+  }, [search, filterStatus, filterCenter, filterRoom]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -207,96 +217,130 @@ export default function MobileMonitor() {
 
       {/* Separate Filter Buttons Bar */}
       <div className="vin-mon-filter-bar">
-        {/* Status Filter Button */}
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenFilter(openFilter === 'status' ? null : 'status');
-            }}
-          >
-            <span>{filterStatus === 'All' ? 'All status' : filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
-            <ChevronDown size={13} />
-          </button>
-
-          {openFilter === 'status' && (
-            <div className="vin-mon-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-              <div className="vin-mon-filter-title">MONITORING STATUS</div>
-              {[
-                { id: 'All', label: 'All Status', dot: 'all' },
-                { id: 'Recorded', label: 'Present / Recorded (Green)', dot: 'present' },
-                { id: 'Absent', label: 'Absent (Red)', dot: 'absent' },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setFilterStatus(opt.id);
-                    setOpenFilter(null);
-                  }}
-                >
-                  <span className={`vin-mon-filter-dot ${opt.dot}`} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Evacuation Center Filter Button */}
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className={`vin-mon-filter-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenFilter(openFilter === 'center' ? null : 'center');
-            }}
-          >
-            <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
-            <ChevronDown size={13} />
-          </button>
-
-          {openFilter === 'center' && (
-            <div className="vin-mon-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-              <div className="vin-mon-filter-title">EVACUATION CENTER</div>
-              {CENTERS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`vin-mon-filter-opt ${filterCenter === c ? 'active' : ''}`}
-                  onClick={() => {
-                    setFilterCenter(c);
-                    setOpenFilter(null);
-                  }}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Clear Filters Button if any active */}
-        {(filterStatus !== 'All' || filterCenter !== 'All Centers') && (
+        {(filterStatus !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms') && (
           <button
             type="button"
             className="vin-mon-clear-pill"
             onClick={() => {
               setFilterStatus('All');
               setFilterCenter('All Centers');
+              setFilterRoom('All Rooms');
             }}
           >
             Clear <X size={11} />
           </button>
         )}
 
-        <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
-          {filtered.length} {filtered.length === 1 ? 'family' : 'families'}
-        </span>
+        {/* Filters pushed to the right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+          {/* Status Filter Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === 'status' ? null : 'status');
+              }}
+            >
+              <span>{filterStatus === 'All' ? 'All status' : filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {openFilter === 'status' && (
+              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div className="vin-mon-filter-title">MONITORING STATUS</div>
+                {[
+                  { id: 'All', label: 'All Status', dot: 'all' },
+                  { id: 'Recorded', label: 'Present / Recorded (Green)', dot: 'present' },
+                  { id: 'Absent', label: 'Absent (Red)', dot: 'absent' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
+                    onClick={() => {
+                      setFilterStatus(opt.id);
+                      setOpenFilter(null);
+                    }}
+                  >
+                    <span className={`vin-mon-filter-dot ${opt.dot}`} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Evacuation Center Filter Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className={`vin-mon-filter-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === 'center' ? null : 'center');
+              }}
+            >
+              <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {openFilter === 'center' && (
+              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div className="vin-mon-filter-title">EVACUATION CENTER</div>
+                {CENTERS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`vin-mon-filter-opt ${filterCenter === c ? 'active' : ''}`}
+                    onClick={() => {
+                      setFilterCenter(c);
+                      setOpenFilter(null);
+                    }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Room Filter Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className={`vin-mon-filter-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === 'room' ? null : 'room');
+              }}
+            >
+              <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {openFilter === 'room' && (
+              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div className="vin-mon-filter-title">ROOM</div>
+                {ROOMS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`vin-mon-filter-opt ${filterRoom === r ? 'active' : ''}`}
+                    onClick={() => {
+                      setFilterRoom(r);
+                      setOpenFilter(null);
+                    }}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Legend */}

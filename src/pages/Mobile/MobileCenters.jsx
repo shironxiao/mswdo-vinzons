@@ -278,63 +278,66 @@ export default function MobileCenters() {
 
       {/* Filter and Legend Bar */}
       <div className="vin-mon-filter-bar" style={{ padding: '0 16px 4px' }}>
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenFilter(!openFilter);
-            }}
-          >
-            <span>{filterStatus === 'All' ? 'All status' : filterStatus}</span>
-            <ChevronDown size={13} />
-          </button>
-
-          {openFilter && (
-            <div className="vin-mon-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-              <div className="vin-mon-filter-title">CENTER STATUS</div>
-              {[
-                { id: 'All', label: 'All Status', dot: 'all' },
-                { id: 'Available', label: 'Available (Green)', dot: 'present' },
-                { id: 'Occupied', label: 'Occupied (Red)', dot: 'absent' },
-                { id: 'Empty', label: 'Empty (Gray)', dot: 'gray' },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setFilterStatus(opt.id);
-                    setOpenFilter(false);
-                  }}
-                >
-                  <span
-                    className={`vin-ctr-dot ${opt.dot === 'present' ? 'green' : opt.dot === 'absent' ? 'red' : opt.dot === 'gray' ? 'gray' : ''}`}
-                    style={opt.dot === 'all' ? { background: 'linear-gradient(90deg, #2d7a57 33%, #9c4444 33% 66%, #94a3b8 66%)' } : {}}
-                  />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {filterStatus !== 'All' && (
-          <button
-            type="button"
-            className="vin-mon-clear-pill"
-            onClick={() => setFilterStatus('All')}
-          >
-            Clear <X size={11} />
-          </button>
-        )}
-
-        {/* Legend */}
-        <div className="vin-ctr-legend" style={{ marginLeft: 'auto', padding: 0 }}>
+        {/* Legend on the left */}
+        <div className="vin-ctr-legend" style={{ padding: 0 }}>
           <span className="vin-ctr-dot green" /> Available
           <span className="vin-ctr-dot red" /> Occupied
           <span className="vin-ctr-dot gray" /> Empty
+        </div>
+
+        {/* Clear pill + filter on the right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+          {filterStatus !== 'All' && (
+            <button
+              type="button"
+              className="vin-mon-clear-pill"
+              onClick={() => setFilterStatus('All')}
+            >
+              Clear <X size={11} />
+            </button>
+          )}
+
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenFilter(!openFilter);
+              }}
+            >
+              <span>{filterStatus === 'All' ? 'All status' : filterStatus}</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {openFilter && (
+              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div className="vin-mon-filter-title">CENTER STATUS</div>
+                {[
+                  { id: 'All', label: 'All Status', dot: 'all' },
+                  { id: 'Available', label: 'Available (Green)', dot: 'present' },
+                  { id: 'Occupied', label: 'Occupied (Red)', dot: 'absent' },
+                  { id: 'Empty', label: 'Empty (Gray)', dot: 'gray' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
+                    onClick={() => {
+                      setFilterStatus(opt.id);
+                      setOpenFilter(false);
+                    }}
+                  >
+                    <span
+                      className={`vin-ctr-dot ${opt.dot === 'present' ? 'green' : opt.dot === 'absent' ? 'red' : opt.dot === 'gray' ? 'gray' : ''}`}
+                      style={opt.dot === 'all' ? { background: 'linear-gradient(90deg, #2d7a57 33%, #9c4444 33% 66%, #94a3b8 66%)' } : {}}
+                    />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
