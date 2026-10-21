@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2, QrCode,
   AlertTriangle, Ticket, Printer, Filter, ChevronDown, Building,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, MapPin, CheckCircle2,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './MobileCommon.css';
@@ -70,7 +70,7 @@ const SEED = [
     name: 'Elena Bautista',
     age: 42, sex: 'Female', category: 'Solo Parent',
     center: 'Vinzons Central Elementary School',
-    room: 'A-1', familyCount: 3,
+    room: 'Unassigned', familyCount: 3,
     members: [
       { name: 'Carlos Bautista', age: 14, sex: 'Male',   category: 'None' },
       { name: 'Jenny Bautista',  age: 9,  sex: 'Female', category: 'None' },
@@ -130,7 +130,7 @@ const SEED = [
     name: 'Danilo Soriano',
     age: 51, sex: 'Male', category: 'None',
     center: 'Vinzons Gymnasium',
-    room: 'Hall A', familyCount: 2,
+    room: 'Unassigned', familyCount: 2,
     members: [
       { name: 'Beth Soriano', age: 49, sex: 'Female', category: 'None' },
     ],
@@ -167,6 +167,26 @@ const CENTERS = [
   'Vinzons Gymnasium',
   'Calaguas National High School',
 ];
+
+const DEFAULT_CENTER_ROOMS = {
+  'Vinzons Central Elementary School': [
+    { id: 'A-1', name: 'Room A-1 (Main Bldg)', capacity: 30, occupied: 30 },
+    { id: 'A-2', name: 'Room A-2 (Main Bldg)', capacity: 30, occupied: 20 },
+    { id: 'B-1', name: 'Room B-1 (East Wing)', capacity: 25, occupied: 0 },
+    { id: 'B-2', name: 'Room B-2 (East Wing)', capacity: 25, occupied: 12 },
+    { id: 'C-1', name: 'Room C-1 (Annex Bldg)', capacity: 20, occupied: 20 },
+    { id: 'C-2', name: 'Room C-2 (Annex Bldg)', capacity: 20, occupied: 8 },
+  ],
+  'Vinzons Gymnasium': [
+    { id: 'Hall A', name: 'Gym Sector A', capacity: 60, occupied: 40 },
+    { id: 'Hall B', name: 'Gym Sector B', capacity: 60, occupied: 60 },
+  ],
+  'Calaguas National High School': [
+    { id: 'Rm-1', name: 'Room 1 (Senior Bldg)', capacity: 35, occupied: 35 },
+    { id: 'Rm-2', name: 'Room 2 (Senior Bldg)', capacity: 35, occupied: 18 },
+    { id: 'Rm-3', name: 'Room 3 (Junior Bldg)', capacity: 35, occupied: 0 },
+  ],
+};
 
 /* ──────────────────────────────────────────────
    Helpers
@@ -600,6 +620,246 @@ function CenterFilterDropdown({ value, onChange, onClose }) {
   );
 }
 
+/* ──────────────────────────────────────────────
+   Room Assignment Sheet
+   ────────────────────────────────────────────── */
+function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
+  const [selectedCenter, setSelectedCenter] = useState(
+    household.center && household.center !== 'All Centers'
+      ? household.center
+      : 'Vinzons Central Elementary School'
+  );
+  const [feedback, setFeedback] = useState(null);
+
+  const rooms = centerRooms[selectedCenter] || [];
+  const neededSlots = household.familyCount || 1;
+
+  // Auto-Assign Logic
+  const handleAutoAssign = () => {
+    // Look for first room that has enough space and isn't already the current room
+    const candidate = rooms.find(
+      (r) => r.id !== household.room && (r.capacity - r.occupied) >= neededSlots
+    );
+
+    if (!candidate) {
+      if (rooms.some((r) => r.id === household.room && (r.capacity - r.occupied + neededSlots) >= neededSlots)) {
+        setFeedback({
+          type: 'info',
+          message: `${household.name} is already assigned to Room ${household.room}, which has adequate capacity!`,
+        });
+        return;
+      }
+      setFeedback({
+        type: 'error',
+        message: `Validation Error: No room in "${selectedCenter}" has ${neededSlots} free slots! Please select another center.`,
+      });
+      return;
+    }
+
+    onAssign(household.id, candidate.id, selectedCenter, neededSlots);
+    setFeedback({
+      type: 'success',
+      message: `Auto-assigned to Room ${candidate.id} (${candidate.name})!`,
+    });
+  };
+
+  // Manual Assign Logic with validation
+  const handleManualAssign = (room) => {
+    const isCurrent = household.room === room.id && household.center === selectedCenter;
+    if (isCurrent) {
+      setFeedback({
+        type: 'info',
+        message: `${household.name} is already assigned to Room ${room.id}.`,
+      });
+      return;
+    }
+
+    const remaining = room.capacity - room.occupied;
+    if (remaining < neededSlots) {
+      setFeedback({
+        type: 'error',
+        message: `Validation Failed: Room ${room.id} only has ${remaining} slots available, but ${household.name} needs ${neededSlots} slots.`,
+      });
+      return;
+    }
+
+    onAssign(household.id, room.id, selectedCenter, neededSlots);
+    setFeedback({
+      type: 'success',
+      message: `Successfully assigned ${household.name} to Room ${room.id}!`,
+    });
+  };
+
+  return (
+    <div className="vin-mob-sheet-overlay" onClick={onClose}>
+      <div className="vin-mob-sheet-content vin-room-sheet-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="vin-mob-sheet-header">
+          <div>
+            <h2 className="vin-mob-sheet-title">Assign Room</h2>
+            <p className="vin-room-sheet-desc">
+              Allocate household to an available room with capacity validation
+            </p>
+          </div>
+          <button type="button" className="vin-mob-sheet-close" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Household Info Card */}
+        <div className="vin-room-hh-banner">
+          <div className="vin-room-hh-left">
+            <div className="vin-mob-avatar-circle" style={{ width: 40, height: 40, fontSize: '.9rem' }}>
+              <User size={18} />
+            </div>
+            <div>
+              <div className="vin-room-hh-name">{household.name}</div>
+              <div className="vin-room-hh-sub">
+                <span><strong>{neededSlots}</strong> family members</span>
+                <span className="vin-mob-sub-dot">•</span>
+                <span>Current: <strong className={household.room === 'Unassigned' || !household.room ? 'vin-txt-amber' : 'vin-txt-green'}>
+                  {household.room && household.room !== 'Unassigned' ? `Room ${household.room}` : 'Unassigned'}
+                </strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Selector */}
+        <div className="vin-room-center-select-wrap">
+          <label className="vin-mob-input-label">
+            <Building size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: '-1px' }} />
+            EVACUATION CENTER
+          </label>
+          <select
+            className="vin-mob-select"
+            value={selectedCenter}
+            onChange={(e) => {
+              setSelectedCenter(e.target.value);
+              setFeedback(null);
+            }}
+          >
+            {CENTERS.filter((c) => c !== 'All Centers').map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Auto-Assign Action Card */}
+        <div className="vin-auto-assign-card">
+          <div className="vin-auto-assign-info">
+            <div className="vin-auto-assign-tag">
+              <span>⚡ AUTO ALLOCATION</span>
+            </div>
+            <div className="vin-auto-assign-heading">Auto-Assign Best Room</div>
+            <p className="vin-auto-assign-hint">
+              Automatically selects an available room in {selectedCenter.split(' ').slice(0, 2).join(' ')} with space for {neededSlots} members.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="vin-auto-assign-action-btn"
+            onClick={handleAutoAssign}
+          >
+            Auto-Assign
+          </button>
+        </div>
+
+        {/* Feedback Alert Banner */}
+        {feedback && (
+          <div className={`vin-room-feedback-banner ${feedback.type}`}>
+            {feedback.type === 'success' && <CheckCircle2 size={16} className="vin-room-feed-icon" />}
+            {feedback.type === 'error' && <AlertTriangle size={16} className="vin-room-feed-icon" />}
+            {feedback.type === 'info' && <CheckCircle2 size={16} className="vin-room-feed-icon" />}
+            <span className="vin-room-feed-text">{feedback.message}</span>
+          </div>
+        )}
+
+        {/* Room List Header */}
+        <div className="vin-room-list-header">
+          <span className="vin-room-list-title">SAMPLE ROOM CAPACITY & STATUS</span>
+          <span className="vin-room-list-count">{rooms.length} Rooms</span>
+        </div>
+
+        {/* Rooms Grid */}
+        <div className="vin-room-cards-container">
+          {rooms.map((room) => {
+            const remaining = Math.max(0, room.capacity - room.occupied);
+            const percentFilled = Math.min(100, Math.round((room.occupied / room.capacity) * 100));
+            const isCurrent = household.room === room.id && household.center === selectedCenter;
+            const hasCapacity = remaining >= neededSlots;
+            const isFull = remaining <= 0;
+
+            let cardCls = 'available';
+            if (isCurrent) cardCls = 'current';
+            else if (isFull) cardCls = 'full';
+            else if (!hasCapacity) cardCls = 'insufficient';
+
+            return (
+              <div key={room.id} className={`vin-room-card-box ${cardCls}`}>
+                <div className="vin-room-card-top-row">
+                  <div>
+                    <div className="vin-room-card-id">{room.id}</div>
+                    <div className="vin-room-card-subname">{room.name}</div>
+                  </div>
+
+                  <span className={`vin-room-status-chip ${isCurrent ? 'current' : isFull ? 'full' : hasCapacity ? 'available' : 'low'}`}>
+                    {isCurrent ? 'Current Room' : isFull ? 'Full (0 free)' : `${remaining} slots free`}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="vin-room-progress-track">
+                  <div
+                    className={`vin-room-progress-bar ${isFull ? 'full' : percentFilled > 75 ? 'warn' : 'ok'}`}
+                    style={{ width: `${percentFilled}%` }}
+                  />
+                </div>
+
+                {/* Capacity stats */}
+                <div className="vin-room-card-stats-row">
+                  <span>Occupancy: <strong>{room.occupied}/{room.capacity}</strong> ({percentFilled}%)</span>
+                  <span>
+                    {isCurrent ? (
+                      <span className="vin-badge-green-txt">Assigned</span>
+                    ) : hasCapacity ? (
+                      <span className="vin-badge-green-txt">Fits {neededSlots} pers.</span>
+                    ) : isFull ? (
+                      <span className="vin-badge-red-txt">No space</span>
+                    ) : (
+                      <span className="vin-badge-amber-txt">Needs {neededSlots} slots</span>
+                    )}
+                  </span>
+                </div>
+
+                {/* Assign Button */}
+                <button
+                  type="button"
+                  disabled={isCurrent || (!hasCapacity && !isCurrent)}
+                  className={`vin-room-select-btn ${isCurrent ? 'btn-current' : hasCapacity ? 'btn-fit' : 'btn-disabled'}`}
+                  onClick={() => handleManualAssign(room)}
+                >
+                  {isCurrent ? 'Current Room ✓' : hasCapacity ? `Assign Room ${room.id}` : 'Room Full / No Space'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Done Button */}
+        <button
+          type="button"
+          className="vin-btn-cancel"
+          style={{ width: '100%', padding: '12px', borderRadius: '12px', fontSize: '.88rem', fontWeight: 700 }}
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════
    MAIN PAGE
    ══════════════════════════════════════════════ */
@@ -610,6 +870,9 @@ export default function MobileHouseholds() {
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
   const [selectedHousehold, setSelectedHousehold] = useState(null);
+  const [assigningHousehold, setAssigningHousehold] = useState(null);
+  const [centerRooms, setCenterRooms] = useState(DEFAULT_CENTER_ROOMS);
+  const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const [scanError, setScanError] = useState('');
@@ -667,11 +930,46 @@ export default function MobileHouseholds() {
     );
   };
 
+  /* ── Room assignment ── */
+  const handleAssignRoom = (hhId, roomId, centerName, neededSlots) => {
+    setHouseholds((prev) =>
+      prev.map((h) => {
+        if (h.id === hhId) {
+          return { ...h, room: roomId, center: centerName };
+        }
+        return h;
+      })
+    );
+
+    setCenterRooms((prev) => {
+      const updated = { ...prev };
+      const roomsForCenter = [...(updated[centerName] || [])];
+      updated[centerName] = roomsForCenter.map((r) => {
+        if (r.id === roomId) {
+          return { ...r, occupied: Math.min(r.capacity, r.occupied + neededSlots) };
+        }
+        return r;
+      });
+      return updated;
+    });
+
+    setToastMsg(`Assigned to Room ${roomId}!`);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
   /* Sync selected panel after issuing */
   useEffect(() => {
     if (selectedHousehold) {
       const fresh = households.find((h) => h.id === selectedHousehold.id);
       if (fresh) setSelectedHousehold(fresh);
+    }
+  }, [households]); // eslint-disable-line
+
+  /* Sync assigning modal household after changes */
+  useEffect(() => {
+    if (assigningHousehold) {
+      const fresh = households.find((h) => h.id === assigningHousehold.id);
+      if (fresh) setAssigningHousehold(fresh);
     }
   }, [households]); // eslint-disable-line
 
@@ -713,6 +1011,13 @@ export default function MobileHouseholds() {
   /* ── RENDER ── */
   return (
     <div className="vin-mob-page" onClick={() => openFilter && setOpenFilter(null)}>
+      {/* Floating Toast notification */}
+      {toastMsg && (
+        <div className="vin-room-toast">
+          <CheckCircle2 size={16} />
+          <span>{toastMsg}</span>
+        </div>
+      )}
 
       {/* Header */}
       <header className="vin-mob-header">
@@ -861,7 +1166,11 @@ export default function MobileHouseholds() {
                         <div className="vin-mob-head-details">
                           <div className="vin-mob-head-name">{item.name}</div>
                           <div className="vin-mob-head-sub">
-                            <span>Room {item.room}</span>
+                            {item.room && item.room !== 'Unassigned' ? (
+                              <span>Room {item.room}</span>
+                            ) : (
+                              <span className="vin-mob-unassigned-tag">No Room</span>
+                            )}
                             <span className="vin-mob-sub-dot">•</span>
                             <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
                             <span className="vin-mob-sub-dot">•</span>
@@ -894,6 +1203,17 @@ export default function MobileHouseholds() {
                           }}
                         >
                           {item.stubCode ? 'QR' : 'Issue'}
+                        </button>
+                        <button
+                          type="button"
+                          className="vin-mob-row-btn assign"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssigningHousehold(item);
+                          }}
+                          title="Assign household to room"
+                        >
+                          Assign
                         </button>
                         <button
                           type="button"
@@ -962,6 +1282,16 @@ export default function MobileHouseholds() {
           households={households}
           onIssue={issueStub}
           onClose={() => setSelectedHousehold(null)}
+        />
+      )}
+
+      {/* ── ROOM ASSIGNMENT SHEET ── */}
+      {assigningHousehold && (
+        <RoomAssignSheet
+          household={assigningHousehold}
+          centerRooms={centerRooms}
+          onAssign={handleAssignRoom}
+          onClose={() => setAssigningHousehold(null)}
         />
       )}
 
