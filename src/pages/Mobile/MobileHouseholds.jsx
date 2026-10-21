@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2, QrCode,
   AlertTriangle, Ticket, Printer, Filter, ChevronDown, Building,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './MobileCommon.css';
@@ -63,6 +64,54 @@ const SEED = [
       { name: 'John Dela Cruz',  age: 22, sex: 'Male',   category: 'None' },
     ],
     stubCode: 'STB-004021',
+  },
+  {
+    id: 5,
+    name: 'Elena Bautista',
+    age: 42, sex: 'Female', category: 'Solo Parent',
+    center: 'Vinzons Central Elementary School',
+    room: 'A-1', familyCount: 3,
+    members: [
+      { name: 'Carlos Bautista', age: 14, sex: 'Male',   category: 'None' },
+      { name: 'Jenny Bautista',  age: 9,  sex: 'Female', category: 'None' },
+    ],
+    stubCode: null,
+  },
+  {
+    id: 6,
+    name: 'Roberto Diaz',
+    age: 55, sex: 'Male', category: 'Senior',
+    center: 'Vinzons Gymnasium',
+    room: 'Hall A', familyCount: 2,
+    members: [
+      { name: 'Clara Diaz', age: 52, sex: 'Female', category: 'None' },
+    ],
+    stubCode: 'STB-006033',
+  },
+  {
+    id: 7,
+    name: 'Carmen Ramos',
+    age: 29, sex: 'Female', category: 'Pregnant/Lactating',
+    center: 'Calaguas National High School',
+    room: 'Rm-2', familyCount: 4,
+    members: [
+      { name: 'Danilo Ramos', age: 31, sex: 'Male',   category: 'None' },
+      { name: 'Mia Ramos',    age: 5,  sex: 'Female', category: 'None' },
+      { name: 'Leo Ramos',    age: 2,  sex: 'Male',   category: 'None' },
+    ],
+    stubCode: null,
+  },
+  {
+    id: 8,
+    name: 'Fernando Lopez',
+    age: 48, sex: 'Male', category: 'PWD',
+    center: 'Vinzons Central Elementary School',
+    room: 'B-2', familyCount: 3,
+    members: [
+      { name: 'Grace Lopez', age: 44, sex: 'Female', category: 'None' },
+      { name: 'Joy Lopez',   age: 18, sex: 'Female', category: 'None' },
+    ],
+    stubCode: 'STB-008012',
   },
 ];
 
@@ -544,6 +593,18 @@ export default function MobileHouseholds() {
   const filteredIssued = filtered.filter((h) => h.stubCode);
   const activeFilters = (filterStub !== 'All' ? 1 : 0) + (filterCenter !== 'All Centers' ? 1 : 0);
 
+  /* ── Pagination ── */
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 4;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStub, filterCenter]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
+
   /* ── QR scan ── */
   const handleScan = useCallback((code) => {
     setShowScanner(false);
@@ -722,43 +783,134 @@ export default function MobileHouseholds() {
         </span>
       </div>
 
-      {/* ── GRID ── */}
-      <div className="vin-hh-grid">
-        {filtered.length === 0 && (
-          <div className="vin-hh-empty" style={{ gridColumn: '1/-1' }}>
-            No households match the current filter.
+      {/* ── HOUSEHOLD DATA TABLE ── */}
+      <div className="vin-mob-table-card">
+        <div className="vin-mob-table-responsive">
+          <table className="vin-mob-table">
+            <thead>
+              <tr>
+                <th>HEAD OF FAMILY</th>
+                <th>CENTER</th>
+                <th>ROOM</th>
+                <th>MEMBERS</th>
+                <th>STUB STATUS</th>
+                <th style={{ textAlign: 'right' }}>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedHouseholds.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="vin-mob-table-empty">
+                    No households match the current filter.
+                  </td>
+                </tr>
+              ) : (
+                paginatedHouseholds.map((item) => (
+                  <tr
+                    key={item.id}
+                    onClick={() => setSelectedHousehold(item)}
+                    className="vin-mob-table-row"
+                  >
+                    <td>
+                      <div className="vin-mob-td-name">
+                        <div className="vin-mob-avatar-circle vin-mob-table-avatar">
+                          <User size={15} />
+                        </div>
+                        <div>
+                          <div className="vin-mob-head-name">{item.name}</div>
+                          {item.stubCode && (
+                            <div className="vin-mob-stub-code">{item.stubCode}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="vin-mob-table-center">
+                        <Building size={13} color="#15803d" />
+                        <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
+                      </span>
+                    </td>
+                    <td>
+                      <span className="vin-mob-room-tag">Room {item.room}</span>
+                    </td>
+                    <td>{item.familyCount} pers.</td>
+                    <td>
+                      <span className={item.stubCode ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
+                        <img
+                          src={item.stubCode ? checkIcon : removeIcon}
+                          alt=""
+                          className="vin-badge-img-icon"
+                        />
+                        <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="vin-mob-table-actions">
+                        <button
+                          type="button"
+                          className={`vin-mob-row-btn ${item.stubCode ? 'view' : 'issue'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedHousehold(item);
+                          }}
+                        >
+                          {item.stubCode ? 'QR' : 'Issue'}
+                        </button>
+                        <button
+                          type="button"
+                          className="vin-mob-row-edit"
+                          onClick={(e) => openEdit(item, e)}
+                          aria-label={`Edit ${item.name}`}
+                        >
+                          <Edit size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── PAGINATION CONTROLS ── */}
+        {totalPages > 1 && (
+          <div className="vin-mob-pagination">
+            <span className="vin-mob-pagination-info">
+              Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length}
+            </span>
+            <div className="vin-mob-pagination-btns">
+              <button
+                type="button"
+                className="vin-mob-page-btn"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`vin-mob-page-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="vin-mob-page-btn"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
           </div>
         )}
-        {filtered.map((item) => (
-          <div
-            key={item.id}
-            className={`vin-hh-tile ${item.stubCode ? 'vin-hh-tile--issued' : 'vin-hh-tile--notissued'}`}
-            onClick={() => setSelectedHousehold(item)}
-          >
-            <div className="vin-hh-tile-top">
-              <div className="vin-mob-avatar-circle vin-hh-tile-avatar"><User size={18} /></div>
-              <span className={item.stubCode ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
-                <img
-                  src={item.stubCode ? checkIcon : removeIcon}
-                  alt=""
-                  className="vin-badge-img-icon"
-                />
-              </span>
-            </div>
-            <div className="vin-hh-tile-name">{item.name}</div>
-            <div className="vin-hh-tile-meta">Room {item.room}</div>
-            <div className="vin-hh-tile-meta">{item.familyCount} members</div>
-            {item.stubCode && <div className="vin-hh-tile-code">{item.stubCode}</div>}
-            <button
-              type="button"
-              className="vin-hh-tile-edit"
-              onClick={(e) => openEdit(item, e)}
-              aria-label={`Edit ${item.name}`}
-            >
-              <Edit size={14} />
-            </button>
-          </div>
-        ))}
       </div>
 
       {/* ── QR SCANNER ── */}

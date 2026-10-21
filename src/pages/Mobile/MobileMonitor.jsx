@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown, Building } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown, Building,
+  ChevronLeft, ChevronRight,
+} from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileMonitor.css';
@@ -45,6 +48,46 @@ const INITIAL_MONITOR_DATA = [
     status: 'Recorded',
     members: ['Juan Dela Cruz', 'Maria Dela Cruz', 'John Dela Cruz'],
   },
+  {
+    id: 5,
+    name: 'Elena Bautista',
+    center: 'Vinzons Central Elementary School',
+    room: 'A-1',
+    ratio: '3/3',
+    timestamp: '9/17/2026, 2:15:00 PM',
+    status: 'Recorded',
+    members: ['Elena Bautista', 'Carlos Bautista', 'Jenny Bautista'],
+  },
+  {
+    id: 6,
+    name: 'Roberto Diaz',
+    center: 'Vinzons Gymnasium',
+    room: 'Hall A',
+    ratio: '2/2',
+    timestamp: '9/17/2026, 1:45:00 PM',
+    status: 'Recorded',
+    members: ['Roberto Diaz', 'Clara Diaz'],
+  },
+  {
+    id: 7,
+    name: 'Carmen Ramos',
+    center: 'Calaguas National High School',
+    room: 'Rm-2',
+    ratio: '0/4',
+    timestamp: '9/17/2026, 12:30:00 PM',
+    status: 'Absent',
+    members: ['Carmen Ramos', 'Danilo Ramos', 'Mia Ramos', 'Leo Ramos'],
+  },
+  {
+    id: 8,
+    name: 'Fernando Lopez',
+    center: 'Vinzons Central Elementary School',
+    room: 'B-2',
+    ratio: '3/3',
+    timestamp: '9/17/2026, 11:20:00 AM',
+    status: 'Recorded',
+    members: ['Fernando Lopez', 'Grace Lopez', 'Joy Lopez'],
+  },
 ];
 
 const CENTERS = [
@@ -75,6 +118,18 @@ export default function MobileMonitor() {
       filterCenter === 'All Centers' || r.center === filterCenter;
     return matchSearch && matchStatus && matchCenter;
   });
+
+  /* ── Pagination ── */
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 4;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, filterCenter]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedRecords = filtered.slice(startIndex, startIndex + pageSize);
 
   const openMonitoringSheet = (family) => {
     setActiveFamily(family);
@@ -210,39 +265,125 @@ export default function MobileMonitor() {
         <XCircle size={14} color="#9c4444" style={{ marginLeft: 12 }} /> Absent
       </div>
 
-      {/* Monitoring Grid */}
-      <div className="vin-mon-grid">
-        {filtered.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '.88rem' }}>
-            No families match the current filter.
+      {/* ── MONITOR DATA TABLE ── */}
+      <div className="vin-mob-table-card">
+        <div className="vin-mob-table-responsive">
+          <table className="vin-mob-table">
+            <thead>
+              <tr>
+                <th>FAMILY HEAD</th>
+                <th>CENTER</th>
+                <th>ROOM</th>
+                <th>ATTENDANCE</th>
+                <th>STATUS</th>
+                <th>TIMESTAMP</th>
+                <th style={{ textAlign: 'right' }}>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="vin-mob-table-empty">
+                    No families match the current filter.
+                  </td>
+                </tr>
+              ) : (
+                paginatedRecords.map((item) => {
+                  const isPresent = item.status === 'Recorded';
+                  return (
+                    <tr
+                      key={item.id}
+                      onClick={() => openMonitoringSheet(item)}
+                      className="vin-mob-table-row"
+                    >
+                      <td>
+                        <div className="vin-mob-td-name">
+                          <div className={`vin-mon-table-icon ${isPresent ? 'present' : 'absent'}`}>
+                            {isPresent ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                          </div>
+                          <div className="vin-mob-head-name">{item.name}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="vin-mob-table-center">
+                          <Building size={13} color="#15803d" />
+                          <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className="vin-mob-room-tag">Room {item.room}</span>
+                      </td>
+                      <td>
+                        <strong className={`vin-mon-ratio ${isPresent ? 'present' : 'absent'}`}>
+                          {item.ratio}
+                        </strong>
+                      </td>
+                      <td>
+                        <span className={`vin-mon-tile-badge ${isPresent ? 'badge-present' : 'badge-absent'}`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.74rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                        {item.timestamp}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="vin-mob-row-btn update"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openMonitoringSheet(item);
+                          }}
+                        >
+                          Update
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── PAGINATION CONTROLS ── */}
+        {totalPages > 1 && (
+          <div className="vin-mob-pagination">
+            <span className="vin-mob-pagination-info">
+              Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length}
+            </span>
+            <div className="vin-mob-pagination-btns">
+              <button
+                type="button"
+                className="vin-mob-page-btn"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`vin-mob-page-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="vin-mob-page-btn"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
           </div>
         )}
-        {filtered.map((item) => {
-          const isPresent = item.status === 'Recorded';
-          return (
-            <div
-              key={item.id}
-              className={`vin-mon-tile ${isPresent ? 'mon-tile-present' : 'mon-tile-absent'}`}
-              onClick={() => openMonitoringSheet(item)}
-            >
-              {/* Status icon */}
-              <div className="vin-mon-tile-icon">
-                {isPresent
-                  ? <CheckCircle2 size={22} />
-                  : <XCircle size={22} />}
-              </div>
-              <div className="vin-mon-tile-name">{item.name}</div>
-              <div className="vin-mon-tile-loc">
-                Room {item.room} • {item.center.split(' ').slice(0, 2).join(' ')}
-              </div>
-              <div className="vin-mon-tile-ratio">{item.ratio}</div>
-              <div className={`vin-mon-tile-badge ${isPresent ? 'badge-present' : 'badge-absent'}`}>
-                {item.status}
-              </div>
-              <div className="vin-mon-tile-time">{item.timestamp}</div>
-            </div>
-          );
-        })}
       </div>
 
       {/* ATTENDANCE SHEET */}
