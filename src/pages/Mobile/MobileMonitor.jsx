@@ -88,6 +88,46 @@ const INITIAL_MONITOR_DATA = [
     status: 'Recorded',
     members: ['Fernando Lopez', 'Grace Lopez', 'Joy Lopez'],
   },
+  {
+    id: 9,
+    name: 'Teresa Morales',
+    center: 'Vinzons Gymnasium',
+    room: 'Hall B',
+    ratio: '3/3',
+    timestamp: '9/17/2026, 10:45:00 AM',
+    status: 'Recorded',
+    members: ['Teresa Morales', 'Ramon Morales', 'Ella Morales'],
+  },
+  {
+    id: 10,
+    name: 'Danilo Soriano',
+    center: 'Vinzons Gymnasium',
+    room: 'Hall A',
+    ratio: '0/2',
+    timestamp: '9/17/2026, 10:15:00 AM',
+    status: 'Absent',
+    members: ['Danilo Soriano', 'Beth Soriano'],
+  },
+  {
+    id: 11,
+    name: 'Marites Villanueva',
+    center: 'Calaguas National High School',
+    room: 'Rm-1',
+    ratio: '3/3',
+    timestamp: '9/17/2026, 9:30:00 AM',
+    status: 'Recorded',
+    members: ['Marites Villanueva', 'Joshua Villanueva', 'Hannah Villanueva'],
+  },
+  {
+    id: 12,
+    name: 'Gregorio Santos',
+    center: 'Calaguas National High School',
+    room: 'Rm-3',
+    ratio: '0/2',
+    timestamp: '9/17/2026, 9:00:00 AM',
+    status: 'Absent',
+    members: ['Gregorio Santos', 'Amparo Santos'],
+  },
 ];
 
 const CENTERS = [
@@ -121,7 +161,7 @@ export default function MobileMonitor() {
 
   /* ── Pagination ── */
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 4;
+  const pageSize = 3;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -333,7 +373,7 @@ export default function MobileMonitor() {
         </div>
 
         {/* ── PAGINATION CONTROLS ── */}
-        {totalPages > 1 && (
+        {filtered.length > 0 && (
           <div className="vin-mob-pagination">
             <span className="vin-mob-pagination-info">
               Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length}

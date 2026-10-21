@@ -113,6 +113,52 @@ const SEED = [
     ],
     stubCode: 'STB-008012',
   },
+  {
+    id: 9,
+    name: 'Teresa Morales',
+    age: 38, sex: 'Female', category: 'None',
+    center: 'Vinzons Gymnasium',
+    room: 'Hall B', familyCount: 3,
+    members: [
+      { name: 'Ramon Morales', age: 40, sex: 'Male', category: 'None' },
+      { name: 'Ella Morales',  age: 8,  sex: 'Female', category: 'None' },
+    ],
+    stubCode: 'STB-009045',
+  },
+  {
+    id: 10,
+    name: 'Danilo Soriano',
+    age: 51, sex: 'Male', category: 'None',
+    center: 'Vinzons Gymnasium',
+    room: 'Hall A', familyCount: 2,
+    members: [
+      { name: 'Beth Soriano', age: 49, sex: 'Female', category: 'None' },
+    ],
+    stubCode: null,
+  },
+  {
+    id: 11,
+    name: 'Marites Villanueva',
+    age: 34, sex: 'Female', category: 'Solo Parent',
+    center: 'Calaguas National High School',
+    room: 'Rm-1', familyCount: 3,
+    members: [
+      { name: 'Joshua Villanueva', age: 11, sex: 'Male', category: 'None' },
+      { name: 'Hannah Villanueva', age: 6,  sex: 'Female', category: 'None' },
+    ],
+    stubCode: 'STB-011089',
+  },
+  {
+    id: 12,
+    name: 'Gregorio Santos',
+    age: 62, sex: 'Male', category: 'Senior',
+    center: 'Calaguas National High School',
+    room: 'Rm-3', familyCount: 2,
+    members: [
+      { name: 'Amparo Santos', age: 60, sex: 'Female', category: 'Senior' },
+    ],
+    stubCode: null,
+  },
 ];
 
 const CENTERS = [
@@ -595,7 +641,7 @@ export default function MobileHouseholds() {
 
   /* ── Pagination ── */
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 4;
+  const pageSize = 3;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -867,7 +913,7 @@ export default function MobileHouseholds() {
         </div>
 
         {/* ── PAGINATION CONTROLS ── */}
-        {totalPages > 1 && (
+        {filtered.length > 0 && (
           <div className="vin-mob-pagination">
             <span className="vin-mob-pagination-info">
               Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length}

@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { Search, Building, MapPin, Users, Plus, X, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Search, Building, MapPin, Users, Plus, X, ChevronRight,
+  ChevronLeft, ChevronDown,
+} from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileCenters.css';
@@ -47,6 +50,54 @@ const CENTERS_DATA = [
       { id: 'Rm-1', capacity: 35, occupied: 35 },
       { id: 'Rm-2', capacity: 35, occupied: 18 },
       { id: 'Rm-3', capacity: 35, occupied: 0  },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Vinzons Covered Court',
+    fullName: 'Vinzons Covered Court',
+    location: 'Poblacion, Vinzons',
+    count: 100,
+    status: 'Active',
+    rooms: [
+      { id: 'Sector 1', capacity: 50, occupied: 50 },
+      { id: 'Sector 2', capacity: 50, occupied: 50 },
+    ],
+  },
+  {
+    id: 5,
+    name: 'Municipal Evac Center',
+    fullName: 'Municipal Evacuation Center',
+    location: 'Brgy. Sto. Domingo, Vinzons',
+    count: 80,
+    status: 'Active',
+    rooms: [
+      { id: 'Hall 1', capacity: 40, occupied: 40 },
+      { id: 'Hall 2', capacity: 40, occupied: 40 },
+    ],
+  },
+  {
+    id: 6,
+    name: 'Sto. Domingo Brgy. Hall',
+    fullName: 'Sto. Domingo Barangay Hall',
+    location: 'Brgy. Sto. Domingo, Vinzons',
+    count: 0,
+    status: 'Active',
+    rooms: [
+      { id: 'Room 1', capacity: 30, occupied: 0 },
+      { id: 'Room 2', capacity: 30, occupied: 0 },
+    ],
+  },
+  {
+    id: 7,
+    name: 'Matango Elem. School',
+    fullName: 'Matango Elementary School',
+    location: 'Brgy. Matango, Vinzons',
+    count: 0,
+    status: 'Active',
+    rooms: [
+      { id: 'Bldg 1-A', capacity: 25, occupied: 0 },
+      { id: 'Bldg 1-B', capacity: 25, occupied: 0 },
     ],
   },
 ];
@@ -150,16 +201,34 @@ function RoomsSheet({ center, onClose }) {
 export default function MobileCenters() {
   const [centers, setCenters] = useState(CENTERS_DATA);
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Available' | 'Occupied' | 'Empty'
+  const [openFilter, setOpenFilter] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '2' });
 
-  const filtered = centers.filter(
-    (c) =>
+  /* ── Filter & Search ── */
+  const filtered = centers.filter((c) => {
+    const matchSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      c.location.toLowerCase().includes(search.toLowerCase())
-  );
+      c.location.toLowerCase().includes(search.toLowerCase());
+    const status = centerStatusLabel(c);
+    const matchStatus = filterStatus === 'All' || status === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
+  /* ── Pagination ── */
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 4;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedCenters = filtered.slice(startIndex, startIndex + pageSize);
 
   const handleAddCenter = (e) => {
     e.preventDefault();
@@ -185,7 +254,7 @@ export default function MobileCenters() {
   };
 
   return (
-    <div className="vin-mob-page">
+    <div className="vin-mob-page" onClick={() => openFilter && setOpenFilter(false)}>
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Centers</h1>
@@ -207,60 +276,160 @@ export default function MobileCenters() {
         />
       </div>
 
-      {/* Legend */}
-      <div className="vin-ctr-legend">
-        <span className="vin-ctr-dot green" /> Available
-        <span className="vin-ctr-dot red" /> Occupied
-        <span className="vin-ctr-dot gray" /> Empty
+      {/* Filter and Legend Bar */}
+      <div className="vin-mon-filter-bar" style={{ padding: '0 16px 4px' }}>
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenFilter(!openFilter);
+            }}
+          >
+            <span>{filterStatus === 'All' ? 'All status' : filterStatus}</span>
+            <ChevronDown size={13} />
+          </button>
+
+          {openFilter && (
+            <div className="vin-mon-filter-dropdown" onClick={(e) => e.stopPropagation()}>
+              <div className="vin-mon-filter-title">CENTER STATUS</div>
+              {[
+                { id: 'All', label: 'All Status', dot: 'all' },
+                { id: 'Available', label: 'Available (Green)', dot: 'present' },
+                { id: 'Occupied', label: 'Occupied (Red)', dot: 'absent' },
+                { id: 'Empty', label: 'Empty (Gray)', dot: 'gray' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setFilterStatus(opt.id);
+                    setOpenFilter(false);
+                  }}
+                >
+                  <span
+                    className={`vin-ctr-dot ${opt.dot === 'present' ? 'green' : opt.dot === 'absent' ? 'red' : opt.dot === 'gray' ? 'gray' : ''}`}
+                    style={opt.dot === 'all' ? { background: 'linear-gradient(90deg, #2d7a57 33%, #9c4444 33% 66%, #94a3b8 66%)' } : {}}
+                  />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {filterStatus !== 'All' && (
+          <button
+            type="button"
+            className="vin-mon-clear-pill"
+            onClick={() => setFilterStatus('All')}
+          >
+            Clear <X size={11} />
+          </button>
+        )}
+
+        {/* Legend */}
+        <div className="vin-ctr-legend" style={{ marginLeft: 'auto', padding: 0 }}>
+          <span className="vin-ctr-dot green" /> Available
+          <span className="vin-ctr-dot red" /> Occupied
+          <span className="vin-ctr-dot gray" /> Empty
+        </div>
       </div>
 
       {/* ── CENTER GRID ── */}
       <div className="vin-ctr-grid">
-        {filtered.map((item) => {
-          const totalOcc = item.rooms.reduce((a, r) => a + r.occupied, 0);
-          const colorCls = centerColorClass(item);
-          const statusLabel = centerStatusLabel(item);
+        {paginatedCenters.length === 0 ? (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '.88rem' }}>
+            No evacuation centers match the current filter.
+          </div>
+        ) : (
+          paginatedCenters.map((item) => {
+            const totalOcc = item.rooms.reduce((a, r) => a + r.occupied, 0);
+            const colorCls = centerColorClass(item);
+            const statusLabel = centerStatusLabel(item);
 
-          return (
-            <div
-              key={item.id}
-              className={`vin-ctr-tile ${colorCls}`}
-              onClick={() => setSelectedCenter(item)}
-            >
-              {/* Top Row: Icon left, Status badge top right */}
-              <div className="vin-ctr-tile-top">
-                <div className="vin-ctr-tile-icon">
-                  <Building size={22} />
-                </div>
-                <span className={`vin-ctr-status-badge badge-${colorCls.replace('ctr-tile--', '')}`}>
-                  {statusLabel}
-                </span>
-              </div>
-
-              {/* Body: evenly arranged content */}
-              <div className="vin-ctr-tile-body">
-                <div className="vin-ctr-tile-name">{item.name}</div>
-
-                <div className="vin-ctr-tile-loc">
-                  <MapPin size={11} style={{ display: 'inline', marginRight: 3, flexShrink: 0 }} />
-                  <span>{item.location}</span>
+            return (
+              <div
+                key={item.id}
+                className={`vin-ctr-tile ${colorCls}`}
+                onClick={() => setSelectedCenter(item)}
+              >
+                {/* Top Row: Icon left, Status badge top right */}
+                <div className="vin-ctr-tile-top">
+                  <div className="vin-ctr-tile-icon">
+                    <Building size={22} />
+                  </div>
+                  <span className={`vin-ctr-status-badge badge-${colorCls.replace('ctr-tile--', '')}`}>
+                    {statusLabel}
+                  </span>
                 </div>
 
-                <div className="vin-ctr-tile-meta">
-                  <Users size={12} style={{ display: 'inline', marginRight: 4, flexShrink: 0 }} />
-                  <span>{totalOcc} evacuees &bull; {item.rooms.length} rooms</span>
+                {/* Body: evenly arranged content */}
+                <div className="vin-ctr-tile-body">
+                  <div className="vin-ctr-tile-name">{item.name}</div>
+
+                  <div className="vin-ctr-tile-loc">
+                    <MapPin size={11} style={{ display: 'inline', marginRight: 3, flexShrink: 0 }} />
+                    <span>{item.location}</span>
+                  </div>
+
+                  <div className="vin-ctr-tile-meta">
+                    <Users size={12} style={{ display: 'inline', marginRight: 4, flexShrink: 0 }} />
+                    <span>{totalOcc} evacuees &bull; {item.rooms.length} rooms</span>
+                  </div>
+                </div>
+
+                {/* Bottom tap action */}
+                <div className="vin-ctr-tile-tap">
+                  <span>View Rooms</span>
+                  <ChevronRight size={13} />
                 </div>
               </div>
-
-              {/* Bottom tap action */}
-              <div className="vin-ctr-tile-tap">
-                <span>View Rooms</span>
-                <ChevronRight size={13} />
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
+
+      {/* ── PAGINATION CONTROLS ── */}
+      {filtered.length > 0 && (
+        <div className="vin-mob-pagination" style={{ margin: '0 16px 20px', borderRadius: '14px', border: '1.5px solid #e2e8f0' }}>
+          <span className="vin-mob-pagination-info">
+            Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length} centers
+          </span>
+          <div className="vin-mob-pagination-btns">
+            <button
+              type="button"
+              className="vin-mob-page-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                type="button"
+                className={`vin-mob-page-btn ${pageNum === currentPage ? 'active' : ''}`}
+                onClick={() => setCurrentPage(pageNum)}
+              >
+                {pageNum}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="vin-mob-page-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── ROOM DETAIL SHEET ── */}
       {selectedCenter && (
