@@ -601,60 +601,31 @@
   gap: 6px;
 }
 
-/* Auto-Assign Action Card */
-.vin-auto-assign-card {
-  background: linear-gradient(135deg, #f0fdf4 0%, #e8f9ee 100%);
-  border: 1.5px solid #86efac;
-  border-radius: 16px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.vin-auto-assign-tag {
-  display: inline-block;
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  color: #15803d;
-  margin-bottom: 2px;
-}
-
-.vin-auto-assign-heading {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #0d3824;
-}
-
-.vin-auto-assign-hint {
-  font-size: 0.76rem;
-  color: #4b6356;
-  margin: 3px 0 0;
-  line-height: 1.35;
-}
-
+/* Auto-Assign Action Button (Right-aligned in section header) */
 .vin-auto-assign-action-btn {
   background: #17422d;
   color: #ffffff;
   border: none;
-  border-radius: 10px;
-  padding: 9px 16px;
-  font-size: 0.82rem;
+  border-radius: 9px;
+  padding: 6px 13px;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
-  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   transition: all 0.15s ease;
   box-shadow: 0 2px 6px rgba(23, 66, 45, 0.2);
+  white-space: nowrap;
 }
 
 .vin-auto-assign-action-btn:hover {
   background: #0f2c1e;
-  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(23, 66, 45, 0.28);
 }
 
 .vin-auto-assign-action-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 /* Feedback Alert Banner */

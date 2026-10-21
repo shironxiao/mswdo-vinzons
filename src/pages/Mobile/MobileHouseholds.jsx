@@ -745,26 +745,6 @@ function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
           </select>
         </div>
 
-        {/* Auto-Assign Action Card */}
-        <div className="vin-auto-assign-card">
-          <div className="vin-auto-assign-info">
-            <div className="vin-auto-assign-tag">
-              <span>⚡ AUTO ALLOCATION</span>
-            </div>
-            <div className="vin-auto-assign-heading">Auto-Assign Best Room</div>
-            <p className="vin-auto-assign-hint">
-              Automatically selects an available room in {selectedCenter.split(' ').slice(0, 2).join(' ')} with space for {neededSlots} members.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="vin-auto-assign-action-btn"
-            onClick={handleAutoAssign}
-          >
-            Auto-Assign
-          </button>
-        </div>
-
         {/* Feedback Alert Banner */}
         {feedback && (
           <div className={`vin-room-feedback-banner ${feedback.type}`}>
@@ -775,10 +755,16 @@ function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
           </div>
         )}
 
-        {/* Room List Header */}
+        {/* Room List Header with Auto-Assign Button placed at the right side */}
         <div className="vin-room-list-header">
-          <span className="vin-room-list-title">SAMPLE ROOM CAPACITY & STATUS</span>
-          <span className="vin-room-list-count">{rooms.length} Rooms</span>
+          <span className="vin-room-list-title">ROOM CAPACITY & STATUS</span>
+          <button
+            type="button"
+            className="vin-auto-assign-action-btn"
+            onClick={handleAutoAssign}
+          >
+            ⚡ Auto-Assign
+          </button>
         </div>
 
         {/* Rooms Grid */}
