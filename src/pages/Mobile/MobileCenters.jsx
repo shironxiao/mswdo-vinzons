@@ -1,103 +1,196 @@
 import { useState, useEffect } from 'react';
 import {
   Search, Building, MapPin, Plus, X, ChevronRight,
-  ChevronLeft, ChevronDown,
+  ChevronLeft,
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileCenters.css';
 
 /* ──────────────────────────────────────────────
-   Seed data
+   13 Official Vinzons Evacuation Centers
    ────────────────────────────────────────────── */
 const CENTERS_DATA = [
   {
     id: 1,
-    name: 'Vinzons Central Elem.',
-    fullName: 'Vinzons Central Elementary School',
-    location: 'Poblacion, Vinzons',
-    count: 364,
+    name: 'LGU EC (Mangcaway)',
+    fullName: 'LGU EC',
+    location: 'Mangcaway Brgy. Cal. Sur, Vinzons, CN',
     status: 'Active',
     rooms: [
-      { id: 'A-1', capacity: 30, occupied: 30 },
-      { id: 'A-2', capacity: 30, occupied: 20 },
-      { id: 'B-1', capacity: 25, occupied: 0  },
-      { id: 'B-2', capacity: 25, occupied: 12 },
-      { id: 'C-1', capacity: 20, occupied: 20 },
-      { id: 'C-2', capacity: 20, occupied: 8  },
+      { id: 'Room 1', capacity: 30, occupied: 12 },
+      { id: 'Room 2', capacity: 25, occupied: 8 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 15 },
+      { id: 'Room 5', capacity: 20, occupied: 5 },
     ],
   },
   {
     id: 2,
-    name: 'Vinzons Gymnasium',
-    fullName: 'Vinzons Gymnasium',
-    location: 'Brgy. San Jose, Vinzons',
-    count: 120,
+    name: 'LGU EC (Bliss)',
+    fullName: 'LGU EC',
+    location: 'Bliss Brgy. Cal Sur, VCN',
     status: 'Active',
     rooms: [
-      { id: 'Hall A', capacity: 60, occupied: 40 },
-      { id: 'Hall B', capacity: 60, occupied: 60 },
+      { id: 'Room 1', capacity: 30, occupied: 30 },
+      { id: 'Room 2', capacity: 25, occupied: 25 },
+      { id: 'Room 3', capacity: 25, occupied: 25 },
+      { id: 'Room 4', capacity: 20, occupied: 20 },
+      { id: 'Room 5', capacity: 20, occupied: 20 },
     ],
   },
   {
     id: 3,
-    name: 'Calaguas Natl. HS',
-    fullName: 'Calaguas National High School',
-    location: 'Calaguas, Vinzons',
-    count: 129,
+    name: 'PLGU EC (Mat-I)',
+    fullName: 'PLGU EC',
+    location: 'Mat – I Brgy. Sto. Domingo, VCN',
     status: 'Active',
     rooms: [
-      { id: 'Rm-1', capacity: 35, occupied: 35 },
-      { id: 'Rm-2', capacity: 35, occupied: 18 },
-      { id: 'Rm-3', capacity: 35, occupied: 0  },
+      { id: 'Room 1', capacity: 30, occupied: 0 },
+      { id: 'Room 2', capacity: 25, occupied: 0 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 0 },
+      { id: 'Room 5', capacity: 20, occupied: 0 },
     ],
   },
   {
     id: 4,
-    name: 'Vinzons Covered Court',
-    fullName: 'Vinzons Covered Court',
-    location: 'Poblacion, Vinzons',
-    count: 100,
+    name: 'Pinagtigasan EC',
+    fullName: 'Pinagtigasan EC',
+    location: 'P – 1 Brgy. Pinagtigasan, VCN',
     status: 'Active',
     rooms: [
-      { id: 'Sector 1', capacity: 50, occupied: 50 },
-      { id: 'Sector 2', capacity: 50, occupied: 50 },
+      { id: 'Room 1', capacity: 30, occupied: 18 },
+      { id: 'Room 2', capacity: 25, occupied: 5 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 10 },
+      { id: 'Room 5', capacity: 20, occupied: 0 },
     ],
   },
   {
     id: 5,
-    name: 'Municipal Evac Center',
-    fullName: 'Municipal Evacuation Center',
-    location: 'Brgy. Sto. Domingo, Vinzons',
-    count: 80,
+    name: 'St. Peter Parish AVR',
+    fullName: 'St. Peter Parish AVR',
+    location: 'Brgy Poblacion III',
     status: 'Active',
     rooms: [
-      { id: 'Hall 1', capacity: 40, occupied: 40 },
-      { id: 'Hall 2', capacity: 40, occupied: 40 },
+      { id: 'Room 1', capacity: 40, occupied: 40 },
+      { id: 'Room 2', capacity: 40, occupied: 40 },
+      { id: 'Room 3', capacity: 40, occupied: 40 },
+      { id: 'Room 4', capacity: 30, occupied: 30 },
+      { id: 'Room 5', capacity: 30, occupied: 30 },
     ],
   },
   {
     id: 6,
-    name: 'Sto. Domingo Brgy. Hall',
-    fullName: 'Sto. Domingo Barangay Hall',
-    location: 'Brgy. Sto. Domingo, Vinzons',
-    count: 0,
+    name: 'Biday EC',
+    fullName: 'Biday EC',
+    location: 'Brgy. Banocboc, VCN',
     status: 'Active',
     rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 0 },
-      { id: 'Room 2', capacity: 30, occupied: 0 },
+      { id: 'Room 1', capacity: 30, occupied: 7 },
+      { id: 'Room 2', capacity: 25, occupied: 0 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 0 },
+      { id: 'Room 5', capacity: 20, occupied: 0 },
     ],
   },
   {
     id: 7,
-    name: 'Matango Elem. School',
-    fullName: 'Matango Elementary School',
-    location: 'Brgy. Matango, Vinzons',
-    count: 0,
+    name: 'Sugod EC',
+    fullName: 'Sugod EC',
+    location: 'Brgy. Banocboc, VCN',
     status: 'Active',
     rooms: [
-      { id: 'Bldg 1-A', capacity: 25, occupied: 0 },
-      { id: 'Bldg 1-B', capacity: 25, occupied: 0 },
+      { id: 'Room 1', capacity: 30, occupied: 14 },
+      { id: 'Room 2', capacity: 25, occupied: 9 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 0 },
+      { id: 'Room 5', capacity: 20, occupied: 0 },
+    ],
+  },
+  {
+    id: 8,
+    name: 'Mormons',
+    fullName: 'Mormons',
+    location: 'Brgy. Calangcawan Sur, VCN',
+    status: 'Active',
+    rooms: [
+      { id: 'Room 1', capacity: 50, occupied: 0 },
+      { id: 'Room 2', capacity: 50, occupied: 0 },
+      { id: 'Room 3', capacity: 50, occupied: 0 },
+      { id: 'Room 4', capacity: 40, occupied: 0 },
+      { id: 'Room 5', capacity: 40, occupied: 0 },
+    ],
+  },
+  {
+    id: 9,
+    name: 'Marabe Church',
+    fullName: 'Marabe Church',
+    location: 'Brgy. Calangcawan Sur, VCN',
+    status: 'Active',
+    rooms: [
+      { id: 'Room 1', capacity: 30, occupied: 22 },
+      { id: 'Room 2', capacity: 25, occupied: 11 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 0 },
+      { id: 'Room 5', capacity: 20, occupied: 0 },
+    ],
+  },
+  {
+    id: 10,
+    name: 'Adorno Fathers',
+    fullName: 'Adorno Fathers',
+    location: 'Sto. Domingo, VCN',
+    status: 'Active',
+    rooms: [
+      { id: 'Room 1', capacity: 35, occupied: 35 },
+      { id: 'Room 2', capacity: 35, occupied: 35 },
+      { id: 'Room 3', capacity: 35, occupied: 35 },
+      { id: 'Room 4', capacity: 30, occupied: 30 },
+      { id: 'Room 5', capacity: 30, occupied: 30 },
+    ],
+  },
+  {
+    id: 11,
+    name: 'Mangcawayan EC',
+    fullName: 'Mangcawayan EC',
+    location: 'Mangcawayan Is., VCN',
+    status: 'Active',
+    rooms: [
+      { id: 'Room 1', capacity: 25, occupied: 0 },
+      { id: 'Room 2', capacity: 25, occupied: 0 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 0 },
+      { id: 'Room 5', capacity: 20, occupied: 0 },
+    ],
+  },
+  {
+    id: 12,
+    name: 'Our Lady of Fatima Shrine',
+    fullName: 'Our Lady of Fatima Shrine',
+    location: 'Mangcawayan Brgy. Calangawan Sur, VCN',
+    status: 'Active',
+    rooms: [
+      { id: 'Room 1', capacity: 40, occupied: 16 },
+      { id: 'Room 2', capacity: 35, occupied: 8 },
+      { id: 'Room 3', capacity: 35, occupied: 0 },
+      { id: 'Room 4', capacity: 25, occupied: 0 },
+      { id: 'Room 5', capacity: 25, occupied: 0 },
+    ],
+  },
+  {
+    id: 13,
+    name: 'Brgy. Hall (Aguit-it)',
+    fullName: 'Brgy. Hall',
+    location: 'Brgy. Aguit – it, VCN',
+    status: 'Active',
+    rooms: [
+      { id: 'Room 1', capacity: 25, occupied: 0 },
+      { id: 'Room 2', capacity: 25, occupied: 0 },
+      { id: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', capacity: 20, occupied: 0 },
+      { id: 'Room 5', capacity: 20, occupied: 0 },
     ],
   },
 ];
@@ -202,10 +295,15 @@ export default function MobileCenters() {
   const [centers, setCenters] = useState(CENTERS_DATA);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Available' | 'Occupied' | 'Empty'
-  const [openFilter, setOpenFilter] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedCenter, setSelectedCenter] = useState(null);
-  const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '2' });
+  const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '5' });
+
+  /* ── Status counts for pill labels ── */
+  const allCount       = centers.filter((c) => search ? (c.name.toLowerCase().includes(search.toLowerCase()) || c.location.toLowerCase().includes(search.toLowerCase())) : true).length;
+  const availableCount = centers.filter((c) => centerStatusLabel(c) === 'Available').length;
+  const occupiedCount  = centers.filter((c) => centerStatusLabel(c) === 'Occupied').length;
+  const emptyCount     = centers.filter((c) => centerStatusLabel(c) === 'Empty').length;
 
   /* ── Filter & Search ── */
   const filtered = centers.filter((c) => {
@@ -233,9 +331,9 @@ export default function MobileCenters() {
   const handleAddCenter = (e) => {
     e.preventDefault();
     if (!newCenter.name) return;
-    const roomCount = Number(newCenter.rooms) || 2;
+    const roomCount = Number(newCenter.rooms) || 5;
     const rooms = Array.from({ length: roomCount }, (_, i) => ({
-      id: `R-${i + 1}`,
+      id: `Room ${i + 1}`,
       capacity: 30,
       occupied: 0,
     }));
@@ -245,16 +343,23 @@ export default function MobileCenters() {
       fullName: newCenter.name,
       location: newCenter.location || 'Vinzons',
       rooms,
-      count: 0,
       status: 'Active',
     };
     setCenters([item, ...centers]);
-    setNewCenter({ name: '', location: '', rooms: '2' });
+    setNewCenter({ name: '', location: '', rooms: '5' });
     setIsAddOpen(false);
   };
 
+  /* Status filter pill options */
+  const STATUS_PILLS = [
+    { id: 'All',       label: 'All',       count: centers.length, dotClass: null },
+    { id: 'Available', label: 'Available', count: availableCount, dotClass: 'green' },
+    { id: 'Occupied',  label: 'Occupied',  count: occupiedCount,  dotClass: 'red'   },
+    { id: 'Empty',     label: 'Empty',     count: emptyCount,     dotClass: 'gray'  },
+  ];
+
   return (
-    <div className="vin-mob-page" onClick={() => openFilter && setOpenFilter(false)}>
+    <div className="vin-mob-page">
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Centers</h1>
@@ -276,69 +381,22 @@ export default function MobileCenters() {
         />
       </div>
 
-      {/* Filter and Legend Bar */}
-      <div className="vin-mon-filter-bar" style={{ padding: '0 16px 4px' }}>
-        {/* Legend on the left */}
-        <div className="vin-ctr-legend" style={{ padding: 0 }}>
-          <span className="vin-ctr-dot green" /> Available
-          <span className="vin-ctr-dot red" /> Occupied
-          <span className="vin-ctr-dot gray" /> Empty
-        </div>
-
-        {/* Clear pill + filter on the right */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-          {filterStatus !== 'All' && (
-            <button
-              type="button"
-              className="vin-mon-clear-pill"
-              onClick={() => setFilterStatus('All')}
-            >
-              Clear <X size={11} />
-            </button>
-          )}
-
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenFilter(!openFilter);
-              }}
-            >
-              <span>{filterStatus === 'All' ? 'All status' : filterStatus}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {openFilter && (
-              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                <div className="vin-mon-filter-title">CENTER STATUS</div>
-                {[
-                  { id: 'All', label: 'All Status', dot: 'all' },
-                  { id: 'Available', label: 'Available (Green)', dot: 'present' },
-                  { id: 'Occupied', label: 'Occupied (Red)', dot: 'absent' },
-                  { id: 'Empty', label: 'Empty (Gray)', dot: 'gray' },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterStatus(opt.id);
-                      setOpenFilter(false);
-                    }}
-                  >
-                    <span
-                      className={`vin-ctr-dot ${opt.dot === 'present' ? 'green' : opt.dot === 'absent' ? 'red' : opt.dot === 'gray' ? 'gray' : ''}`}
-                      style={opt.dot === 'all' ? { background: 'linear-gradient(90deg, #2d7a57 33%, #9c4444 33% 66%, #94a3b8 66%)' } : {}}
-                    />
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+      {/* ── Status Filter Pills (like the image reference) ── */}
+      <div className="vin-ctr-status-pills-row">
+        {STATUS_PILLS.map((pill) => (
+          <button
+            key={pill.id}
+            type="button"
+            className={`vin-ctr-status-pill ${filterStatus === pill.id ? 'active' : ''}`}
+            onClick={() => setFilterStatus(pill.id)}
+          >
+            {pill.dotClass && (
+              <span className={`vin-ctr-pill-dot ${pill.dotClass}`} />
             )}
-          </div>
-        </div>
+            <span className="vin-ctr-pill-label">{pill.label}</span>
+            <span className="vin-ctr-pill-count">·{pill.count}</span>
+          </button>
+        ))}
       </div>
 
       {/* ── CENTER TABLE ── */}
