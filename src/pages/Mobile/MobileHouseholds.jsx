@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2, QrCode,
   AlertTriangle, Ticket, Printer, Filter, ChevronDown, Building,
-  ChevronLeft, ChevronRight, MapPin, CheckCircle2,
+  ChevronLeft, ChevronRight, MapPin, CheckCircle2, SlidersHorizontal,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './MobileCommon.css';
@@ -595,45 +595,143 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
 }
 
 /* ──────────────────────────────────────────────
-   Filter Dropdown
+   Filter Dropdown (legacy — replaced by HHFilterSheet)
    ────────────────────────────────────────────── */
-function StatusFilterDropdown({ value, onChange, onClose }) {
-  return (
-    <div className="vin-hh-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-      <div className="vin-hh-filter-section-title">STUB STATUS</div>
-      {[
-        { id: 'All', label: 'All Status', dot: 'all' },
-        { id: 'Issued', label: 'Issued (Green)', dot: 'issued' },
-        { id: 'Not Issued', label: 'Not Issued (Red)', dot: 'notissued' },
-      ].map((opt) => (
-        <button
-          key={opt.id}
-          type="button"
-          className={`vin-hh-filter-opt ${value === opt.id ? 'active' : ''}`}
-          onClick={() => { onChange(opt.id); onClose(); }}
-        >
-          <span className={`vin-hh-filter-dot ${opt.dot}`} />
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
-function CenterFilterDropdown({ value, onChange, onClose }) {
+/* All rooms across all centers for the room dropdown */
+const ALL_ROOMS_BY_CENTER = {
+  'Vinzons Central Elementary School': ['A-1', 'A-2', 'B-1', 'B-2', 'C-1', 'C-2'],
+  'Vinzons Gymnasium': ['Hall A', 'Hall B'],
+  'Calaguas National High School': ['Rm-1', 'Rm-2', 'Rm-3'],
+};
+
+/* ──────────────────────────────────────────────
+   Household Filter Sheet (bottom-sheet panel)
+   ────────────────────────────────────────────── */
+function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, search, onApply, onClose }) {
+  /* Local draft state — only committed when user taps "Show results" */
+  const [draftStub, setDraftStub] = useState(filterStub);
+  const [draftCenter, setDraftCenter] = useState(filterCenter);
+  const [draftRoom, setDraftRoom] = useState(filterRoom);
+
+  /* Rooms available for the selected center */
+  const roomOptions = draftCenter === 'All Centers'
+    ? Object.values(ALL_ROOMS_BY_CENTER).flat()
+    : (ALL_ROOMS_BY_CENTER[draftCenter] || []);
+
+  /* If selected center changes, reset room if it no longer applies */
+  const handleCenterChange = (c) => {
+    setDraftCenter(c);
+    const rooms = c === 'All Centers' ? Object.values(ALL_ROOMS_BY_CENTER).flat() : (ALL_ROOMS_BY_CENTER[c] || []);
+    if (draftRoom !== 'All Rooms' && !rooms.includes(draftRoom)) setDraftRoom('All Rooms');
+  };
+
+  const handleReset = () => {
+    setDraftStub('All');
+    setDraftCenter('All Centers');
+    setDraftRoom('All Rooms');
+  };
+
+  const handleApply = () => {
+    onApply(draftStub, draftCenter, draftRoom);
+    onClose();
+  };
+
+  /* Live result count based on draft selections */
+  const draftCount = households.filter((h) => {
+    const matchSearch =
+      h.name.toLowerCase().includes(search.toLowerCase()) ||
+      h.room.toLowerCase().includes(search.toLowerCase()) ||
+      (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
+    const matchStub =
+      draftStub === 'All' ||
+      (draftStub === 'Issued' && !!h.stubCode) ||
+      (draftStub === 'Not Issued' && !h.stubCode);
+    const matchCenter =
+      draftCenter === 'All Centers' || h.center === draftCenter;
+    const matchRoom =
+      draftRoom === 'All Rooms' ||
+      h.room === draftRoom ||
+      `Room ${h.room}` === draftRoom;
+    return matchSearch && matchStub && matchCenter && matchRoom;
+  }).length;
+
   return (
-    <div className="vin-hh-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-      <div className="vin-hh-filter-section-title">EVACUATION CENTER</div>
-      {CENTERS.map((c) => (
-        <button
-          key={c}
-          type="button"
-          className={`vin-hh-filter-opt ${value === c ? 'active' : ''}`}
-          onClick={() => { onChange(c); onClose(); }}
-        >
-          {c}
+    <div className="vin-mob-sheet-overlay" onClick={onClose}>
+      <div className="vin-hh-filter-sheet" onClick={(e) => e.stopPropagation()}>
+        {/* Drag handle */}
+        <div className="vin-hh-filter-sheet-handle" />
+
+        {/* Header */}
+        <div className="vin-hh-filter-sheet-header">
+          <span className="vin-hh-filter-sheet-title">Filters</span>
+          <button type="button" className="vin-hh-filter-sheet-reset" onClick={handleReset}>
+            Reset
+          </button>
+        </div>
+
+        {/* Status Pills */}
+        <div className="vin-hh-filter-section">
+          <div className="vin-hh-filter-section-label">Status</div>
+          <div className="vin-hh-filter-pills-row">
+            {[
+              { id: 'All', label: 'All' },
+              { id: 'Issued', label: 'Issued' },
+              { id: 'Not Issued', label: 'Not issued' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`vin-hh-filter-pill ${draftStub === opt.id ? 'active' : ''}`}
+                onClick={() => setDraftStub(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Center Dropdown */}
+        <div className="vin-hh-filter-section">
+          <div className="vin-hh-filter-section-label">Center</div>
+          <div className="vin-hh-filter-select-wrap">
+            <select
+              className="vin-hh-filter-select"
+              value={draftCenter}
+              onChange={(e) => handleCenterChange(e.target.value)}
+            >
+              <option value="All Centers">All Centers</option>
+              {CENTERS.filter((c) => c !== 'All Centers').map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+          </div>
+        </div>
+
+        {/* Room Dropdown */}
+        <div className="vin-hh-filter-section">
+          <div className="vin-hh-filter-section-label">Room</div>
+          <div className="vin-hh-filter-select-wrap">
+            <select
+              className="vin-hh-filter-select"
+              value={draftRoom}
+              onChange={(e) => setDraftRoom(e.target.value)}
+            >
+              <option value="All Rooms">All Rooms</option>
+              {roomOptions.map((r) => (
+                <option key={r} value={r}>Room {r}</option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+          </div>
+        </div>
+
+        {/* Show Results Button */}
+        <button type="button" className="vin-hh-filter-sheet-apply" onClick={handleApply}>
+          Show {draftCount} result{draftCount !== 1 ? 's' : ''}
         </button>
-      ))}
+      </div>
     </div>
   );
 }
@@ -872,7 +970,9 @@ export default function MobileHouseholds() {
   const [search, setSearch] = useState('');
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
-  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [openFilter, setOpenFilter] = useState(null);
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [assigningHousehold, setAssigningHousehold] = useState(null);
   const [centerRooms, setCenterRooms] = useState(DEFAULT_CENTER_ROOMS);
@@ -899,12 +999,19 @@ export default function MobileHouseholds() {
       (filterStub === 'Not Issued' && !h.stubCode);
     const matchCenter =
       filterCenter === 'All Centers' || h.center === filterCenter;
-    return matchSearch && matchStub && matchCenter;
+    const matchRoom =
+      filterRoom === 'All Rooms' ||
+      h.room === filterRoom ||
+      `Room ${h.room}` === filterRoom;
+    return matchSearch && matchStub && matchCenter && matchRoom;
   });
 
   const issuedCount = households.filter((h) => h.stubCode).length;
   const filteredIssued = filtered.filter((h) => h.stubCode);
-  const activeFilters = (filterStub !== 'All' ? 1 : 0) + (filterCenter !== 'All Centers' ? 1 : 0);
+  const activeFilters =
+    (filterStub !== 'All' ? 1 : 0) +
+    (filterCenter !== 'All Centers' ? 1 : 0) +
+    (filterRoom !== 'All Rooms' ? 1 : 0);
 
   /* ── Pagination ── */
   const [currentPage, setCurrentPage] = useState(1);
@@ -912,7 +1019,7 @@ export default function MobileHouseholds() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterStub, filterCenter]);
+  }, [search, filterStub, filterCenter, filterRoom]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -1056,62 +1163,55 @@ export default function MobileHouseholds() {
         <div className="vin-hh-scan-error"><AlertTriangle size={14} /> {scanError}</div>
       )}
 
-      {/* Filter bar with separate Status and Center buttons */}
+      {/* Filter bar with left-aligned Filters button and active chips matching user design */}
       <div className="vin-hh-filter-bar">
-        {/* Status Filter Button */}
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className={`vin-hh-filter-btn ${filterStub !== 'All' ? 'vin-hh-filter-btn--active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenFilter(openFilter === 'status' ? null : 'status');
-            }}
-          >
-            <span>{filterStub === 'All' ? 'All status' : filterStub}</span>
-            <ChevronDown size={13} />
-          </button>
-
-          {openFilter === 'status' && (
-            <StatusFilterDropdown
-              value={filterStub}
-              onChange={setFilterStub}
-              onClose={() => setOpenFilter(null)}
-            />
+        {/* Main Filters Button (opens bottom sheet panel) */}
+        <button
+          type="button"
+          className={`vin-hh-filters-trigger ${activeFilters > 0 ? 'active' : ''}`}
+          onClick={() => setShowFilterSheet(true)}
+        >
+          <SlidersHorizontal size={14} className="vin-hh-filters-trigger-icon" />
+          <span>Filters</span>
+          {activeFilters > 0 && (
+            <span className="vin-hh-filters-trigger-badge">{activeFilters}</span>
           )}
-        </div>
+        </button>
 
-        {/* Evacuation Center Filter Button */}
-        <div style={{ position: 'relative' }}>
+        {/* Active Filter Chips (like in Image 1) */}
+        {filterCenter !== 'All Centers' && (
           <button
             type="button"
-            className={`vin-hh-filter-btn ${filterCenter !== 'All Centers' ? 'vin-hh-filter-btn--active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenFilter(openFilter === 'center' ? null : 'center');
-            }}
+            className="vin-hh-active-chip"
+            onClick={() => setFilterCenter('All Centers')}
+            title="Remove center filter"
           >
-            <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
-            <ChevronDown size={13} />
+            <span>{filterCenter.replace('Elementary School', '').replace('National High School', '').trim()}</span>
+            <X size={13} className="vin-hh-chip-close" />
           </button>
+        )}
 
-          {openFilter === 'center' && (
-            <CenterFilterDropdown
-              value={filterCenter}
-              onChange={setFilterCenter}
-              onClose={() => setOpenFilter(null)}
-            />
-          )}
-        </div>
-
-        {/* Clear Filters Button if any filter is active */}
-        {(filterStub !== 'All' || filterCenter !== 'All Centers') && (
+        {filterRoom !== 'All Rooms' && (
           <button
             type="button"
-            className="vin-hh-clear-pill"
-            onClick={() => { setFilterStub('All'); setFilterCenter('All Centers'); }}
+            className="vin-hh-active-chip"
+            onClick={() => setFilterRoom('All Rooms')}
+            title="Remove room filter"
           >
-            Clear <X size={11} />
+            <span>{filterRoom.toLowerCase().startsWith('room') ? filterRoom : `Room ${filterRoom}`}</span>
+            <X size={13} className="vin-hh-chip-close" />
+          </button>
+        )}
+
+        {filterStub !== 'All' && (
+          <button
+            type="button"
+            className="vin-hh-active-chip"
+            onClick={() => setFilterStub('All')}
+            title="Remove status filter"
+          >
+            <span>{filterStub}</span>
+            <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
 
@@ -1286,6 +1386,23 @@ export default function MobileHouseholds() {
           households={households}
           onIssue={issueStub}
           onClose={() => setSelectedHousehold(null)}
+        />
+      )}
+
+      {/* ── FILTER SHEET MODAL (matching user image 2) ── */}
+      {showFilterSheet && (
+        <HHFilterSheet
+          filterStub={filterStub}
+          filterCenter={filterCenter}
+          filterRoom={filterRoom}
+          households={households}
+          search={search}
+          onApply={(newStub, newCenter, newRoom) => {
+            setFilterStub(newStub);
+            setFilterCenter(newCenter);
+            setFilterRoom(newRoom);
+          }}
+          onClose={() => setShowFilterSheet(false)}
         />
       )}
 
