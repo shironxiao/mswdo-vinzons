@@ -898,24 +898,33 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
           </button>
         </div>
 
-        {/* Status Pills */}
+        {/* Status Pills — styled with count badges and colored dots */}
         <div className="vin-hh-filter-section">
           <div className="vin-hh-filter-section-label">Status</div>
           <div className="vin-hh-filter-pills-row">
-            {[
-              { id: 'All', label: 'All' },
-              { id: 'Issued', label: 'Issued' },
-              { id: 'Not Issued', label: 'Not issued' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                className={`vin-hh-filter-pill ${draftStub === opt.id ? 'active' : ''}`}
-                onClick={() => setDraftStub(opt.id)}
-              >
-                {opt.label}
-              </button>
-            ))}
+            {(() => {
+              const allCount = households.length;
+              const issuedCount = households.filter((h) => !!h.stubCode).length;
+              const notIssuedCount = households.filter((h) => !h.stubCode).length;
+              return [
+                { id: 'All', label: 'All', count: allCount, dot: null },
+                { id: 'Issued', label: 'Issued', count: issuedCount, dot: 'issued' },
+                { id: 'Not Issued', label: 'Not Issued', count: notIssuedCount, dot: 'notissued' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`vin-hh-filter-pill-v2 ${draftStub === opt.id ? 'active' : ''}`}
+                  onClick={() => setDraftStub(opt.id)}
+                >
+                  {opt.dot && (
+                    <span className={`vin-hh-pill-dot vin-hh-pill-dot--${opt.dot}`} />
+                  )}
+                  <span className="vin-hh-pill-label">{opt.label}</span>
+                  <span className="vin-hh-pill-count">· {opt.count}</span>
+                </button>
+              ));
+            })()}
           </div>
         </div>
 
@@ -928,10 +937,20 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
             role="button"
             tabIndex={0}
           >
-            <div className="vin-hh-filter-select-display-txt">
-              {draftCenter}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, overflow: 'hidden' }}>
+              <div className="vin-hh-filter-select-display-txt">
+                {draftCenter}
+              </div>
+              {draftCenter !== 'All Centers' && (() => {
+                const found = OFFICIAL_EVAC_CENTERS.find((c) => c.name === draftCenter);
+                return found ? (
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {found.location}
+                  </span>
+                ) : null;
+              })()}
             </div>
-            <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+            <ChevronDown size={16} className="vin-hh-filter-select-icon" style={{ flexShrink: 0 }} />
           </div>
         </div>
 
