@@ -161,11 +161,28 @@ const SEED = [
   },
 ];
 
+const OFFICIAL_EVAC_CENTERS = [
+  { name: 'LGU EC (Mangcaway)', fullName: 'LGU EC', location: 'Mangcaway Brgy. Cal. Sur, Vinzons, CN' },
+  { name: 'LGU EC (Bliss)', fullName: 'LGU EC', location: 'Bliss Brgy. Cal Sur, VCN' },
+  { name: 'PLGU EC (Mat-I)', fullName: 'PLGU EC', location: 'Mat – I Brgy. Sto. Domingo, VCN' },
+  { name: 'Pinagtigasan EC', fullName: 'Pinagtigasan EC', location: 'P – 1 Brgy. Pinagtigasan, VCN' },
+  { name: 'St. Peter Parish AVR', fullName: 'St. Peter Parish AVR', location: 'Brgy Poblacion III' },
+  { name: 'Biday EC', fullName: 'Biday EC', location: 'Brgy. Banocboc, VCN' },
+  { name: 'Sugod EC', fullName: 'Sugod EC', location: 'Brgy. Banocboc, VCN' },
+  { name: 'Mormons', fullName: 'Mormons', location: 'Brgy. Calangcawan Sur, VCN' },
+  { name: 'Marabe Church', fullName: 'Marabe Church', location: 'Brgy. Calangcawan Sur, VCN' },
+  { name: 'Adorno Fathers', fullName: 'Adorno Fathers', location: 'Sto. Domingo, VCN' },
+  { name: 'Mangcawayan EC', fullName: 'Mangcawayan EC', location: 'Mangcawayan Is., VCN' },
+  { name: 'Our Lady of Fatima Shrine', fullName: 'Our Lady of Fatima Shrine', location: 'Mangcawayan Brgy. Calangawan Sur, VCN' },
+  { name: 'Brgy. Hall (Aguit-it)', fullName: 'Brgy. Hall', location: 'Brgy. Aguit – it, VCN' },
+  { name: 'Vinzons Central Elementary School', fullName: 'Vinzons Central Elementary School', location: 'Poblacion, Vinzons' },
+  { name: 'Vinzons Gymnasium', fullName: 'Vinzons Gymnasium', location: 'Brgy. San Jose, Vinzons' },
+  { name: 'Calaguas National High School', fullName: 'Calaguas National High School', location: 'Calaguas, Vinzons' },
+];
+
 const CENTERS = [
   'All Centers',
-  'Vinzons Central Elementary School',
-  'Vinzons Gymnasium',
-  'Calaguas National High School',
+  ...OFFICIAL_EVAC_CENTERS.map((c) => c.name),
 ];
 
 const DEFAULT_CENTER_ROOMS = {
@@ -603,7 +620,126 @@ const ALL_ROOMS_BY_CENTER = {
   'Vinzons Central Elementary School': ['A-1', 'A-2', 'B-1', 'B-2', 'C-1', 'C-2'],
   'Vinzons Gymnasium': ['Hall A', 'Hall B'],
   'Calaguas National High School': ['Rm-1', 'Rm-2', 'Rm-3'],
+  'LGU EC (Mangcaway)': ['Room 1', 'Room 2', 'Room 3'],
+  'LGU EC (Bliss)': ['Room 1', 'Room 2', 'Room 3'],
+  'PLGU EC (Mat-I)': ['Room 1', 'Room 2', 'Room 3'],
+  'Pinagtigasan EC': ['Room 1', 'Room 2'],
+  'St. Peter Parish AVR': ['AVR Hall', 'Room 1', 'Room 2'],
+  'Biday EC': ['Room 1', 'Room 2'],
+  'Sugod EC': ['Room 1', 'Room 2'],
+  'Mormons': ['Main Hall', 'Room 1'],
+  'Marabe Church': ['Sanctuary Hall', 'Room 1'],
+  'Adorno Fathers': ['Hall 1', 'Hall 2'],
+  'Mangcawayan EC': ['Room 1', 'Room 2'],
+  'Our Lady of Fatima Shrine': ['Shrine Hall', 'Room 1'],
+  'Brgy. Hall (Aguit-it)': ['Session Hall', 'Room 1'],
 };
+
+/* ──────────────────────────────────────────────
+   Center Selection Bottom Sheet (White Theme)
+   ────────────────────────────────────────────── */
+function CenterSelectSheet({ selected, onSelect, onClose }) {
+  const [tempSelected, setTempSelected] = useState(selected || 'All Centers');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCenters = OFFICIAL_EVAC_CENTERS.filter((c) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.fullName && c.fullName.toLowerCase().includes(q)) ||
+      (c.location && c.location.toLowerCase().includes(q))
+    );
+  });
+
+  const handleConfirm = () => {
+    onSelect(tempSelected);
+    onClose();
+  };
+
+  return (
+    <div className="vin-center-picker-overlay" onClick={onClose}>
+      <div className="vin-center-picker-sheet" onClick={(e) => e.stopPropagation()}>
+        {/* Drag handle */}
+        <div className="vin-center-picker-handle" />
+
+        {/* Search Bar */}
+        <div className="vin-center-picker-search-box">
+          <Search size={16} className="vin-center-picker-search-icon" />
+          <input
+            type="text"
+            className="vin-center-picker-search-input"
+            placeholder={`Search ${OFFICIAL_EVAC_CENTERS.length} centers...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="vin-center-picker-clear-btn"
+              onClick={() => setSearchQuery('')}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {/* Center List */}
+        <div className="vin-center-picker-list">
+          {/* All Centers Option */}
+          {(!searchQuery || 'all centers'.includes(searchQuery.toLowerCase())) && (
+            <div
+              className={`vin-center-picker-item ${tempSelected === 'All Centers' ? 'selected' : ''}`}
+              onClick={() => setTempSelected('All Centers')}
+            >
+              <div className="vin-center-picker-radio">
+                <div className="vin-center-picker-radio-dot" />
+              </div>
+              <div className="vin-center-picker-info">
+                <span className="vin-center-picker-name">All centers</span>
+                <span className="vin-center-picker-loc">Show households from all evacuation centers</span>
+              </div>
+            </div>
+          )}
+
+          {filteredCenters.map((c) => {
+            const isSelected = tempSelected === c.name;
+            return (
+              <div
+                key={c.name}
+                className={`vin-center-picker-item ${isSelected ? 'selected' : ''}`}
+                onClick={() => setTempSelected(c.name)}
+              >
+                <div className="vin-center-picker-radio">
+                  <div className="vin-center-picker-radio-dot" />
+                </div>
+                <div className="vin-center-picker-info">
+                  <span className="vin-center-picker-name">{c.name}</span>
+                  <span className="vin-center-picker-loc">{c.location}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredCenters.length === 0 && searchQuery && (
+            <div className="vin-center-picker-empty">
+              No evacuation centers found matching &ldquo;{searchQuery}&rdquo;
+            </div>
+          )}
+        </div>
+
+        {/* Select Button */}
+        <button
+          type="button"
+          className="vin-center-picker-submit"
+          onClick={handleConfirm}
+        >
+          Select center
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /* ──────────────────────────────────────────────
    Household Filter Sheet (bottom-sheet panel)
@@ -613,11 +749,12 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
   const [draftStub, setDraftStub] = useState(filterStub);
   const [draftCenter, setDraftCenter] = useState(filterCenter);
   const [draftRoom, setDraftRoom] = useState(filterRoom);
+  const [showCenterPicker, setShowCenterPicker] = useState(false);
 
   /* Rooms available for the selected center */
   const roomOptions = draftCenter === 'All Centers'
-    ? Object.values(ALL_ROOMS_BY_CENTER).flat()
-    : (ALL_ROOMS_BY_CENTER[draftCenter] || []);
+    ? Array.from(new Set(Object.values(ALL_ROOMS_BY_CENTER).flat()))
+    : (ALL_ROOMS_BY_CENTER[draftCenter] || ['Room 1', 'Room 2', 'Room 3']);
 
   /* If selected center changes, reset room if it no longer applies */
   const handleCenterChange = (c) => {
@@ -691,20 +828,18 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
           </div>
         </div>
 
-        {/* Center Dropdown */}
+        {/* Center Picker Field (Click to open Center Selection pop-up) */}
         <div className="vin-hh-filter-section">
           <div className="vin-hh-filter-section-label">Center</div>
-          <div className="vin-hh-filter-select-wrap">
-            <select
-              className="vin-hh-filter-select"
-              value={draftCenter}
-              onChange={(e) => handleCenterChange(e.target.value)}
-            >
-              <option value="All Centers">All Centers</option>
-              {CENTERS.filter((c) => c !== 'All Centers').map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+          <div
+            className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+            onClick={() => setShowCenterPicker(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="vin-hh-filter-select-display-txt">
+              {draftCenter}
+            </div>
             <ChevronDown size={16} className="vin-hh-filter-select-icon" />
           </div>
         </div>
@@ -732,6 +867,15 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
           Show {draftCount} result{draftCount !== 1 ? 's' : ''}
         </button>
       </div>
+
+      {/* Pop-up Panel for selecting Center */}
+      {showCenterPicker && (
+        <CenterSelectSheet
+          selected={draftCenter}
+          onSelect={(c) => handleCenterChange(c)}
+          onClose={() => setShowCenterPicker(false)}
+        />
+      )}
     </div>
   );
 }
