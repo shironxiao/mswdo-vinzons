@@ -949,29 +949,30 @@
   flex-shrink: 0;
 }
 
-/* Dark Bottom Sheet Panel */
+/* White Bottom Sheet Panel */
 .vin-hh-filter-sheet {
   width: 100%;
   max-width: 440px;
-  background-color: #161a18;
-  color: #ffffff;
+  background-color: #ffffff;
+  color: #0f172a;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
-  padding: 12px 20px 24px;
+  padding: 14px 20px 24px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 18px;
   animation: slideUp 0.22s ease-out;
-  border: 1px solid #28322b;
+  border: 1px solid #e2e8f0;
   border-bottom: none;
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.12);
 }
 
 /* Drag Handle */
 .vin-hh-filter-sheet-handle {
   width: 36px;
   height: 4px;
-  background: #4b554e;
+  background: #cbd5e1;
   border-radius: 2px;
   margin: 0 auto 2px;
 }
@@ -986,23 +987,23 @@
 .vin-hh-filter-sheet-title {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #ffffff;
+  color: #0f172a;
   margin: 0;
 }
 
 .vin-hh-filter-sheet-reset {
   background: none;
   border: none;
-  color: #ffffff;
+  color: #64748b;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   padding: 4px 6px;
-  transition: opacity 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .vin-hh-filter-sheet-reset:hover {
-  opacity: 0.8;
+  color: #0f172a;
 }
 
 /* Sections */
@@ -1014,8 +1015,8 @@
 
 .vin-hh-filter-section-label {
   font-size: 0.82rem;
-  font-weight: 600;
-  color: #f1f5f9;
+  font-weight: 700;
+  color: #334155;
 }
 
 /* Status Pills */
@@ -1027,11 +1028,11 @@
 }
 
 .vin-hh-filter-pill {
-  background: #202622;
-  border: 1px solid #333d36;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
   border-radius: 9999px;
   padding: 7px 18px;
-  color: #ffffff;
+  color: #475569;
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
@@ -1039,12 +1040,14 @@
 }
 
 .vin-hh-filter-pill:hover {
-  border-color: #64748b;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
 }
 
 .vin-hh-filter-pill.active {
-  border-color: #ffffff;
-  background: #202622;
+  border-color: #14532d;
+  background: #14532d;
   color: #ffffff;
   font-weight: 800;
 }
@@ -1057,11 +1060,11 @@
 
 .vin-hh-filter-select {
   width: 100%;
-  background: #202622;
-  border: 1px solid #333d36;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
   border-radius: 12px;
-  padding: 12px 38px 12px 16px;
-  color: #ffffff;
+  padding: 12px 38px 12px 14px;
+  color: #0f172a;
   font-size: 0.9rem;
   font-weight: 600;
   outline: none;
@@ -1069,10 +1072,12 @@
   -webkit-appearance: none;
   cursor: pointer;
   box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .vin-hh-filter-select:focus {
-  border-color: #22c55e;
+  border-color: #14532d;
+  box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.1);
 }
 
 .vin-hh-filter-select-icon {
@@ -1081,7 +1086,7 @@
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  color: #cbd5e1;
+  color: #64748b;
 }
 
 /* Big Bottom Green Button */
@@ -1097,12 +1102,13 @@
   cursor: pointer;
   text-align: center;
   margin-top: 6px;
-  box-shadow: 0 4px 14px rgba(23, 66, 45, 0.4);
+  box-shadow: 0 4px 14px rgba(23, 66, 45, 0.25);
   transition: all 0.15s ease;
 }
 
 .vin-hh-filter-sheet-apply:hover {
   background: #1e5239;
+  box-shadow: 0 6px 18px rgba(23, 66, 45, 0.35);
 }
 
 .vin-hh-filter-sheet-apply:active {
