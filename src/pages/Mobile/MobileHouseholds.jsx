@@ -19,8 +19,8 @@ const SEED = [
     id: 1,
     name: 'Antonio Magno',
     age: 45, sex: 'Male', category: 'None',
-    center: 'Vinzons Central Elementary School',
-    room: 'C-1', familyCount: 4,
+    center: 'LGU EC (Mangcaway)',
+    room: 'Room 1', familyCount: 4,
     members: [
       { name: 'Luz Magno',   age: 58, sex: 'Female', category: 'Senior' },
       { name: 'Pablo Magno', age: 20, sex: 'Male',   category: 'None'   },
@@ -32,8 +32,8 @@ const SEED = [
     id: 2,
     name: 'Rosa Santos',
     age: 40, sex: 'Female', category: 'None',
-    center: 'Vinzons Central Elementary School',
-    room: 'A-2', familyCount: 4,
+    center: 'LGU EC (Mangcaway)',
+    room: 'Room 2', familyCount: 4,
     members: [
       { name: 'Pedro Santos', age: 42, sex: 'Male',   category: 'None' },
       { name: 'Maya Santos',  age: 16, sex: 'Female', category: 'None' },
@@ -45,8 +45,8 @@ const SEED = [
     id: 3,
     name: 'Patricia Cruz',
     age: 35, sex: 'Female', category: 'Pregnant/Lactating',
-    center: 'Vinzons Gymnasium',
-    room: 'B-1', familyCount: 3,
+    center: 'LGU EC (Bliss)',
+    room: 'Room 1', familyCount: 3,
     members: [
       { name: 'Mark Cruz', age: 38, sex: 'Male',   category: 'None' },
       { name: 'Lina Cruz', age: 10, sex: 'Female', category: 'None' },
@@ -57,8 +57,8 @@ const SEED = [
     id: 4,
     name: 'Juan Dela Cruz',
     age: 50, sex: 'Male', category: 'PWD',
-    center: 'Calaguas National High School',
-    room: 'A-1', familyCount: 3,
+    center: 'PLGU EC (Mat-I)',
+    room: 'Room 3', familyCount: 3,
     members: [
       { name: 'Maria Dela Cruz', age: 48, sex: 'Female', category: 'None' },
       { name: 'John Dela Cruz',  age: 22, sex: 'Male',   category: 'None' },
@@ -69,7 +69,7 @@ const SEED = [
     id: 5,
     name: 'Elena Bautista',
     age: 42, sex: 'Female', category: 'Solo Parent',
-    center: 'Vinzons Central Elementary School',
+    center: 'Pinagtigasan EC',
     room: 'Unassigned', familyCount: 3,
     members: [
       { name: 'Carlos Bautista', age: 14, sex: 'Male',   category: 'None' },
@@ -81,8 +81,8 @@ const SEED = [
     id: 6,
     name: 'Roberto Diaz',
     age: 55, sex: 'Male', category: 'Senior',
-    center: 'Vinzons Gymnasium',
-    room: 'Hall A', familyCount: 2,
+    center: 'St. Peter Parish AVR',
+    room: 'Room 1', familyCount: 2,
     members: [
       { name: 'Clara Diaz', age: 52, sex: 'Female', category: 'None' },
     ],
@@ -92,8 +92,8 @@ const SEED = [
     id: 7,
     name: 'Carmen Ramos',
     age: 29, sex: 'Female', category: 'Pregnant/Lactating',
-    center: 'Calaguas National High School',
-    room: 'Rm-2', familyCount: 4,
+    center: 'Biday EC',
+    room: 'Room 2', familyCount: 4,
     members: [
       { name: 'Danilo Ramos', age: 31, sex: 'Male',   category: 'None' },
       { name: 'Mia Ramos',    age: 5,  sex: 'Female', category: 'None' },
@@ -105,8 +105,8 @@ const SEED = [
     id: 8,
     name: 'Fernando Lopez',
     age: 48, sex: 'Male', category: 'PWD',
-    center: 'Vinzons Central Elementary School',
-    room: 'B-2', familyCount: 3,
+    center: 'Sugod EC',
+    room: 'Room 4', familyCount: 3,
     members: [
       { name: 'Grace Lopez', age: 44, sex: 'Female', category: 'None' },
       { name: 'Joy Lopez',   age: 18, sex: 'Female', category: 'None' },
@@ -117,8 +117,8 @@ const SEED = [
     id: 9,
     name: 'Teresa Morales',
     age: 38, sex: 'Female', category: 'None',
-    center: 'Vinzons Gymnasium',
-    room: 'Hall B', familyCount: 3,
+    center: 'Mormons',
+    room: 'Room 1', familyCount: 3,
     members: [
       { name: 'Ramon Morales', age: 40, sex: 'Male', category: 'None' },
       { name: 'Ella Morales',  age: 8,  sex: 'Female', category: 'None' },
@@ -129,7 +129,7 @@ const SEED = [
     id: 10,
     name: 'Danilo Soriano',
     age: 51, sex: 'Male', category: 'None',
-    center: 'Vinzons Gymnasium',
+    center: 'Marabe Church',
     room: 'Unassigned', familyCount: 2,
     members: [
       { name: 'Beth Soriano', age: 49, sex: 'Female', category: 'None' },
@@ -140,8 +140,8 @@ const SEED = [
     id: 11,
     name: 'Marites Villanueva',
     age: 34, sex: 'Female', category: 'Solo Parent',
-    center: 'Calaguas National High School',
-    room: 'Rm-1', familyCount: 3,
+    center: 'Adorno Fathers',
+    room: 'Room 5', familyCount: 3,
     members: [
       { name: 'Joshua Villanueva', age: 11, sex: 'Male', category: 'None' },
       { name: 'Hannah Villanueva', age: 6,  sex: 'Female', category: 'None' },
@@ -152,8 +152,8 @@ const SEED = [
     id: 12,
     name: 'Gregorio Santos',
     age: 62, sex: 'Male', category: 'Senior',
-    center: 'Calaguas National High School',
-    room: 'Rm-3', familyCount: 2,
+    center: 'Mangcawayan EC',
+    room: 'Room 3', familyCount: 2,
     members: [
       { name: 'Amparo Santos', age: 60, sex: 'Female', category: 'Senior' },
     ],
@@ -161,6 +161,7 @@ const SEED = [
   },
 ];
 
+/* Exactly 13 Official Vinzons Evacuation Centers */
 const OFFICIAL_EVAC_CENTERS = [
   { name: 'LGU EC (Mangcaway)', fullName: 'LGU EC', location: 'Mangcaway Brgy. Cal. Sur, Vinzons, CN' },
   { name: 'LGU EC (Bliss)', fullName: 'LGU EC', location: 'Bliss Brgy. Cal Sur, VCN' },
@@ -175,9 +176,6 @@ const OFFICIAL_EVAC_CENTERS = [
   { name: 'Mangcawayan EC', fullName: 'Mangcawayan EC', location: 'Mangcawayan Is., VCN' },
   { name: 'Our Lady of Fatima Shrine', fullName: 'Our Lady of Fatima Shrine', location: 'Mangcawayan Brgy. Calangawan Sur, VCN' },
   { name: 'Brgy. Hall (Aguit-it)', fullName: 'Brgy. Hall', location: 'Brgy. Aguit – it, VCN' },
-  { name: 'Vinzons Central Elementary School', fullName: 'Vinzons Central Elementary School', location: 'Poblacion, Vinzons' },
-  { name: 'Vinzons Gymnasium', fullName: 'Vinzons Gymnasium', location: 'Brgy. San Jose, Vinzons' },
-  { name: 'Calaguas National High School', fullName: 'Calaguas National High School', location: 'Calaguas, Vinzons' },
 ];
 
 const CENTERS = [
@@ -185,25 +183,23 @@ const CENTERS = [
   ...OFFICIAL_EVAC_CENTERS.map((c) => c.name),
 ];
 
-const DEFAULT_CENTER_ROOMS = {
-  'Vinzons Central Elementary School': [
-    { id: 'A-1', name: 'Room A-1 (Main Bldg)', capacity: 30, occupied: 30 },
-    { id: 'A-2', name: 'Room A-2 (Main Bldg)', capacity: 30, occupied: 20 },
-    { id: 'B-1', name: 'Room B-1 (East Wing)', capacity: 25, occupied: 0 },
-    { id: 'B-2', name: 'Room B-2 (East Wing)', capacity: 25, occupied: 12 },
-    { id: 'C-1', name: 'Room C-1 (Annex Bldg)', capacity: 20, occupied: 20 },
-    { id: 'C-2', name: 'Room C-2 (Annex Bldg)', capacity: 20, occupied: 8 },
-  ],
-  'Vinzons Gymnasium': [
-    { id: 'Hall A', name: 'Gym Sector A', capacity: 60, occupied: 40 },
-    { id: 'Hall B', name: 'Gym Sector B', capacity: 60, occupied: 60 },
-  ],
-  'Calaguas National High School': [
-    { id: 'Rm-1', name: 'Room 1 (Senior Bldg)', capacity: 35, occupied: 35 },
-    { id: 'Rm-2', name: 'Room 2 (Senior Bldg)', capacity: 35, occupied: 18 },
-    { id: 'Rm-3', name: 'Room 3 (Junior Bldg)', capacity: 35, occupied: 0 },
-  ],
+/* Each center has 5 rooms: Room 1 through Room 5 */
+const OFFICIAL_ROOMS = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
+
+const createCenterRooms = () => {
+  const map = {};
+  OFFICIAL_EVAC_CENTERS.forEach((c) => {
+    map[c.name] = [
+      { id: 'Room 1', name: 'Room 1', capacity: 30, occupied: 12 },
+      { id: 'Room 2', name: 'Room 2', capacity: 25, occupied: 8 },
+      { id: 'Room 3', name: 'Room 3', capacity: 25, occupied: 0 },
+      { id: 'Room 4', name: 'Room 4', capacity: 20, occupied: 15 },
+      { id: 'Room 5', name: 'Room 5', capacity: 20, occupied: 5 },
+    ];
+  });
+  return map;
 };
+const DEFAULT_CENTER_ROOMS = createCenterRooms();
 
 /* ──────────────────────────────────────────────
    Helpers
@@ -615,25 +611,11 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
    Filter Dropdown (legacy — replaced by HHFilterSheet)
    ────────────────────────────────────────────── */
 
-/* All rooms across all centers for the room dropdown */
-const ALL_ROOMS_BY_CENTER = {
-  'Vinzons Central Elementary School': ['A-1', 'A-2', 'B-1', 'B-2', 'C-1', 'C-2'],
-  'Vinzons Gymnasium': ['Hall A', 'Hall B'],
-  'Calaguas National High School': ['Rm-1', 'Rm-2', 'Rm-3'],
-  'LGU EC (Mangcaway)': ['Room 1', 'Room 2', 'Room 3'],
-  'LGU EC (Bliss)': ['Room 1', 'Room 2', 'Room 3'],
-  'PLGU EC (Mat-I)': ['Room 1', 'Room 2', 'Room 3'],
-  'Pinagtigasan EC': ['Room 1', 'Room 2'],
-  'St. Peter Parish AVR': ['AVR Hall', 'Room 1', 'Room 2'],
-  'Biday EC': ['Room 1', 'Room 2'],
-  'Sugod EC': ['Room 1', 'Room 2'],
-  'Mormons': ['Main Hall', 'Room 1'],
-  'Marabe Church': ['Sanctuary Hall', 'Room 1'],
-  'Adorno Fathers': ['Hall 1', 'Hall 2'],
-  'Mangcawayan EC': ['Room 1', 'Room 2'],
-  'Our Lady of Fatima Shrine': ['Shrine Hall', 'Room 1'],
-  'Brgy. Hall (Aguit-it)': ['Session Hall', 'Room 1'],
-};
+/* All rooms across all centers for the room dropdown (Rooms 1 through 5) */
+const ALL_ROOMS_BY_CENTER = {};
+OFFICIAL_EVAC_CENTERS.forEach((c) => {
+  ALL_ROOMS_BY_CENTER[c.name] = [...OFFICIAL_ROOMS];
+});
 
 /* ──────────────────────────────────────────────
    Center Selection Bottom Sheet (White Theme)
@@ -742,6 +724,121 @@ function CenterSelectSheet({ selected, onSelect, onClose }) {
 }
 
 /* ──────────────────────────────────────────────
+   Room Selection Bottom Sheet (White Theme)
+   ────────────────────────────────────────────── */
+function RoomSelectSheet({ selected, centerName, onSelect, onClose }) {
+  const [tempSelected, setTempSelected] = useState(selected || 'All Rooms');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const roomsList = [
+    { id: 'Room 1', name: 'Room 1', description: 'Capacity: 30 persons' },
+    { id: 'Room 2', name: 'Room 2', description: 'Capacity: 25 persons' },
+    { id: 'Room 3', name: 'Room 3', description: 'Capacity: 25 persons' },
+    { id: 'Room 4', name: 'Room 4', description: 'Capacity: 20 persons' },
+    { id: 'Room 5', name: 'Room 5', description: 'Capacity: 20 persons' },
+  ];
+
+  const filteredRooms = roomsList.filter((r) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+  });
+
+  const handleConfirm = () => {
+    onSelect(tempSelected);
+    onClose();
+  };
+
+  return (
+    <div className="vin-center-picker-overlay" onClick={onClose}>
+      <div className="vin-center-picker-sheet" onClick={(e) => e.stopPropagation()}>
+        {/* Drag handle */}
+        <div className="vin-center-picker-handle" />
+
+        {/* Header subtitle showing center context */}
+        <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, padding: '0 4px' }}>
+          {centerName && centerName !== 'All Centers' ? `Rooms at ${centerName}` : 'All evacuation rooms'}
+        </div>
+
+        {/* Search Bar */}
+        <div className="vin-center-picker-search-box">
+          <Search size={16} className="vin-center-picker-search-icon" />
+          <input
+            type="text"
+            className="vin-center-picker-search-input"
+            placeholder="Search 5 rooms..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="vin-center-picker-clear-btn"
+              onClick={() => setSearchQuery('')}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {/* Room List */}
+        <div className="vin-center-picker-list">
+          {/* All Rooms Option */}
+          {(!searchQuery || 'all rooms'.includes(searchQuery.toLowerCase())) && (
+            <div
+              className={`vin-center-picker-item ${tempSelected === 'All Rooms' ? 'selected' : ''}`}
+              onClick={() => setTempSelected('All Rooms')}
+            >
+              <div className="vin-center-picker-radio">
+                <div className="vin-center-picker-radio-dot" />
+              </div>
+              <div className="vin-center-picker-info">
+                <span className="vin-center-picker-name">All rooms</span>
+                <span className="vin-center-picker-loc">Show households from all rooms</span>
+              </div>
+            </div>
+          )}
+
+          {filteredRooms.map((r) => {
+            const isSelected = tempSelected === r.id;
+            return (
+              <div
+                key={r.id}
+                className={`vin-center-picker-item ${isSelected ? 'selected' : ''}`}
+                onClick={() => setTempSelected(r.id)}
+              >
+                <div className="vin-center-picker-radio">
+                  <div className="vin-center-picker-radio-dot" />
+                </div>
+                <div className="vin-center-picker-info">
+                  <span className="vin-center-picker-name">{r.name}</span>
+                  <span className="vin-center-picker-loc">{r.description}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredRooms.length === 0 && searchQuery && (
+            <div className="vin-center-picker-empty">
+              No rooms found matching &ldquo;{searchQuery}&rdquo;
+            </div>
+          )}
+        </div>
+
+        {/* Select Button */}
+        <button
+          type="button"
+          className="vin-center-picker-submit"
+          onClick={handleConfirm}
+        >
+          Select room
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
    Household Filter Sheet (bottom-sheet panel)
    ────────────────────────────────────────────── */
 function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, search, onApply, onClose }) {
@@ -750,17 +847,11 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
   const [draftCenter, setDraftCenter] = useState(filterCenter);
   const [draftRoom, setDraftRoom] = useState(filterRoom);
   const [showCenterPicker, setShowCenterPicker] = useState(false);
+  const [showRoomPicker, setShowRoomPicker] = useState(false);
 
-  /* Rooms available for the selected center */
-  const roomOptions = draftCenter === 'All Centers'
-    ? Array.from(new Set(Object.values(ALL_ROOMS_BY_CENTER).flat()))
-    : (ALL_ROOMS_BY_CENTER[draftCenter] || ['Room 1', 'Room 2', 'Room 3']);
-
-  /* If selected center changes, reset room if it no longer applies */
+  /* If selected center changes, reset room if needed */
   const handleCenterChange = (c) => {
     setDraftCenter(c);
-    const rooms = c === 'All Centers' ? Object.values(ALL_ROOMS_BY_CENTER).flat() : (ALL_ROOMS_BY_CENTER[c] || []);
-    if (draftRoom !== 'All Rooms' && !rooms.includes(draftRoom)) setDraftRoom('All Rooms');
   };
 
   const handleReset = () => {
@@ -844,20 +935,18 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
           </div>
         </div>
 
-        {/* Room Dropdown */}
+        {/* Room Picker Field (Click to open Room Selection pop-up) */}
         <div className="vin-hh-filter-section">
           <div className="vin-hh-filter-section-label">Room</div>
-          <div className="vin-hh-filter-select-wrap">
-            <select
-              className="vin-hh-filter-select"
-              value={draftRoom}
-              onChange={(e) => setDraftRoom(e.target.value)}
-            >
-              <option value="All Rooms">All Rooms</option>
-              {roomOptions.map((r) => (
-                <option key={r} value={r}>Room {r}</option>
-              ))}
-            </select>
+          <div
+            className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+            onClick={() => setShowRoomPicker(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="vin-hh-filter-select-display-txt">
+              {draftRoom}
+            </div>
             <ChevronDown size={16} className="vin-hh-filter-select-icon" />
           </div>
         </div>
@@ -876,6 +965,16 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
           onClose={() => setShowCenterPicker(false)}
         />
       )}
+
+      {/* Pop-up Panel for selecting Room */}
+      {showRoomPicker && (
+        <RoomSelectSheet
+          selected={draftRoom}
+          centerName={draftCenter}
+          onSelect={(r) => setDraftRoom(r)}
+          onClose={() => setShowRoomPicker(false)}
+        />
+      )}
     </div>
   );
 }
@@ -887,11 +986,17 @@ function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
   const [selectedCenter, setSelectedCenter] = useState(
     household.center && household.center !== 'All Centers'
       ? household.center
-      : 'Vinzons Central Elementary School'
+      : OFFICIAL_EVAC_CENTERS[0].name
   );
   const [feedback, setFeedback] = useState(null);
 
-  const rooms = centerRooms[selectedCenter] || [];
+  const rooms = centerRooms[selectedCenter] || [
+    { id: 'Room 1', name: 'Room 1', capacity: 30, occupied: 12 },
+    { id: 'Room 2', name: 'Room 2', capacity: 25, occupied: 8 },
+    { id: 'Room 3', name: 'Room 3', capacity: 25, occupied: 0 },
+    { id: 'Room 4', name: 'Room 4', capacity: 20, occupied: 15 },
+    { id: 'Room 5', name: 'Room 5', capacity: 20, occupied: 5 },
+  ];
   const neededSlots = household.familyCount || 1;
 
   // Auto-Assign Logic
@@ -1127,8 +1232,8 @@ export default function MobileHouseholds() {
 
   const [activeForm, setActiveForm] = useState({
     head: '', age: '', sex: 'Male',
-    center: 'Vinzons Central Elementary School',
-    room: 'A-1', category: 'None', members: [],
+    center: OFFICIAL_EVAC_CENTERS[0].name,
+    room: 'Room 1', category: 'None', members: [],
   });
 
   /* ── Filter + search ── */
@@ -1230,7 +1335,7 @@ export default function MobileHouseholds() {
 
   /* ── Register / Edit ── */
   const openRegister = () => {
-    setActiveForm({ head: '', age: '', sex: 'Male', center: 'Vinzons Central Elementary School', room: 'A-1', category: 'None', members: [] });
+    setActiveForm({ head: '', age: '', sex: 'Male', center: OFFICIAL_EVAC_CENTERS[0].name, room: 'Room 1', category: 'None', members: [] });
     setModalMode('register');
   };
   const openEdit = (item, e) => {
@@ -1599,16 +1704,22 @@ export default function MobileHouseholds() {
                   <label className="vin-mob-input-label">EVACUATION CENTER</label>
                   <select className="vin-mob-select" value={activeForm.center}
                     onChange={(e) => setActiveForm({ ...activeForm, center: e.target.value })}>
-                    <option>Vinzons Central Elementary School</option>
-                    <option>Vinzons Gymnasium</option>
-                    <option>Calaguas National High School</option>
+                    {OFFICIAL_EVAC_CENTERS.map((c) => (
+                      <option key={c.name} value={c.name}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label">ROOM</label>
-                  <input type="text" placeholder="C-1" className="vin-mob-select"
-                    value={activeForm.room}
-                    onChange={(e) => setActiveForm({ ...activeForm, room: e.target.value })} />
+                  <select className="vin-mob-select" value={activeForm.room}
+                    onChange={(e) => setActiveForm({ ...activeForm, room: e.target.value })}>
+                    <option value="Room 1">Room 1</option>
+                    <option value="Room 2">Room 2</option>
+                    <option value="Room 3">Room 3</option>
+                    <option value="Room 4">Room 4</option>
+                    <option value="Room 5">Room 5</option>
+                    <option value="Unassigned">Unassigned</option>
+                  </select>
                 </div>
               </div>
               <div className="vin-mob-input-group">
