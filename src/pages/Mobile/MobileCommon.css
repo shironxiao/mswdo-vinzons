@@ -156,12 +156,188 @@
   color: #64748b;
 }
 
-/* Quick Access Section in Dashboard */
+/* Quick Access & Recent Activity Section in Dashboard */
 .vin-mob-section-title {
   font-size: 1.15rem;
   font-weight: 800;
   color: #0f172a;
   margin: 12px 0 2px 0;
+}
+
+.vin-mob-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 2px 0;
+}
+
+.vin-mob-section-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ==========================================================
+   Recent Activity Timeline Feed (Detailed Timeline Layout)
+   ========================================================== */
+.vin-mob-activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.vin-mob-activity-item {
+  background: #ffffff;
+  border: 1.5px solid #eef3f0;
+  border-radius: 16px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.vin-mob-activity-item:hover {
+  border-color: #17422d;
+  background-color: #fafcfb;
+  transform: translateY(-1px);
+}
+
+.vin-mob-activity-item:active {
+  transform: scale(0.99);
+}
+
+.vin-mob-activity-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.vin-mob-activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-mob-activity-icon.green {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.vin-mob-activity-icon.blue {
+  background-color: #e0f2fe;
+  color: #0284c7;
+}
+
+.vin-mob-activity-icon.amber {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.vin-mob-activity-icon.mint {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.vin-mob-activity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vin-mob-activity-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vin-mob-activity-type {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.vin-mob-activity-time {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.vin-mob-activity-title {
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-mob-activity-sub {
+  font-size: 0.8rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-mob-activity-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.vin-mob-activity-badge {
+  font-size: 0.72rem;
+  font-weight: 750;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.vin-mob-activity-badge.green {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.vin-mob-activity-badge.blue {
+  background-color: #e0f2fe;
+  color: #0284c7;
+}
+
+.vin-mob-activity-badge.amber {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.vin-mob-activity-badge.mint {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.vin-mob-activity-arrow {
+  color: #94a3b8;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.vin-mob-activity-item:hover .vin-mob-activity-arrow {
+  color: #17422d;
+  transform: translateX(2px);
 }
 
 .vin-mob-quick-card {
