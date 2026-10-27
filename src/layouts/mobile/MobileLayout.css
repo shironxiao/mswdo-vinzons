@@ -4,6 +4,20 @@
    Fully responsive across Mobile, Tablet, and Desktop (100% stretch)
    ========================================================== */
 
+:root {
+  --vin-mobile-nav-height: 68px;
+}
+@media (min-width: 640px) {
+  :root {
+    --vin-mobile-nav-height: 70px;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --vin-mobile-nav-height: 72px;
+  }
+}
+
 .vin-mobile-root {
   min-height: 100vh;
   width: 100%;
@@ -238,7 +252,7 @@
    --------------------------------------------------------- */
 .vin-mobile-content {
   flex: 1;
-  padding: 22px 18px 90px 18px; /* space for bottom nav bar */
+  padding: 22px 18px calc(var(--vin-mobile-nav-height) + 68px) 18px; /* space for sticky pagination footer + bottom nav bar */
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -253,7 +267,8 @@
   right: 0;
   width: 100%;
   max-width: 100%;
-  height: 68px;
+  height: calc(var(--vin-mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background-color: #ffffff;
   border-top: 1px solid #e2ece5;
   display: flex;
@@ -308,10 +323,7 @@
     font-size: 1.25rem;
   }
   .vin-mobile-content {
-    padding: 24px 24px 94px 24px;
-  }
-  .vin-mobile-bottom-nav {
-    height: 70px;
+    padding: 24px 24px calc(var(--vin-mobile-nav-height) + 72px) 24px;
   }
   .vin-mobile-nav-item {
     font-size: 0.78rem;
@@ -327,10 +339,7 @@
     font-size: 1.35rem;
   }
   .vin-mobile-content {
-    padding: 28px 32px 98px 32px;
-  }
-  .vin-mobile-bottom-nav {
-    height: 72px;
+    padding: 28px 32px calc(var(--vin-mobile-nav-height) + 76px) 32px;
   }
   .vin-mobile-nav-item {
     font-size: 0.82rem;

@@ -566,61 +566,117 @@
   color: #0f172a;
 }
 
-/* Pagination */
+/* ==========================================================
+   Sticky Mobile Pagination Footer
+   Pinned right above the fixed mobile bottom nav bar
+   ========================================================== */
 .vin-mob-pagination {
+  position: fixed;
+  bottom: calc(var(--vin-mobile-nav-height, 68px) + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  background: #ffffff;
-  border-top: 1.5px solid #e2e8f0;
-  flex-wrap: wrap;
-  gap: 10px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1.5px solid #dce5df;
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
+  z-index: 38; /* above content rows, below bottom-nav (40) and modals (70+) */
+  box-sizing: border-box;
+  user-select: none;
 }
 
 .vin-mob-pagination-info {
-  font-size: 0.76rem;
-  color: #64748b;
-  font-weight: 600;
+  font-size: 0.78rem;
+  color: #475569;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.vin-mob-pagination-info strong {
+  color: #0f172a;
 }
 
 .vin-mob-pagination-btns {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .vin-mob-page-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  border-radius: 7px;
-  border: 1.5px solid #e2e8f0;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 9px;
+  border: 1.5px solid #d2ddd6;
   background: #ffffff;
-  color: #334155;
-  font-size: 0.78rem;
+  color: #1e293b;
+  font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s ease;
+  touch-action: manipulation;
+  user-select: none;
+  transition: all 0.14s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .vin-mob-page-btn:hover:not(:disabled) {
   background: #f8fafc;
-  border-color: #cbd5e1;
+  border-color: #0b3524;
+  color: #0b3524;
+}
+
+.vin-mob-page-btn:active:not(:disabled) {
+  transform: scale(0.93);
 }
 
 .vin-mob-page-btn.active {
   background: #17422d;
   color: #ffffff;
   border-color: #17422d;
+  box-shadow: 0 2px 8px rgba(23, 66, 45, 0.28);
 }
 
 .vin-mob-page-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
+.vin-mob-page-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 36px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+@media (max-width: 360px) {
+  .vin-mob-pagination {
+    padding: 0 10px;
+  }
+  .vin-mob-page-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+    padding: 0 5px;
+  }
+  .vin-mob-pagination-info {
+    font-size: 0.72rem;
+  }
 }
 
 /* Monitoring table specific */

@@ -500,11 +500,11 @@ export default function MobileCenters() {
           </table>
         </div>
 
-        {/* ── PAGINATION CONTROLS ── */}
+        {/* ── STICKY PAGINATION CONTROLS ── */}
         {filtered.length > 0 && (
           <div className="vin-mob-pagination">
             <span className="vin-mob-pagination-info">
-              Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length} centers
+              Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong>
             </span>
             <div className="vin-mob-pagination-btns">
               <button
@@ -514,7 +514,7 @@ export default function MobileCenters() {
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
               >
-                <ChevronLeft size={15} />
+                <ChevronLeft size={18} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                 <button
@@ -533,7 +533,7 @@ export default function MobileCenters() {
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"
               >
-                <ChevronRight size={15} />
+                <ChevronRight size={18} />
               </button>
             </div>
           </div>
