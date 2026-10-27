@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, PackageCheck, Building } from 'lucide-react';
+import { Plus, PackageCheck, Building, ChevronLeft, ChevronRight } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
@@ -16,6 +16,8 @@ export default function ReliefGoodsStubs() {
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customBatches, setCustomBatches] = useState([]);
@@ -115,6 +117,10 @@ export default function ReliefGoodsStubs() {
     });
   }, [allBatches, filterCenter, filterRoom, filterStatus, centers]);
 
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedBatches = filtered.slice(startIndex, startIndex + pageSize);
+
   return (
     <div className="vin-feature-page">
       <header className="vin-feature-header">
@@ -145,19 +151,28 @@ export default function ReliefGoodsStubs() {
                 key: 'center',
                 label: 'Center',
                 value: filterCenter,
-                onRemove: () => setFilterCenter('All Centers'),
+                onRemove: () => {
+                  setFilterCenter('All Centers');
+                  setCurrentPage(1);
+                },
               },
               filterRoom !== 'All Rooms' && {
                 key: 'room',
                 label: 'Room',
                 value: filterRoom,
-                onRemove: () => setFilterRoom('All Rooms'),
+                onRemove: () => {
+                  setFilterRoom('All Rooms');
+                  setCurrentPage(1);
+                },
               },
               filterStatus !== 'All Status' && {
                 key: 'status',
                 label: 'Status',
                 value: filterStatus,
-                onRemove: () => setFilterStatus('All Status'),
+                onRemove: () => {
+                  setFilterStatus('All Status');
+                  setCurrentPage(1);
+                },
               },
             ]}
           />
@@ -176,14 +191,14 @@ export default function ReliefGoodsStubs() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {paginatedBatches.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No relief goods stubs match the current filter criteria.
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => (
+              paginatedBatches.map((item) => (
                 <tr key={item.batchId}>
                   <td style={{ fontWeight: 700, color: '#0f172a' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -212,6 +227,52 @@ export default function ReliefGoodsStubs() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {filtered.length > 0 && (
+        <div className="vin-admin-pagination">
+          <span className="vin-pagination-info">
+            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> relief goods batches
+          </span>
+
+          <div className="vin-pagination-btns">
+            <button
+              type="button"
+              className="vin-page-nav-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+              <span>Previous</span>
+            </button>
+
+            <div className="vin-page-numbers">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`vin-page-num-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="vin-page-nav-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              <span>Next</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Issue Stubs Batch Modal Popup ── */}
       {isModalOpen && (
@@ -341,6 +402,7 @@ export default function ReliefGoodsStubs() {
           setFilterStatus(status);
           setFilterCenter(center);
           setFilterRoom(room);
+          setCurrentPage(1);
         }}
         onClose={() => setShowFilterModal(false)}
       />

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Building, X } from 'lucide-react';
+import { Plus, Building, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
@@ -15,6 +15,8 @@ export default function RoomPlacement() {
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   // Custom added rooms state
   const [customRooms, setCustomRooms] = useState([]);
@@ -70,6 +72,10 @@ export default function RoomPlacement() {
       return matchCenter && matchStatus && matchRoom;
     });
   }, [allRooms, filterCenter, filterStatus, filterRoom, centers]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedRooms = filtered.slice(startIndex, startIndex + pageSize);
 
   const handleOpenAddModal = () => {
     const defaultCenter =
@@ -138,19 +144,28 @@ export default function RoomPlacement() {
                 key: 'center',
                 label: 'Center',
                 value: filterCenter,
-                onRemove: () => setFilterCenter('All Centers'),
+                onRemove: () => {
+                  setFilterCenter('All Centers');
+                  setCurrentPage(1);
+                },
               },
               filterRoom !== 'All Rooms' && {
                 key: 'room',
                 label: 'Room',
                 value: filterRoom,
-                onRemove: () => setFilterRoom('All Rooms'),
+                onRemove: () => {
+                  setFilterRoom('All Rooms');
+                  setCurrentPage(1);
+                },
               },
               filterStatus !== 'All Status' && {
                 key: 'status',
                 label: 'Status',
                 value: filterStatus,
-                onRemove: () => setFilterStatus('All Status'),
+                onRemove: () => {
+                  setFilterStatus('All Status');
+                  setCurrentPage(1);
+                },
               },
             ]}
           />
@@ -167,14 +182,14 @@ export default function RoomPlacement() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {paginatedRooms.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No rooms match the current filter criteria.
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => (
+              paginatedRooms.map((item) => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.id}</td>
                   <td>
@@ -198,6 +213,52 @@ export default function RoomPlacement() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {filtered.length > 0 && (
+        <div className="vin-admin-pagination">
+          <span className="vin-pagination-info">
+            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> rooms
+          </span>
+
+          <div className="vin-pagination-btns">
+            <button
+              type="button"
+              className="vin-page-nav-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+              <span>Previous</span>
+            </button>
+
+            <div className="vin-page-numbers">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`vin-page-num-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="vin-page-nav-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              <span>Next</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Add Room Modal Popup ── */}
       {isModalOpen && (
@@ -321,6 +382,7 @@ export default function RoomPlacement() {
           setFilterStatus(status);
           setFilterCenter(center);
           setFilterRoom(room);
+          setCurrentPage(1);
         }}
         onClose={() => setShowFilterModal(false)}
       />

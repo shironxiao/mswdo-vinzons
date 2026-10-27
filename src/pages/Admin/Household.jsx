@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
-  CheckCircle2, Clock, Users,
+  CheckCircle2, Clock, Users, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import checkIcon from '../../assets/check.png';
@@ -532,6 +532,8 @@ export default function Household() {
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
@@ -569,6 +571,10 @@ export default function Household() {
   const issuedCount = households.filter((h) => h.stubCode).length;
   const pendingCount = totalCount - issuedCount;
   const filteredIssued = filtered.filter((h) => h.stubCode);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
 
   /* ── Issue stub ── */
   const issueStub = (hhId) => {
@@ -738,19 +744,28 @@ export default function Household() {
                 key: 'center',
                 label: 'Center',
                 value: filterCenter,
-                onRemove: () => setFilterCenter('All Centers'),
+                onRemove: () => {
+                  setFilterCenter('All Centers');
+                  setCurrentPage(1);
+                },
               },
               filterRoom !== 'All Rooms' && {
                 key: 'room',
                 label: 'Room',
                 value: filterRoom,
-                onRemove: () => setFilterRoom('All Rooms'),
+                onRemove: () => {
+                  setFilterRoom('All Rooms');
+                  setCurrentPage(1);
+                },
               },
               filterStub !== 'All' && {
                 key: 'stub',
                 label: 'Status',
                 value: filterStub,
-                onRemove: () => setFilterStub('All'),
+                onRemove: () => {
+                  setFilterStub('All');
+                  setCurrentPage(1);
+                },
               },
             ]}
           >
@@ -799,14 +814,14 @@ export default function Household() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {paginatedHouseholds.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No households match the current search &amp; filter criteria.
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => (
+              paginatedHouseholds.map((item) => (
                 <tr
                   key={item.id}
                   onClick={() => setSelectedHousehold(item)}
@@ -868,6 +883,52 @@ export default function Household() {
           </tbody>
         </table>
       </div>
+
+      {/* ── Pagination Controls ── */}
+      {filtered.length > 0 && (
+        <div className="vin-admin-pagination">
+          <span className="vin-pagination-info">
+            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> households
+          </span>
+
+          <div className="vin-pagination-btns">
+            <button
+              type="button"
+              className="vin-page-nav-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+              <span>Previous</span>
+            </button>
+
+            <div className="vin-page-numbers">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`vin-page-num-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="vin-page-nav-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              <span>Next</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Stub Issuance Modal ── */}
       {selectedHousehold && (
@@ -1094,6 +1155,7 @@ export default function Household() {
           setFilterStub(status);
           setFilterCenter(center);
           setFilterRoom(room);
+          setCurrentPage(1);
         }}
         onClose={() => setShowFilterModal(false)}
       />
