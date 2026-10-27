@@ -1,84 +1,60 @@
 /* ==========================================================
-   Mobile Login Screen Styles — Fully Responsive
-   Mobile: full-screen card | Tablet & Desktop: centered floating panel
+   Mobile Login Screen Styles — Modern & Fully Responsive
+   Mobile, Tablet & Desktop: Centered card with no awkward white space
    ========================================================== */
 
 .vin-mobile-login-wrapper {
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   display: flex;
   justify-content: center;
-  align-items: stretch;
-  background-color: #f1f5f3;
+  align-items: center;
+  background: linear-gradient(135deg, #0b291a 0%, #17422d 38%, #f1f5f3 38%, #f1f5f3 100%);
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .vin-mobile-login-card {
   width: 100%;
-  max-width: 430px;
-  min-height: 100vh;
+  max-width: 420px;
   background-color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(15, 44, 30, 0.15), 0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid #d8e5de;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  position: relative;
+  margin: auto;
   box-sizing: border-box;
-}
-
-/* ── Tablet & Desktop: centered floating panel ── */
-@media (min-width: 640px) {
-  .vin-mobile-login-wrapper {
-    align-items: center;
-    background: linear-gradient(135deg, #e8f4ec 0%, #f1f5f3 50%, #e4f0e8 100%);
-    padding: 40px 24px;
-  }
-
-  .vin-mobile-login-card {
-    min-height: unset;
-    border-radius: 24px;
-    box-shadow: 0 20px 60px rgba(23, 66, 45, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
-    max-width: 460px;
-    width: 100%;
-  }
-}
-
-@media (min-width: 1024px) {
-  .vin-mobile-login-wrapper {
-    padding: 60px 40px;
-    background: linear-gradient(135deg, #ddf0e4 0%, #f1f5f3 40%, #e4f0e8 100%);
-  }
-
-  .vin-mobile-login-card {
-    max-width: 480px;
-    box-shadow: 0 24px 80px rgba(23, 66, 45, 0.16), 0 6px 20px rgba(0, 0, 0, 0.06);
-  }
 }
 
 /* Header with dark green brand background */
 .vin-mobile-login-header {
-  background-color: #17422d;
+  background: linear-gradient(135deg, #0f2c1e 0%, #17422d 100%);
   color: #ffffff;
-  padding: 44px 24px 36px 24px;
+  padding: 34px 24px 28px 24px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .vin-mobile-system-subtitle {
-  color: #7fa890;
-  font-size: 0.95rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  color: #a3c4b1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   margin: 0;
+  text-transform: uppercase;
 }
 
 .vin-mobile-system-title {
   color: #ffffff;
-  font-size: 1.75rem;
+  font-size: 1.7rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0;
@@ -86,8 +62,7 @@
 
 /* Form Container */
 .vin-mobile-login-body {
-  flex: 1;
-  padding: 36px 28px 28px 28px;
+  padding: 28px 24px 24px 24px;
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
@@ -96,19 +71,19 @@
 .vin-mobile-login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .vin-mobile-field-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
 .vin-mobile-field-label {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #556960;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #475569;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -124,8 +99,8 @@
 }
 
 .vin-mobile-input-wrapper:focus-within {
-  border-color: #1b5338;
-  box-shadow: 0 0 0 3px rgba(27, 83, 56, 0.12);
+  border-color: #17422d;
+  box-shadow: 0 0 0 3px rgba(23, 66, 45, 0.12);
 }
 
 .vin-mobile-field-icon {
@@ -142,8 +117,8 @@
   width: 100%;
   border: none;
   background: transparent;
-  padding: 14px 14px 14px 44px;
-  font-size: 0.95rem;
+  padding: 13px 14px 13px 44px;
+  font-size: 0.94rem;
   color: #1e293b;
   outline: none;
   border-radius: 12px;
@@ -176,33 +151,34 @@
 
 /* Sign In Button */
 .vin-mobile-submit-btn {
-  margin-top: 10px;
+  margin-top: 8px;
   width: 100%;
-  background-color: #2b743a;
+  background-color: #17422d;
   color: #ffffff;
   border: none;
   border-radius: 12px;
-  padding: 15px;
-  font-size: 1.05rem;
+  padding: 14px;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 6px rgba(43, 116, 58, 0.2);
+  box-shadow: 0 2px 6px rgba(23, 66, 45, 0.25);
 }
 
 .vin-mobile-submit-btn:hover {
-  background-color: #236130;
-  box-shadow: 0 4px 12px rgba(43, 116, 58, 0.3);
+  background-color: #0f2c1e;
+  box-shadow: 0 4px 12px rgba(23, 66, 45, 0.35);
 }
 
 .vin-mobile-submit-btn:active {
-  transform: scale(0.99);
+  transform: scale(0.98);
 }
 
-/* Switch to admin link */
+/* Switch to admin link (situated naturally below form) */
 .vin-mobile-switch-box {
-  margin-top: auto;
-  padding-top: 28px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
   text-align: center;
 }
 
@@ -212,18 +188,45 @@
   gap: 6px;
   background: none;
   border: none;
-  color: #2b743a;
-  font-size: 0.9rem;
-  font-weight: 600;
+  color: #17422d;
+  font-size: 0.88rem;
+  font-weight: 700;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .vin-mobile-switch-link:hover {
-  color: #17422d;
-  background-color: #edf5f0;
+  background-color: #eaf4ef;
+  color: #0f2c1e;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 360px) {
+  .vin-mobile-login-header {
+    padding: 24px 16px 20px 16px;
+  }
+  .vin-mobile-system-title {
+    font-size: 1.45rem;
+  }
+  .vin-mobile-login-body {
+    padding: 20px 16px 16px 16px;
+  }
+  .vin-mobile-submit-btn {
+    padding: 12px;
+    font-size: 0.95rem;
+  }
+}
+
+/* Responsive adjustments for tablet / desktop */
+@media (min-width: 640px) {
+  .vin-mobile-login-wrapper {
+    background: linear-gradient(135deg, #0b291a 0%, #17422d 42%, #e5ede8 42%, #e5ede8 100%);
+    padding: 40px 24px;
+  }
+  .vin-mobile-login-card {
+    max-width: 440px;
+    border-radius: 24px;
+  }
 }

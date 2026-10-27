@@ -1,15 +1,16 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, Activity } from 'lucide-react';
+import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 
 export default function MobileProfile() {
   const navigate = useNavigate();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
-    if (confirm('Log out from MSWDO Personnel account?')) {
-      navigate('/login');
-    }
+    setShowLogoutModal(true);
   };
 
   return (
@@ -69,6 +70,21 @@ export default function MobileProfile() {
           Log out
         </button>
       </div>
+
+      {/* Custom Logout Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        title="Log Out"
+        message="Are you sure you want to log out from your MSWDO Personnel account?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          navigate('/login');
+        }}
+        onCancel={() => setShowLogoutModal(false)}
+      />
     </div>
   );
 }

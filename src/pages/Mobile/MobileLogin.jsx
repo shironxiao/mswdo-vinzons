@@ -54,6 +54,7 @@ export default function MobileLogin() {
                   placeholder="Enter email or username"
                   value={formData.username}
                   onChange={handleChange}
+                  autoComplete="username"
                   className="vin-mobile-input"
                   required
                 />
@@ -76,6 +77,7 @@ export default function MobileLogin() {
                   placeholder="Enter password"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="current-password"
                   className="vin-mobile-input"
                   required
                 />

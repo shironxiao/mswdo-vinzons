@@ -899,8 +899,18 @@
 }
 
 .vin-hh-filters-trigger.active {
-  border-color: #166534;
-  color: #14532d;
+  background: #f0fdf4;
+  border-color: #15803d;
+  color: #15803d;
+}
+
+.vin-hh-filters-trigger.active .vin-hh-filters-trigger-icon {
+  color: #15803d;
+}
+
+.vin-hh-filters-trigger span {
+  color: inherit;
+  font-weight: 700;
 }
 
 .vin-hh-filters-trigger-icon {
@@ -912,10 +922,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
+  min-width: 18px;
   height: 18px;
-  border-radius: 50%;
-  background: #14532d;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #15803d;
   color: #ffffff;
   font-size: 0.68rem;
   font-weight: 800;

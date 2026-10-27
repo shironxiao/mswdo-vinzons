@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building, Bell, Shield, Database } from 'lucide-react';
+import { Building, Bell, Shield, Database, CheckCircle2, X } from 'lucide-react';
+import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './Settings.css';
 
 const DEFAULT_SETTINGS = {
@@ -19,6 +20,14 @@ const DEFAULT_SETTINGS = {
 export default function Settings() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -29,20 +38,22 @@ export default function Settings() {
   };
 
   const handleReset = () => {
-    if (confirm('Reset workspace configuration to MSWDO-Vinzons defaults?')) {
-      setSettings(DEFAULT_SETTINGS);
-    }
+    setShowResetModal(true);
+  };
+
+  const handleConfirmReset = () => {
+    setSettings(DEFAULT_SETTINGS);
+    setShowResetModal(false);
+    showToast('Workspace settings reset to defaults.');
   };
 
   const handleSave = (e) => {
     e.preventDefault();
-    alert('Workspace settings saved successfully! (UI Only)');
+    showToast('Workspace settings saved successfully!');
   };
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to log out of MSWDO Operations?')) {
-      navigate('/admin/login');
-    }
+    setShowLogoutModal(true);
   };
 
   return (
@@ -75,6 +86,23 @@ export default function Settings() {
           </button>
         </div>
       </header>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="vin-toast-banner" style={{ margin: '0 0 20px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={18} color="#15803d" />
+            <span>{toastMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Main Settings Card */}
       <form onSubmit={handleSave} className="vin-settings-card">
@@ -266,6 +294,33 @@ export default function Settings() {
           Log-out
         </button>
       </footer>
+
+      {/* Custom Logout Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        title="Sign Out"
+        message="Are you sure you want to log out of MSWDO Operations?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          navigate('/admin/login');
+        }}
+        onCancel={() => setShowLogoutModal(false)}
+      />
+
+      {/* Custom Reset Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={showResetModal}
+        title="Reset Configuration"
+        message="Reset all workspace configuration settings to MSWDO-Vinzons defaults? This will overwrite your current settings."
+        confirmLabel="Reset Defaults"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmReset}
+        onCancel={() => setShowResetModal(false)}
+      />
     </div>
   );
 }

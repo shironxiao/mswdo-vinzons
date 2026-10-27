@@ -432,16 +432,21 @@ export function AdminFilterBar({
   activeChips = [],
   children,
 }) {
+  const activeCount = activeChips.filter((c) => c && c.value).length;
+
   return (
     <div className="vin-admin-unified-filter-bar">
       {/* Main Filters Button (Exact mobile design) */}
       <button
         type="button"
-        className={`vin-hh-filters-trigger ${hasActiveFilters ? 'active' : ''}`}
+        className={`vin-hh-filters-trigger ${hasActiveFilters || activeCount > 0 ? 'active' : ''}`}
         onClick={onOpenFilters}
       >
         <SlidersHorizontal size={14} className="vin-hh-filters-trigger-icon" />
         <span>Filters</span>
+        {activeCount > 0 && (
+          <span className="vin-hh-filters-trigger-badge">{activeCount}</span>
+        )}
       </button>
 
       {/* Active Filter Chips */}

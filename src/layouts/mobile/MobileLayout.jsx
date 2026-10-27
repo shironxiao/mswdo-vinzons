@@ -12,11 +12,13 @@ import {
   LogOut,
 } from 'lucide-react';
 import { MOBILE_NAV_ITEMS } from './mobileNavConfig';
+import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './MobileLayout.css';
 
 export default function MobileLayout({ children }) {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Dynamic Online/Offline detector
   const [isOnline, setIsOnline] = useState(
@@ -39,9 +41,8 @@ export default function MobileLayout({ children }) {
   }, []);
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to log out?')) {
-      navigate('/login');
-    }
+    setDrawerOpen(false);
+    setShowLogoutModal(true);
   };
 
   const handleNavigateMenu = (path) => {
@@ -172,6 +173,21 @@ export default function MobileLayout({ children }) {
           })}
         </nav>
       </div>
+
+      {/* Custom Logout Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        title="Log Out"
+        message="Are you sure you want to log out of your MSWDO Personnel account?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          navigate('/login');
+        }}
+        onCancel={() => setShowLogoutModal(false)}
+      />
     </div>
   );
 }
