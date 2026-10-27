@@ -1520,7 +1520,7 @@ export default function MobileHouseholds() {
                           <div className="vin-mob-head-name">{item.name}</div>
                           <div className="vin-mob-head-sub">
                             {item.room && item.room !== 'Unassigned' ? (
-                              <span>Room {item.room}</span>
+                              <span>{item.room.startsWith('Room') ? item.room : `Room ${item.room}`}</span>
                             ) : (
                               <span className="vin-mob-unassigned-tag">No Room</span>
                             )}

@@ -8,7 +8,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 0 16px 10px;
+  padding: 0 0 10px;
 }
 
 .vin-mon-filter-btn {
@@ -113,7 +113,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 16px 10px;
+  padding: 0 0 10px;
   font-size: 0.8rem;
   color: #64748b;
 }
@@ -123,7 +123,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  padding: 0 16px 20px;
+  padding: 0 0 20px;
 }
 
 /* Tile */
