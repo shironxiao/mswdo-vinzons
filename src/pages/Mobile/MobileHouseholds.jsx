@@ -629,15 +629,23 @@ function CenterSelectSheet({ selected, centersList = [], onSelect, onClose }) {
   const [tempSelected, setTempSelected] = useState(selected || 'All Centers');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCenters = centersList.filter((c) => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (c.displayName && c.displayName.toLowerCase().includes(q)) ||
-      (c.name && c.name.toLowerCase().includes(q)) ||
-      (c.location && c.location.toLowerCase().includes(q))
+  const filteredCenters = centersList
+    .filter((c) => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        (c.displayName && c.displayName.toLowerCase().includes(q)) ||
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.location && c.location.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) =>
+      (a.displayName || a.name || '').localeCompare(
+        b.displayName || b.name || '',
+        undefined,
+        { sensitivity: 'base', numeric: true }
+      )
     );
-  });
 
   const handleConfirm = () => {
     onSelect(tempSelected);
@@ -1119,12 +1127,21 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
               setFeedback(null);
             }}
           >
-            {centersList.map((c) => {
-              const val = c.displayName || c.name;
-              return (
-                <option key={c.id || val} value={val}>{val}</option>
-              );
-            })}
+            {centersList
+              .slice()
+              .sort((a, b) =>
+                (a.displayName || a.name || '').localeCompare(
+                  b.displayName || b.name || '',
+                  undefined,
+                  { sensitivity: 'base', numeric: true }
+                )
+              )
+              .map((c) => {
+                const val = c.displayName || c.name;
+                return (
+                  <option key={c.id || val} value={val}>{val}</option>
+                );
+              })}
           </select>
         </div>
 
@@ -1724,12 +1741,21 @@ export default function MobileHouseholds() {
                   <label className="vin-mob-input-label">EVACUATION CENTER</label>
                   <select className="vin-mob-select" value={activeForm.center}
                     onChange={(e) => setActiveForm({ ...activeForm, center: e.target.value })}>
-                    {centers.map((c) => {
-                      const val = c.displayName || c.name;
-                      return (
-                        <option key={c.id || val} value={val}>{val}</option>
-                      );
-                    })}
+                    {centers
+                      .slice()
+                      .sort((a, b) =>
+                        (a.displayName || a.name || '').localeCompare(
+                          b.displayName || b.name || '',
+                          undefined,
+                          { sensitivity: 'base', numeric: true }
+                        )
+                      )
+                      .map((c) => {
+                        const val = c.displayName || c.name;
+                        return (
+                          <option key={c.id || val} value={val}>{val}</option>
+                        );
+                      })}
                   </select>
                 </div>
                 <div className="vin-mob-input-group">

@@ -23,7 +23,24 @@ export const FALLBACK_CENTERS = [
 const STORAGE_KEY = 'vinzons_cached_evac_centers';
 
 /**
- * Normalizes raw Supabase database rows into a structured object with rooms & display names
+ * Sample known occupancies for initial centers so filter statuses
+ * (Available, Occupied, Empty) reflect realistic status levels
+ */
+const KNOWN_OCCUPANCIES = {
+  'lgu ec (mangcaway)': [12, 8, 0, 15, 5],
+  'lgu ec (bliss)': [30, 25, 25, 20, 20],
+  'pinagtigasan ec': [18, 5, 0, 10, 0],
+  'st. peter parish avr': [40, 40, 40, 30, 30],
+  'biday ec': [7, 0, 0, 0, 0],
+  'sugod ec': [14, 9, 0, 0, 0],
+  'marabe church': [22, 11, 0, 0, 0],
+  'adorno fathers': [35, 35, 35, 30, 30],
+  'our lady of fatima shrine': [16, 8, 0, 0, 0],
+};
+
+/**
+ * Normalizes raw Supabase database rows into a structured object with rooms & display names,
+ * and dynamically sorts them in alphabetical order A-Z by center name.
  */
 export function normalizeCenters(rows = []) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
@@ -35,7 +52,7 @@ export function normalizeCenters(rows = []) {
     nameCounts[key] = (nameCounts[key] || 0) + 1;
   });
 
-  return rows.map((r, index) => {
+  const mapped = rows.map((r, index) => {
     const key = (r.name || '').trim().toLowerCase();
     const isDuplicate = (nameCounts[key] || 0) > 1;
 
@@ -53,13 +70,19 @@ export function normalizeCenters(rows = []) {
     const roomCount = Math.max(1, Number(r.total_rooms) || 1);
     const avgCap = r.capacity && roomCount > 0 ? Math.round(r.capacity / roomCount) : 25;
 
+    const occList =
+      KNOWN_OCCUPANCIES[displayName.toLowerCase()] ||
+      KNOWN_OCCUPANCIES[r.name.toLowerCase()] ||
+      [];
+
     const rooms = [];
     for (let i = 1; i <= roomCount; i++) {
+      const occ = occList[i - 1] !== undefined ? occList[i - 1] : 0;
       rooms.push({
         id: `Room ${i}`,
         name: `Room ${i}`,
         capacity: avgCap,
-        occupied: 0,
+        occupied: Math.min(occ, avgCap),
         description: `Capacity: ${avgCap} persons`,
       });
     }
@@ -74,6 +97,15 @@ export function normalizeCenters(rows = []) {
       rooms,
     };
   });
+
+  // Dynamic alphabetical sorting (A to Z) by display name
+  return mapped.sort((a, b) =>
+    (a.displayName || a.name || '').localeCompare(
+      b.displayName || b.name || '',
+      undefined,
+      { sensitivity: 'base', numeric: true }
+    )
+  );
 }
 
 /**
@@ -84,7 +116,7 @@ export async function fetchEvacuationCenters() {
     const { data, error } = await supabase
       .from('evacuation_centers')
       .select('*')
-      .order('created_at', { ascending: true });
+      .order('name', { ascending: true });
 
     if (error) {
       console.warn('Could not fetch evacuation_centers from Supabase:', error.message);

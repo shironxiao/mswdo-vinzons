@@ -295,12 +295,12 @@ function RoomsSheet({ center, onClose }) {
    ────────────────────────────────────────────── */
 export default function MobileCenters() {
   const { centers: dbCenters, refetch } = useEvacuationCenters();
-  const [centers, setCenters] = useState(CENTERS_DATA);
+  const [centers, setCenters] = useState(dbCenters || []);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Available' | 'Occupied' | 'Empty'
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedCenter, setSelectedCenter] = useState(null);
-  const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '5' });
+  const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '5', capacity: '100' });
 
   useEffect(() => {
     if (dbCenters && dbCenters.length > 0) {
@@ -320,16 +320,23 @@ export default function MobileCenters() {
     }
   }, [dbCenters]);
 
-  /* ── Filter & Search ── */
-  const filtered = centers.filter((c) => {
-    const matchSearch =
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      c.location.toLowerCase().includes(search.toLowerCase());
-    const status = centerStatusLabel(c);
-    const matchStatus = filterStatus === 'All' || status === filterStatus;
-    return matchSearch && matchStatus;
-  });
+  /* ── Filter & Search with Dynamic Alphabetical Ordering ── */
+  const filtered = centers
+    .filter((c) => {
+      const matchSearch =
+        (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.location || '').toLowerCase().includes(search.toLowerCase());
+      const status = centerStatusLabel(c);
+      const matchStatus = filterStatus === 'All' || status === filterStatus;
+      return matchSearch && matchStatus;
+    })
+    .sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', undefined, {
+        sensitivity: 'base',
+        numeric: true,
+      })
+    );
 
   /* ── Pagination ── */
   const [currentPage, setCurrentPage] = useState(1);
@@ -345,22 +352,29 @@ export default function MobileCenters() {
 
   const handleAddCenter = async (e) => {
     e.preventDefault();
-    if (!newCenter.name) return;
-    const roomCount = Number(newCenter.rooms) || 5;
+    if (!newCenter.name.trim()) return;
+    const roomCount = Math.max(1, Number(newCenter.rooms) || 1);
+    const capacityVal = Number(newCenter.capacity) || (roomCount * 25);
 
     try {
-      await supabase.from('evacuation_centers').insert({
-        name: newCenter.name,
-        location: newCenter.location || 'Vinzons, Camarines Norte',
+      const { data, error } = await supabase.from('evacuation_centers').insert({
+        name: newCenter.name.trim(),
+        location: (newCenter.location || 'Vinzons, Camarines Norte').trim(),
         total_rooms: roomCount,
-        capacity: roomCount * 25,
-      });
-      if (refetch) refetch();
+        capacity: capacityVal,
+      }).select();
+
+      if (error) {
+        console.error('Supabase error inserting center:', error.message);
+      } else {
+        console.log('Center added to Supabase:', data);
+      }
+      if (refetch) await refetch();
     } catch (err) {
-      console.warn('Could not insert to Supabase:', err);
+      console.warn('Network error inserting center:', err);
     }
 
-    setNewCenter({ name: '', location: '', rooms: '5' });
+    setNewCenter({ name: '', location: '', rooms: '5', capacity: '100' });
     setIsAddOpen(false);
   };
 
@@ -377,7 +391,9 @@ export default function MobileCenters() {
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Centers</h1>
-          <p className="vin-mob-subtitle">Tap a center to view its rooms</p>
+          <p className="vin-mob-subtitle">
+            {filtered.length} official center{filtered.length !== 1 ? 's' : ''} • Tap to view rooms
+          </p>
         </div>
         <button type="button" className="vin-mob-register-btn" onClick={() => setIsAddOpen(true)}>
           <Plus size={16} /><span>Add</span>
@@ -558,6 +574,12 @@ export default function MobileCenters() {
                 <input type="number" min="1" placeholder="2" className="vin-mob-select"
                   value={newCenter.rooms}
                   onChange={(e) => setNewCenter({ ...newCenter, rooms: e.target.value })} />
+              </div>
+              <div className="vin-mob-input-group">
+                <label className="vin-mob-input-label">ESTIMATED CAPACITY (PERSONS)</label>
+                <input type="number" min="1" placeholder="e.g. 100" className="vin-mob-select"
+                  value={newCenter.capacity || ''}
+                  onChange={(e) => setNewCenter({ ...newCenter, capacity: e.target.value })} />
               </div>
               <button type="submit" className="vin-mob-sheet-blue-btn" style={{ marginTop: 8 }}>
                 Create Evacuation Center

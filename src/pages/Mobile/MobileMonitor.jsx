@@ -644,22 +644,31 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
                   <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>Show families from all evacuation centers</span>
                 </div>
               </button>
-              {centersList.map((c) => {
-                const val = c.displayName || c.name;
-                return (
-                  <button
-                    key={c.id || val}
-                    type="button"
-                    className={`vin-hh-filter-opt ${draftCenter === val ? 'active' : ''}`}
-                    onClick={() => { setDraftCenter(val); setShowCenterPicker(false); }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                      <span style={{ fontWeight: 700 }}>{val}</span>
-                      <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>{c.location}</span>
-                    </div>
-                  </button>
-                );
-              })}
+              {centersList
+                .slice()
+                .sort((a, b) =>
+                  (a.displayName || a.name || '').localeCompare(
+                    b.displayName || b.name || '',
+                    undefined,
+                    { sensitivity: 'base', numeric: true }
+                  )
+                )
+                .map((c) => {
+                  const val = c.displayName || c.name;
+                  return (
+                    <button
+                      key={c.id || val}
+                      type="button"
+                      className={`vin-hh-filter-opt ${draftCenter === val ? 'active' : ''}`}
+                      onClick={() => { setDraftCenter(val); setShowCenterPicker(false); }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                        <span style={{ fontWeight: 700 }}>{val}</span>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>{c.location}</span>
+                      </div>
+                    </button>
+                  );
+                })}
             </div>
           </div>
         </div>
