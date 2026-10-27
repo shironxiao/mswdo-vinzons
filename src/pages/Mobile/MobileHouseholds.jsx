@@ -1299,7 +1299,7 @@ export default function MobileHouseholds() {
 
   /* ── Pagination ── */
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 3;
+  const pageSize = 10;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1624,36 +1624,26 @@ export default function MobileHouseholds() {
         {filtered.length > 0 && (
           <div className="vin-mob-pagination">
             <span className="vin-mob-pagination-info">
-              Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong>
+              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
             </span>
             <div className="vin-mob-pagination-btns">
               <button
                 type="button"
-                className="vin-mob-page-btn"
+                className="vin-mob-page-btn vin-mob-page-nav"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={16} /> Prev
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  type="button"
-                  className={`vin-mob-page-btn ${pageNum === currentPage ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(pageNum)}
-                >
-                  {pageNum}
-                </button>
-              ))}
               <button
                 type="button"
-                className="vin-mob-page-btn"
+                className="vin-mob-page-btn vin-mob-page-nav"
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"
               >
-                <ChevronRight size={18} />
+                Next <ChevronRight size={16} />
               </button>
             </div>
           </div>
