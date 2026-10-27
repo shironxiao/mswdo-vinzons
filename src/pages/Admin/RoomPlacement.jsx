@@ -1,50 +1,95 @@
-import { useState } from 'react';
-import { Plus, Building, ChevronDown, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Building, ChevronDown, X, DoorOpen } from 'lucide-react';
 import './AdminFeatures.css';
-
-const INITIAL_ROOMS = [
-  { id: 'RM-101', center: 'VCES', name: 'Room 101 - Grade 1 Sampaguita', occupied: 24, status: 'Active' },
-  { id: 'RM-102', center: 'VCES', name: 'Room 102 - Grade 1 Rosal', occupied: 30, status: 'Full' },
-  { id: 'RM-201', center: 'CNHS', name: 'Bldg 2 Room 4', occupied: 18, status: 'Active' },
-  { id: 'CR-B', center: 'VCC', name: 'Vinzons Covered Court - Sector B', occupied: 65, status: 'Active' },
-];
-
-const EVACUATION_CENTERS = [
-  { code: 'VCES', name: 'Vinzons Central Elementary School (VCES)' },
-  { code: 'CNHS', name: 'Calaguas National High School (CNHS)' },
-  { code: 'VCC',  name: 'Vinzons Covered Court (VCC)' },
-  { code: 'VG',   name: 'Vinzons Gymnasium (VG)' },
-];
+import {
+  useEvacuationCenters,
+  getRoomsForCenter,
+  isCenterMatch,
+} from '../../lib/evacuationCenters.js';
 
 const STATUSES = ['All Status', 'Active', 'Full'];
 
 export default function RoomPlacement() {
-  const [rooms, setRooms] = useState(INITIAL_ROOMS);
+  const { centers } = useEvacuationCenters();
   const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [openFilter, setOpenFilter] = useState(null);
 
+  // Custom added rooms state
+  const [customRooms, setCustomRooms] = useState([]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
-    center: 'VCES',
+    center: '',
     id: '',
     name: '',
     occupied: 0,
     status: 'Active',
   });
 
-  const centerFilterOptions = ['All Centers', ...Array.from(new Set(rooms.map((r) => r.center)))];
+  // Centers are already sorted alphabetically by useEvacuationCenters()
+  const centerFilterOptions = useMemo(() => {
+    return ['All Centers', ...centers.map((c) => c.displayName)];
+  }, [centers]);
 
-  const filtered = rooms.filter((r) => {
-    const matchCenter = filterCenter === 'All Centers' || r.center === filterCenter;
-    const matchStatus = filterStatus === 'All Status' || r.status === filterStatus;
-    return matchCenter && matchStatus;
-  });
+  // Dynamic rooms options based on current center filter
+  const roomFilterOptions = useMemo(() => {
+    return getRoomsForCenter(filterCenter, centers);
+  }, [filterCenter, centers]);
+
+  // Combine generated center rooms with custom rooms
+  const allRooms = useMemo(() => {
+    const list = [];
+
+    // Add generated rooms from Supabase centers
+    centers.forEach((center) => {
+      (center.rooms || []).forEach((r) => {
+        const isFull = (r.occupied || 0) >= (r.capacity || 25);
+        list.push({
+          id: `${center.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()}-${r.id.replace(/\s+/g, '')}`,
+          roomKey: r.id, // e.g. "Room 1"
+          center: center.displayName,
+          name: `${r.name} - Capacity ${r.capacity || 25}`,
+          occupied: r.occupied || 0,
+          status: isFull ? 'Full' : 'Active',
+        });
+      });
+    });
+
+    // Add custom rooms created by user
+    return [...customRooms, ...list];
+  }, [centers, customRooms]);
+
+  const filtered = useMemo(() => {
+    return allRooms.filter((r) => {
+      const matchCenter =
+        filterCenter === 'All Centers' ||
+        r.center === filterCenter ||
+        isCenterMatch(r.center, filterCenter, centers);
+
+      const matchStatus =
+        filterStatus === 'All Status' || r.status === filterStatus;
+
+      const matchRoom =
+        filterRoom === 'All Rooms' ||
+        r.roomKey === filterRoom ||
+        r.name.toLowerCase().includes(filterRoom.toLowerCase()) ||
+        r.id.toLowerCase().includes(filterRoom.toLowerCase());
+
+      return matchCenter && matchStatus && matchRoom;
+    });
+  }, [allRooms, filterCenter, filterStatus, filterRoom, centers]);
 
   const handleOpenAddModal = () => {
-    const nextNum = rooms.length + 101;
+    const defaultCenter =
+      filterCenter !== 'All Centers'
+        ? filterCenter
+        : centers[0]?.displayName || 'LGU EC (Mangcaway)';
+
+    const nextNum = allRooms.length + 101;
     setForm({
-      center: filterCenter !== 'All Centers' ? filterCenter : 'VCES',
+      center: defaultCenter,
       id: `RM-${nextNum}`,
       name: '',
       occupied: 0,
@@ -58,17 +103,18 @@ export default function RoomPlacement() {
     if (!form.name.trim()) return;
 
     const occupiedNum = Number(form.occupied) || 0;
-    const code = form.id.trim() || `RM-${rooms.length + 101}`;
+    const code = form.id.trim() || `RM-${allRooms.length + 101}`;
 
     const newRoom = {
       id: code,
+      roomKey: form.name.match(/Room\s*\d+/i)?.[0] || 'Room 1',
       center: form.center,
       name: form.name.trim(),
       occupied: occupiedNum,
       status: form.status,
     };
 
-    setRooms([newRoom, ...rooms]);
+    setCustomRooms([newRoom, ...customRooms]);
     setIsModalOpen(false);
   };
 
@@ -119,10 +165,46 @@ export default function RoomPlacement() {
                       className={`vin-filter-pill-opt ${filterCenter === c ? 'active' : ''}`}
                       onClick={() => {
                         setFilterCenter(c);
+                        setFilterRoom('All Rooms');
                         setOpenFilter(null);
                       }}
                     >
                       <span>{c}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Room Filter */}
+            <div className="vin-filter-pill-wrapper">
+              <button
+                type="button"
+                className={`vin-filter-pill-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'room' ? null : 'room');
+                }}
+              >
+                <DoorOpen size={13} style={{ marginRight: 2 }} />
+                <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'room' && (
+                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-filter-pill-dropdown-title">Room Designation</div>
+                  {roomFilterOptions.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`vin-filter-pill-opt ${filterRoom === r ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterRoom(r);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      <span>{r}</span>
                     </button>
                   ))}
                 </div>
@@ -164,12 +246,13 @@ export default function RoomPlacement() {
             </div>
 
             {/* Clear Filter */}
-            {(filterCenter !== 'All Centers' || filterStatus !== 'All Status') && (
+            {(filterCenter !== 'All Centers' || filterRoom !== 'All Rooms' || filterStatus !== 'All Status') && (
               <button
                 type="button"
                 className="vin-filter-pill-clear"
                 onClick={() => {
                   setFilterCenter('All Centers');
+                  setFilterRoom('All Rooms');
                   setFilterStatus('All Status');
                 }}
               >
@@ -253,9 +336,9 @@ export default function RoomPlacement() {
                   onChange={(e) => setForm({ ...form, center: e.target.value })}
                   required
                 >
-                  {EVACUATION_CENTERS.map((ec) => (
-                    <option key={ec.code} value={ec.code}>
-                      {ec.name}
+                  {centers.map((ec) => (
+                    <option key={ec.id || ec.displayName} value={ec.displayName}>
+                      {ec.displayName} ({ec.location})
                     </option>
                   ))}
                 </select>

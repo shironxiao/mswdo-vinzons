@@ -1,34 +1,28 @@
-import { useState } from 'react';
-import { Plus, PackageCheck, ChevronDown, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, PackageCheck, ChevronDown, X, Building, DoorOpen } from 'lucide-react';
 import './AdminFeatures.css';
-
-const STUBS_DATA = [
-  { batchId: 'BATCH-2024-001', center: 'VCES', allocated: 264, distributed: 260, date: 'Sept 18, 2024', status: 'Distributed' },
-  { batchId: 'BATCH-2024-002', center: 'VCC', allocated: 171, distributed: 168, date: 'Sept 18, 2024', status: 'Distributed' },
-  { batchId: 'BATCH-2024-003', center: 'CNHS', allocated: 129, distributed: 129, date: 'Sept 18, 2024', status: 'Completed' },
-  { batchId: 'BATCH-2024-004', center: 'VCES', allocated: 50, distributed: 0, date: 'Sept 19, 2024', status: 'Queued' },
-];
-
-const CENTERS = [
-  { id: 'All Centers', label: 'All centers' },
-  { id: 'VCES', label: 'VCES (Central Elem)' },
-  { id: 'VCC', label: 'VCC (Covered Court)' },
-  { id: 'CNHS', label: 'CNHS (High School)' },
-];
+import {
+  useEvacuationCenters,
+  getRoomsForCenter,
+  isCenterMatch,
+} from '../../lib/evacuationCenters.js';
 
 const STATUSES = ['All Status', 'Distributed', 'Completed', 'Queued'];
 
 export default function ReliefGoodsStubs() {
-  const [stubs, setStubs] = useState(STUBS_DATA);
+  const { centers } = useEvacuationCenters();
   const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [openFilter, setOpenFilter] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customBatches, setCustomBatches] = useState([]);
   const [form, setForm] = useState({
-    center: 'VCES',
+    center: '',
+    room: 'All Rooms',
     allocated: '',
-    date: 'Sept 19, 2024',
+    date: 'Oct 27, 2026',
     status: 'Queued',
   });
 
@@ -38,19 +32,52 @@ export default function ReliefGoodsStubs() {
     return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   };
 
+  // Dynamically sorted alphabetical centers
+  const centerFilterOptions = useMemo(() => {
+    return ['All Centers', ...centers.map((c) => c.displayName)];
+  }, [centers]);
+
+  // Dynamic rooms based on center filter
+  const roomFilterOptions = useMemo(() => {
+    return getRoomsForCenter(filterCenter, centers);
+  }, [filterCenter, centers]);
+
+  // Generate batches dynamically connected with Supabase centers
+  const allBatches = useMemo(() => {
+    const defaultBatches = centers.map((c, index) => {
+      const code = c.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
+      const cap = c.capacity || (c.total_rooms * 25);
+      const dist = Math.min(cap, Math.round(cap * 0.9));
+      const statuses = ['Distributed', 'Completed', 'Distributed', 'Queued'];
+      return {
+        batchId: `BATCH-2026-${String(index + 1).padStart(3, '0')}`,
+        code,
+        center: c.displayName,
+        room: 'All Rooms',
+        allocated: cap,
+        distributed: statuses[index % statuses.length] === 'Queued' ? 0 : dist,
+        date: getTodayFormatted(),
+        status: statuses[index % statuses.length],
+      };
+    });
+
+    return [...customBatches, ...defaultBatches];
+  }, [centers, customBatches]);
+
   const getNextBatchId = () => {
-    const nums = stubs.map((s) => {
+    const nums = allBatches.map((s) => {
       const match = s.batchId.match(/BATCH-\d+-(\d+)/);
       return match ? parseInt(match[1], 10) : 0;
     });
     const max = nums.length > 0 ? Math.max(...nums) : 0;
     const next = String(max + 1).padStart(3, '0');
-    return `BATCH-2024-${next}`;
+    return `BATCH-2026-${next}`;
   };
 
   const handleOpenModal = () => {
     setForm({
-      center: filterCenter !== 'All Centers' ? filterCenter : 'VCES',
+      center: filterCenter !== 'All Centers' ? filterCenter : centers[0]?.displayName || 'LGU EC (Mangcaway)',
+      room: filterRoom !== 'All Rooms' ? filterRoom : 'All Rooms',
       allocated: '',
       date: getTodayFormatted(),
       status: 'Queued',
@@ -65,22 +92,37 @@ export default function ReliefGoodsStubs() {
 
     const newBatch = {
       batchId: getNextBatchId(),
+      code: form.center.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase(),
       center: form.center,
+      room: form.room || 'All Rooms',
       allocated: allocatedNum,
       distributed: 0,
       date: form.date.trim() || getTodayFormatted(),
       status: form.status,
     };
 
-    setStubs([newBatch, ...stubs]);
+    setCustomBatches([newBatch, ...customBatches]);
     setIsModalOpen(false);
   };
 
-  const filtered = stubs.filter((s) => {
-    const matchCenter = filterCenter === 'All Centers' || s.center === filterCenter;
-    const matchStatus = filterStatus === 'All Status' || s.status === filterStatus;
-    return matchCenter && matchStatus;
-  });
+  const filtered = useMemo(() => {
+    return allBatches.filter((s) => {
+      const matchCenter =
+        filterCenter === 'All Centers' ||
+        s.center === filterCenter ||
+        isCenterMatch(s.center, filterCenter, centers);
+
+      const matchRoom =
+        filterRoom === 'All Rooms' ||
+        s.room === filterRoom ||
+        s.room === 'All Rooms';
+
+      const matchStatus =
+        filterStatus === 'All Status' || s.status === filterStatus;
+
+      return matchCenter && matchRoom && matchStatus;
+    });
+  }, [allBatches, filterCenter, filterRoom, filterStatus, centers]);
 
   return (
     <div className="vin-feature-page" onClick={() => openFilter && setOpenFilter(null)}>
@@ -122,17 +164,53 @@ export default function ReliefGoodsStubs() {
               {openFilter === 'center' && (
                 <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="vin-filter-pill-dropdown-title">Evacuation Center</div>
-                  {CENTERS.map((c) => (
+                  {centerFilterOptions.map((c) => (
                     <button
-                      key={c.id}
+                      key={c}
                       type="button"
-                      className={`vin-filter-pill-opt ${filterCenter === c.id ? 'active' : ''}`}
+                      className={`vin-filter-pill-opt ${filterCenter === c ? 'active' : ''}`}
                       onClick={() => {
-                        setFilterCenter(c.id);
+                        setFilterCenter(c);
+                        setFilterRoom('All Rooms');
                         setOpenFilter(null);
                       }}
                     >
-                      <span>{c.label}</span>
+                      <span>{c}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Room Filter */}
+            <div className="vin-filter-pill-wrapper">
+              <button
+                type="button"
+                className={`vin-filter-pill-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'room' ? null : 'room');
+                }}
+              >
+                <DoorOpen size={13} style={{ marginRight: 2 }} />
+                <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'room' && (
+                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-filter-pill-dropdown-title">Room Designation</div>
+                  {roomFilterOptions.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`vin-filter-pill-opt ${filterRoom === r ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterRoom(r);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      <span>{r}</span>
                     </button>
                   ))}
                 </div>
@@ -174,12 +252,13 @@ export default function ReliefGoodsStubs() {
             </div>
 
             {/* Clear Filter */}
-            {(filterCenter !== 'All Centers' || filterStatus !== 'All Status') && (
+            {(filterCenter !== 'All Centers' || filterRoom !== 'All Rooms' || filterStatus !== 'All Status') && (
               <button
                 type="button"
                 className="vin-filter-pill-clear"
                 onClick={() => {
                   setFilterCenter('All Centers');
+                  setFilterRoom('All Rooms');
                   setFilterStatus('All Status');
                 }}
               >
@@ -194,6 +273,7 @@ export default function ReliefGoodsStubs() {
             <tr>
               <th>BATCH ID</th>
               <th>CENTER</th>
+              <th>ROOM / AREA</th>
               <th>ALLOCATED STUBS</th>
               <th>DISTRIBUTED</th>
               <th>DATE ISSUED</th>
@@ -203,7 +283,7 @@ export default function ReliefGoodsStubs() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No relief goods stubs match the current filter criteria.
                 </td>
               </tr>
@@ -216,7 +296,13 @@ export default function ReliefGoodsStubs() {
                       {item.batchId}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 600 }}>{item.center}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Building size={15} color="#2563eb" />
+                      {item.center}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 600, color: '#475569' }}>{item.room}</td>
                   <td>{item.allocated} stubs</td>
                   <td style={{ fontWeight: 700, color: '#0d3824' }}>{item.distributed} claimed</td>
                   <td>{item.date}</td>
@@ -263,10 +349,28 @@ export default function ReliefGoodsStubs() {
                   onChange={(e) => setForm({ ...form, center: e.target.value })}
                   required
                 >
-                  <option value="VCES">VCES (Central Elem)</option>
-                  <option value="VCC">VCC (Covered Court)</option>
-                  <option value="CNHS">CNHS (High School)</option>
-                  <option value="VG">Vinzons Gymnasium (VG)</option>
+                  {centers.map((c) => (
+                    <option key={c.id || c.displayName} value={c.displayName}>
+                      {c.displayName} ({c.location})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Room Designation */}
+              <div className="vin-form-group">
+                <label className="vin-form-label">Room Designation</label>
+                <select
+                  className="vin-form-select"
+                  value={form.room}
+                  onChange={(e) => setForm({ ...form, room: e.target.value })}
+                >
+                  <option value="All Rooms">All Rooms</option>
+                  {getRoomsForCenter(form.center, centers).filter((r) => r !== 'All Rooms').map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -291,7 +395,7 @@ export default function ReliefGoodsStubs() {
                   <input
                     type="text"
                     className="vin-form-input"
-                    placeholder="e.g. Sept 19, 2024"
+                    placeholder="e.g. Oct 27, 2026"
                     value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                     required

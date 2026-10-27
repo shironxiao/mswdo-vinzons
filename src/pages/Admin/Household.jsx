@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Plus, User, Edit, X, Trash2,
-  AlertTriangle, Ticket, Printer, ChevronDown, Building,
+  AlertTriangle, Ticket, Printer, ChevronDown, Building, DoorOpen,
   CheckCircle2, Clock, Users, Home,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -9,6 +9,11 @@ import checkIcon from '../../assets/check.png';
 import removeIcon from '../../assets/remove.png';
 import './AdminFeatures.css';
 import './AdminHousehold.css';
+import {
+  useEvacuationCenters,
+  getRoomsForCenter,
+  isCenterMatch,
+} from '../../lib/evacuationCenters.js';
 
 /* ──────────────────────────────────────────────
    Seed Data (synced with mobile structure)
@@ -93,12 +98,7 @@ const INITIAL_HOUSEHOLDS = [
   },
 ];
 
-const CENTERS = [
-  'All Centers',
-  'Vinzons Central Elementary School',
-  'Vinzons Gymnasium',
-  'Calaguas National High School',
-];
+
 
 /* ──────────────────────────────────────────────
    Helpers
@@ -526,21 +526,31 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
    MAIN ADMIN HOUSEHOLD COMPONENT
    ────────────────────────────────────────────── */
 export default function Household() {
+  const { centers } = useEvacuationCenters();
   const [households, setHouseholds] = useState(INITIAL_HOUSEHOLDS);
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
-  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | null
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
+  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | 'room' | null
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
+
+  const centerFilterOptions = useMemo(() => {
+    return ['All Centers', ...centers.map((c) => c.displayName)];
+  }, [centers]);
+
+  const roomFilterOptions = useMemo(() => {
+    return getRoomsForCenter(filterCenter, centers);
+  }, [filterCenter, centers]);
 
   const [activeForm, setActiveForm] = useState({
     id: '',
     head: '',
     age: '',
     sex: 'Male',
-    center: 'Vinzons Central Elementary School',
-    room: 'A-1',
+    center: 'LGU EC (Mangcaway)',
+    room: 'Room 1',
     category: 'None',
     members: [],
   });
@@ -552,8 +562,15 @@ export default function Household() {
       (filterStub === 'Issued' && !!h.stubCode) ||
       (filterStub === 'Not Issued' && !h.stubCode);
     const matchCenter =
-      filterCenter === 'All Centers' || h.center === filterCenter;
-    return matchStub && matchCenter;
+      filterCenter === 'All Centers' ||
+      h.center === filterCenter ||
+      isCenterMatch(h.center, filterCenter, centers);
+    const matchRoom =
+      filterRoom === 'All Rooms' ||
+      h.room === filterRoom ||
+      (h.room && h.room.toLowerCase().includes(filterRoom.toLowerCase())) ||
+      (filterRoom.startsWith('Room') && h.room && h.room.includes(filterRoom.replace('Room', '').trim()));
+    return matchStub && matchCenter && matchRoom;
   });
 
   const totalCount = households.length;
@@ -783,13 +800,14 @@ export default function Household() {
               {openFilter === 'center' && (
                 <div className="vin-admin-filter-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="vin-admin-filter-section-title">EVACUATION CENTER</div>
-                  {CENTERS.map((c) => (
+                  {centerFilterOptions.map((c) => (
                     <button
                       key={c}
                       type="button"
                       className={`vin-admin-filter-opt ${filterCenter === c ? 'active' : ''}`}
                       onClick={() => {
                         setFilterCenter(c);
+                        setFilterRoom('All Rooms');
                         setOpenFilter(null);
                       }}
                     >
@@ -800,14 +818,50 @@ export default function Household() {
               )}
             </div>
 
+            {/* Room Filter */}
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`vin-admin-filter-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'room' ? null : 'room');
+                }}
+              >
+                <DoorOpen size={13} style={{ marginRight: 2 }} />
+                <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'room' && (
+                <div className="vin-admin-filter-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-admin-filter-section-title">ROOM DESIGNATION</div>
+                  {roomFilterOptions.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`vin-admin-filter-opt ${filterRoom === r ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterRoom(r);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Clear filters pill */}
-            {(filterStub !== 'All' || filterCenter !== 'All Centers') && (
+            {(filterStub !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms') && (
               <button
                 type="button"
                 className="vin-admin-clear-pill"
                 onClick={() => {
                   setFilterStub('All');
                   setFilterCenter('All Centers');
+                  setFilterRoom('All Rooms');
                 }}
               >
                 Clear <X size={12} />
@@ -1002,9 +1056,11 @@ export default function Household() {
                     value={activeForm.center}
                     onChange={(e) => setActiveForm({ ...activeForm, center: e.target.value })}
                   >
-                    <option value="Vinzons Central Elementary School">Vinzons Central Elementary School</option>
-                    <option value="Vinzons Gymnasium">Vinzons Gymnasium</option>
-                    <option value="Calaguas National High School">Calaguas National High School</option>
+                    {centers.map((c) => (
+                      <option key={c.id || c.displayName} value={c.displayName}>
+                        {c.displayName}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="vin-admin-form-group">

@@ -81,6 +81,55 @@
   flex-wrap: wrap;
 }
 
+/* Feature Search Bar */
+.vin-feature-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.vin-feature-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.vin-feature-search-input {
+  width: 100%;
+  padding: 8px 34px 8px 36px;
+  border: 1.5px solid #d2ddd6;
+  border-radius: 9999px;
+  font-size: 0.88rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.vin-feature-search-input:focus {
+  border-color: #0b3524;
+  box-shadow: 0 0 0 3px rgba(11, 53, 36, 0.1);
+}
+
+.vin-feature-search-clear {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.vin-feature-search-clear:hover {
+  color: #0f172a;
+}
+
 .vin-feature-search-box {
   display: flex;
   align-items: center;

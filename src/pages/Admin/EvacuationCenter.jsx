@@ -1,170 +1,129 @@
-import { useState } from 'react';
-import { MapPin, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { MapPin, Plus, X, ChevronLeft, ChevronRight, Search, ChevronDown, Building, DoorOpen } from 'lucide-react';
 import './EvacuationCenter.css';
-
-const INITIAL_CENTERS = [
-  {
-    id: 1,
-    code: 'VCES',
-    name: 'Vinzons Central Elementary School',
-    location: 'Poblacion, Vinzons',
-    households: 86,
-    peopleRegistered: 264,
-    status: 'Active',
-  },
-  {
-    id: 2,
-    code: 'VG',
-    name: 'Vinzons Gymnasium',
-    location: 'Brgy. San Jose, Vinzons',
-    households: 42,
-    peopleRegistered: 120,
-    status: 'Active',
-  },
-  {
-    id: 3,
-    code: 'CNHS',
-    name: 'Calaguas National High School',
-    location: 'Calaguas, Vinzons',
-    households: 38,
-    peopleRegistered: 129,
-    status: 'Active',
-  },
-  {
-    id: 4,
-    code: 'VCC',
-    name: 'Vinzons Covered Court',
-    location: 'Poblacion, Vinzons',
-    households: 31,
-    peopleRegistered: 100,
-    status: 'Active',
-  },
-  {
-    id: 5,
-    code: 'MEC',
-    name: 'Municipal Evacuation Center',
-    location: 'Brgy. Sto. Domingo, Vinzons',
-    households: 25,
-    peopleRegistered: 80,
-    status: 'Active',
-  },
-  {
-    id: 6,
-    code: 'SDBH',
-    name: 'Sto. Domingo Barangay Hall',
-    location: 'Brgy. Sto. Domingo, Vinzons',
-    households: 0,
-    peopleRegistered: 0,
-    status: 'Available',
-  },
-  {
-    id: 7,
-    code: 'MES',
-    name: 'Matango Elementary School',
-    location: 'Brgy. Matango, Vinzons',
-    households: 18,
-    peopleRegistered: 54,
-    status: 'Active',
-  },
-  {
-    id: 8,
-    code: 'ANHS',
-    name: 'Aguit-it National High School',
-    location: 'Brgy. Aguit-it, Vinzons',
-    households: 14,
-    peopleRegistered: 48,
-    status: 'Active',
-  },
-  {
-    id: 9,
-    code: 'BES',
-    name: 'Banocboc Elementary School',
-    location: 'Brgy. Banocboc, Vinzons',
-    households: 0,
-    peopleRegistered: 0,
-    status: 'Available',
-  },
-  {
-    id: 10,
-    code: 'MBH',
-    name: 'Mangcayo Barangay Hall',
-    location: 'Brgy. Mangcayo, Vinzons',
-    households: 9,
-    peopleRegistered: 28,
-    status: 'Active',
-  },
-  {
-    id: 11,
-    code: 'SES',
-    name: 'Sabang Elementary School',
-    location: 'Brgy. Sabang, Vinzons',
-    households: 0,
-    peopleRegistered: 0,
-    status: 'Available',
-  },
-  {
-    id: 12,
-    code: 'PHS',
-    name: 'Pinagtigasan High School',
-    location: 'Brgy. Pinagtigasan, Vinzons',
-    households: 0,
-    peopleRegistered: 0,
-    status: 'Available',
-  },
-];
+import './AdminFeatures.css';
+import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
+import { supabase } from '../../lib/supabase.js';
 
 export default function EvacuationCenter() {
-  const [centers, setCenters] = useState(INITIAL_CENTERS);
+  const { centers: dbCenters, loading, refetch } = useEvacuationCenters();
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All Status');
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
+  const [openFilter, setOpenFilter] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    code: '',
     name: '',
     location: '',
-    households: '',
-    peopleRegistered: '',
+    total_rooms: '2',
+    capacity: '50',
   });
 
-  const totalPages = Math.ceil(centers.length / pageSize) || 1;
+  const getCode = (name = '') => {
+    return name
+      .replace(/[^a-zA-Z\s]/g, '')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((w) => w[0].toUpperCase())
+      .join('');
+  };
+
+  const getCenterStatus = (center) => {
+    const totalCap = center.capacity || (center.total_rooms * 25);
+    const totalOcc = (center.rooms || []).reduce((sum, r) => sum + (r.occupied || 0), 0);
+    if (totalOcc === 0) return 'Empty';
+    if (totalOcc >= totalCap) return 'Occupied';
+    return 'Available';
+  };
+
+  /* Filter and dynamic alphabetical sorting */
+  const filtered = useMemo(() => {
+    return (dbCenters || [])
+      .filter((center) => {
+        const q = search.trim().toLowerCase();
+        const matchSearch =
+          !q ||
+          (center.name && center.name.toLowerCase().includes(q)) ||
+          (center.displayName && center.displayName.toLowerCase().includes(q)) ||
+          (center.location && center.location.toLowerCase().includes(q));
+
+        const status = getCenterStatus(center);
+        const matchStatus =
+          filterStatus === 'All Status' ||
+          (filterStatus === 'Available' && status === 'Available') ||
+          (filterStatus === 'Occupied' && status === 'Occupied') ||
+          (filterStatus === 'Empty' && status === 'Empty');
+
+        let matchRoom = true;
+        if (filterRoom === '1 Room') {
+          matchRoom = Number(center.total_rooms) === 1;
+        } else if (filterRoom === '2-5 Rooms') {
+          matchRoom = Number(center.total_rooms) >= 2 && Number(center.total_rooms) <= 5;
+        } else if (filterRoom === '6+ Rooms') {
+          matchRoom = Number(center.total_rooms) >= 6;
+        }
+
+        return matchSearch && matchStatus && matchRoom;
+      })
+      .sort((a, b) =>
+        (a.displayName || a.name || '').localeCompare(
+          b.displayName || b.name || '',
+          undefined,
+          { sensitivity: 'base', numeric: true }
+        )
+      );
+  }, [dbCenters, search, filterStatus, filterRoom]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedCenters = centers.slice(startIndex, startIndex + pageSize);
+  const paginatedCenters = filtered.slice(startIndex, startIndex + pageSize);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddCenter = (e) => {
+  const handleAddCenter = async (e) => {
     e.preventDefault();
-    if (!formData.name) return;
+    if (!formData.name.trim()) return;
 
-    const newCenter = {
-      id: Date.now(),
-      code: formData.code.toUpperCase() || 'EC',
-      name: formData.name,
-      location: formData.location || 'Vinzons',
-      households: Number(formData.households) || 0,
-      peopleRegistered: Number(formData.peopleRegistered) || 0,
-      status: 'Active',
-    };
+    const roomCount = Math.max(1, Number(formData.total_rooms) || 1);
+    const capacityNum = Number(formData.capacity) || roomCount * 25;
 
-    setCenters((prev) => [newCenter, ...prev]);
-    setCurrentPage(1);
-    setFormData({ code: '', name: '', location: '', households: '', peopleRegistered: '' });
+    try {
+      const { error } = await supabase.from('evacuation_centers').insert({
+        name: formData.name.trim(),
+        location: (formData.location || 'Vinzons, Camarines Norte').trim(),
+        total_rooms: roomCount,
+        capacity: capacityNum,
+      });
+
+      if (error) {
+        console.error('Error inserting center into Supabase:', error.message);
+      }
+      if (refetch) await refetch();
+    } catch (err) {
+      console.warn('Network error adding center:', err);
+    }
+
+    setFormData({ name: '', location: '', total_rooms: '2', capacity: '50' });
     setIsModalOpen(false);
+    setCurrentPage(1);
   };
 
   return (
-    <div className="vin-evac-page">
+    <div className="vin-evac-page" onClick={() => openFilter && setOpenFilter(null)}>
       {/* Header section */}
       <header className="vin-evac-header">
         <div className="vin-evac-header-text">
           <span className="vin-evac-eyebrow">OPERATION REGISTRY</span>
           <h1 className="vin-evac-title">Evacuation Centers</h1>
           <p className="vin-evac-desc">
-            View the active evacuation centers and the households they support in Vinzons
+            Alphabetical directory of official evacuation centers and capacity in Vinzons
           </p>
         </div>
 
@@ -178,55 +137,194 @@ export default function EvacuationCenter() {
         </button>
       </header>
 
-      {/* Grid of Evacuation Center Cards */}
-      <div className="vin-centers-grid">
-        {paginatedCenters.map((center) => (
-          <div key={center.id} className="vin-center-card">
-            {/* Top Badges */}
-            <div className="vin-card-badges">
-              <span className="vin-code-badge">{center.code}</span>
-              <span className="vin-active-pill">
-                <span className="vin-active-dot" />
-                {center.status}
-              </span>
-            </div>
-
-            {/* Name & Location */}
-            <h2 className="vin-center-name">{center.name}</h2>
-            <div className="vin-center-location">
-              <MapPin size={14} className="vin-loc-icon" />
-              <span>{center.location}</span>
-            </div>
-
-            {/* Statistics */}
-            <div className="vin-center-stats">
-              <div className="vin-stat-block">
-                <span className="vin-stat-number">{center.households}</span>
-                <span className="vin-stat-label">Households</span>
-              </div>
-              <div className="vin-stat-block">
-                <span className="vin-stat-number">{center.peopleRegistered}</span>
-                <span className="vin-stat-label">People Registered</span>
-              </div>
-            </div>
-
-            {/* View Details Button */}
+      {/* Filter and Search Toolbar */}
+      <div className="vin-feature-toolbar" style={{ marginTop: -8 }}>
+        <div className="vin-feature-search-wrapper" style={{ flex: 1, maxWidth: 360 }}>
+          <Search size={16} className="vin-feature-search-icon" />
+          <input
+            type="text"
+            className="vin-feature-search-input"
+            placeholder="Search by center name or location..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+          {search && (
             <button
               type="button"
-              className="vin-view-btn"
-              onClick={() => alert(`Center Details: ${center.name}`)}
+              className="vin-feature-search-clear"
+              onClick={() => {
+                setSearch('');
+                setCurrentPage(1);
+              }}
             >
-              View center details &gt;
+              <X size={14} />
             </button>
+          )}
+        </div>
+
+        {/* Filter Pills */}
+        <div className="vin-filter-pill-group">
+          {/* Status Filter */}
+          <div className="vin-filter-pill-wrapper">
+            <button
+              type="button"
+              className={`vin-filter-pill-btn ${filterStatus !== 'All Status' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === 'status' ? null : 'status');
+              }}
+            >
+              <span>{filterStatus === 'All Status' ? 'All status' : filterStatus}</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {openFilter === 'status' && (
+              <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div className="vin-filter-pill-dropdown-title">Center Status</div>
+                {['All Status', 'Available', 'Occupied', 'Empty'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`vin-filter-pill-opt ${filterStatus === s ? 'active' : ''}`}
+                    onClick={() => {
+                      setFilterStatus(s);
+                      setOpenFilter(null);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <span>{s}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
+
+          {/* Room Filter */}
+          <div className="vin-filter-pill-wrapper">
+            <button
+              type="button"
+              className={`vin-filter-pill-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === 'room' ? null : 'room');
+              }}
+            >
+              <DoorOpen size={13} style={{ marginRight: 2 }} />
+              <span>{filterRoom === 'All Rooms' ? 'Rooms' : filterRoom}</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {openFilter === 'room' && (
+              <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div className="vin-filter-pill-dropdown-title">Room Filter</div>
+                {['All Rooms', '1 Room', '2-5 Rooms', '6+ Rooms'].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`vin-filter-pill-opt ${filterRoom === r ? 'active' : ''}`}
+                    onClick={() => {
+                      setFilterRoom(r);
+                      setOpenFilter(null);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <span>{r}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Clear Filters */}
+          {(filterStatus !== 'All Status' || filterRoom !== 'All Rooms' || search) && (
+            <button
+              type="button"
+              className="vin-filter-pill-clear"
+              onClick={() => {
+                setFilterStatus('All Status');
+                setFilterRoom('All Rooms');
+                setSearch('');
+                setCurrentPage(1);
+              }}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Grid of Evacuation Center Cards */}
+      <div className="vin-centers-grid">
+        {paginatedCenters.map((center) => {
+          const status = getCenterStatus(center);
+          const totalCap = center.capacity || (center.total_rooms * 25);
+          const totalOcc = (center.rooms || []).reduce((sum, r) => sum + (r.occupied || 0), 0);
+
+          let badgeCls = 'available';
+          if (status === 'Occupied') badgeCls = 'occupied';
+          else if (status === 'Empty') badgeCls = 'empty';
+
+          return (
+            <div key={center.id} className="vin-center-card">
+              {/* Top Badges */}
+              <div className="vin-card-badges">
+                <span className="vin-code-badge">{getCode(center.displayName || center.name)}</span>
+                <span className={`vin-active-pill ${badgeCls}`}>
+                  <span className="vin-active-dot" />
+                  {status}
+                </span>
+              </div>
+
+              {/* Name & Location */}
+              <h2 className="vin-center-name">{center.displayName || center.name}</h2>
+              <div className="vin-center-location">
+                <MapPin size={14} className="vin-loc-icon" />
+                <span>{center.location}</span>
+              </div>
+
+              {/* Statistics */}
+              <div className="vin-center-stats">
+                <div className="vin-stat-block">
+                  <span className="vin-stat-number">{center.total_rooms}</span>
+                  <span className="vin-stat-label">Total Rooms</span>
+                </div>
+                <div className="vin-stat-block">
+                  <span className="vin-stat-number">{totalCap}</span>
+                  <span className="vin-stat-label">Capacity</span>
+                </div>
+                <div className="vin-stat-block">
+                  <span className="vin-stat-number">{totalOcc}</span>
+                  <span className="vin-stat-label">Occupants</span>
+                </div>
+              </div>
+
+              {/* View Details Button */}
+              <button
+                type="button"
+                className="vin-view-btn"
+                onClick={() => alert(`Center: ${center.displayName || center.name}\nLocation: ${center.location}\nRooms: ${center.total_rooms}\nCapacity: ${totalCap} persons`)}
+              >
+                View center details &gt;
+              </button>
+            </div>
+          );
+        })}
+
+        {paginatedCenters.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', color: '#64748b' }}>
+            No evacuation centers match the current search or filters.
+          </div>
+        )}
       </div>
 
       {/* Pagination Controls */}
-      {centers.length > 0 && (
+      {filtered.length > 0 && (
         <div className="vin-admin-pagination">
           <span className="vin-pagination-info">
-            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, centers.length)}</strong> of <strong>{centers.length}</strong> evacuation centers
+            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> evacuation centers
           </span>
 
           <div className="vin-pagination-btns">
@@ -268,7 +366,7 @@ export default function EvacuationCenter() {
         </div>
       )}
 
-      {/* Add Center Modal (UI Only) */}
+      {/* Add Center Modal (Direct Supabase Sync) */}
       {isModalOpen && (
         <div className="vin-modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="vin-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -285,23 +383,11 @@ export default function EvacuationCenter() {
 
             <form onSubmit={handleAddCenter}>
               <div className="vin-form-group">
-                <label className="vin-form-label">Center Code (e.g. VCES, VCC)</label>
-                <input
-                  type="text"
-                  name="code"
-                  placeholder="VCES"
-                  className="vin-form-input"
-                  value={formData.code}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="vin-form-group">
                 <label className="vin-form-label">Center Name</label>
                 <input
                   type="text"
                   name="name"
-                  placeholder="Vinzons Central Elementary School"
+                  placeholder="e.g. Vinzons Sports Complex"
                   className="vin-form-input"
                   value={formData.name}
                   onChange={handleInputChange}
@@ -314,33 +400,36 @@ export default function EvacuationCenter() {
                 <input
                   type="text"
                   name="location"
-                  placeholder="Poblacion, Vinzons"
+                  placeholder="e.g. Brgy. Sto. Domingo, Vinzons"
                   className="vin-form-input"
                   value={formData.location}
                   onChange={handleInputChange}
+                  required
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="vin-form-group">
-                  <label className="vin-form-label">Initial Households</label>
+                  <label className="vin-form-label">Number of Rooms</label>
                   <input
                     type="number"
-                    name="households"
-                    placeholder="86"
+                    min="1"
+                    name="total_rooms"
+                    placeholder="2"
                     className="vin-form-input"
-                    value={formData.households}
+                    value={formData.total_rooms}
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="vin-form-group">
-                  <label className="vin-form-label">People Registered</label>
+                  <label className="vin-form-label">Total Capacity (Persons)</label>
                   <input
                     type="number"
-                    name="peopleRegistered"
-                    placeholder="264"
+                    min="1"
+                    name="capacity"
+                    placeholder="50"
                     className="vin-form-input"
-                    value={formData.peopleRegistered}
+                    value={formData.capacity}
                     onChange={handleInputChange}
                   />
                 </div>
@@ -355,7 +444,7 @@ export default function EvacuationCenter() {
                   Cancel
                 </button>
                 <button type="submit" className="vin-btn-submit">
-                  Save Center
+                  Save to Database
                 </button>
               </div>
             </form>

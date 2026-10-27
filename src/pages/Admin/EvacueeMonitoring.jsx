@@ -1,33 +1,89 @@
-import { useState } from 'react';
-import { CheckCircle2, Clock, ChevronDown, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { CheckCircle2, Clock, ChevronDown, X, Building, DoorOpen } from 'lucide-react';
 import './AdminFeatures.css';
-
-const MONITORING_CHECKS = [
-  { id: 'CHK-01', center: 'Vinzons Central Elementary School', code: 'VCES', checked: 364, round: 'Morning Check', time: '08:30 AM', status: 'Complete' },
-  { id: 'CHK-02', center: 'Vinzons Covered Court', code: 'VCC', checked: 171, round: 'Morning Check', time: '08:30 AM', status: 'Complete' },
-  { id: 'CHK-03', center: 'Calaguas National High School', code: 'CNHS', checked: 129, round: 'Morning Check', time: '08:30 AM', status: 'Complete' },
-  { id: 'CHK-04', center: 'Vinzons Central Elementary School', code: 'VCES', checked: 360, round: 'Afternoon Check', time: '02:00 PM', status: 'Pending' },
-];
-
-const CENTERS = [
-  { id: 'All Centers', label: 'All centers' },
-  { id: 'VCES', label: 'VCES (Central Elem)' },
-  { id: 'VCC', label: 'VCC (Covered Court)' },
-  { id: 'CNHS', label: 'CNHS (High School)' },
-];
+import {
+  useEvacuationCenters,
+  getRoomsForCenter,
+  isCenterMatch,
+} from '../../lib/evacuationCenters.js';
 
 const STATUSES = ['All Status', 'Complete', 'Pending'];
 
 export default function EvacueeMonitoring() {
+  const { centers } = useEvacuationCenters();
   const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [openFilter, setOpenFilter] = useState(null);
 
-  const filtered = MONITORING_CHECKS.filter((m) => {
-    const matchCenter = filterCenter === 'All Centers' || m.code === filterCenter;
-    const matchStatus = filterStatus === 'All Status' || m.status === filterStatus;
-    return matchCenter && matchStatus;
-  });
+  // Dynamic alphabetical list of centers
+  const centerFilterOptions = useMemo(() => {
+    return ['All Centers', ...centers.map((c) => c.displayName)];
+  }, [centers]);
+
+  // Dynamic room options based on selected center
+  const roomFilterOptions = useMemo(() => {
+    return getRoomsForCenter(filterCenter, centers);
+  }, [filterCenter, centers]);
+
+  // Generate monitoring records dynamically based on Supabase centers
+  const monitoringRecords = useMemo(() => {
+    if (!centers || centers.length === 0) return [];
+
+    const list = [];
+    centers.forEach((c, index) => {
+      const code = c.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
+      const rooms = c.rooms || [];
+      const totalOcc = rooms.reduce((sum, r) => sum + (r.occupied || 0), 0);
+
+      // Morning check for the entire center
+      list.push({
+        id: `CHK-${String(index * 2 + 1).padStart(2, '0')}`,
+        code,
+        center: c.displayName,
+        room: 'All Rooms',
+        checked: totalOcc || 35,
+        round: 'Morning Verification',
+        time: '08:30 AM',
+        status: index % 3 === 0 ? 'Pending' : 'Complete',
+      });
+
+      // Specific room check if center has multiple rooms
+      if (rooms.length > 1) {
+        list.push({
+          id: `CHK-${String(index * 2 + 2).padStart(2, '0')}`,
+          code,
+          center: c.displayName,
+          room: rooms[0]?.id || 'Room 1',
+          checked: rooms[0]?.occupied || 15,
+          round: 'Afternoon Verification',
+          time: '02:00 PM',
+          status: index % 2 === 0 ? 'Complete' : 'Pending',
+        });
+      }
+    });
+
+    return list;
+  }, [centers]);
+
+  const filtered = useMemo(() => {
+    return monitoringRecords.filter((m) => {
+      const matchCenter =
+        filterCenter === 'All Centers' ||
+        m.center === filterCenter ||
+        isCenterMatch(m.center, filterCenter, centers);
+
+      const matchRoom =
+        filterRoom === 'All Rooms' ||
+        m.room === filterRoom ||
+        m.room === 'All Rooms';
+
+      const matchStatus =
+        filterStatus === 'All Status' || m.status === filterStatus;
+
+      return matchCenter && matchRoom && matchStatus;
+    });
+  }, [monitoringRecords, filterCenter, filterRoom, filterStatus, centers]);
 
   return (
     <div className="vin-feature-page" onClick={() => openFilter && setOpenFilter(null)}>
@@ -61,17 +117,53 @@ export default function EvacueeMonitoring() {
               {openFilter === 'center' && (
                 <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="vin-filter-pill-dropdown-title">Evacuation Center</div>
-                  {CENTERS.map((c) => (
+                  {centerFilterOptions.map((c) => (
                     <button
-                      key={c.id}
+                      key={c}
                       type="button"
-                      className={`vin-filter-pill-opt ${filterCenter === c.id ? 'active' : ''}`}
+                      className={`vin-filter-pill-opt ${filterCenter === c ? 'active' : ''}`}
                       onClick={() => {
-                        setFilterCenter(c.id);
+                        setFilterCenter(c);
+                        setFilterRoom('All Rooms');
                         setOpenFilter(null);
                       }}
                     >
-                      <span>{c.label}</span>
+                      <span>{c}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Room Filter */}
+            <div className="vin-filter-pill-wrapper">
+              <button
+                type="button"
+                className={`vin-filter-pill-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFilter(openFilter === 'room' ? null : 'room');
+                }}
+              >
+                <DoorOpen size={13} style={{ marginRight: 2 }} />
+                <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
+                <ChevronDown size={13} />
+              </button>
+
+              {openFilter === 'room' && (
+                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="vin-filter-pill-dropdown-title">Room Designation</div>
+                  {roomFilterOptions.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`vin-filter-pill-opt ${filterRoom === r ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterRoom(r);
+                        setOpenFilter(null);
+                      }}
+                    >
+                      <span>{r}</span>
                     </button>
                   ))}
                 </div>
@@ -113,12 +205,13 @@ export default function EvacueeMonitoring() {
             </div>
 
             {/* Clear Filter */}
-            {(filterCenter !== 'All Centers' || filterStatus !== 'All Status') && (
+            {(filterCenter !== 'All Centers' || filterRoom !== 'All Rooms' || filterStatus !== 'All Status') && (
               <button
                 type="button"
                 className="vin-filter-pill-clear"
                 onClick={() => {
                   setFilterCenter('All Centers');
+                  setFilterRoom('All Rooms');
                   setFilterStatus('All Status');
                 }}
               >
@@ -133,6 +226,7 @@ export default function EvacueeMonitoring() {
             <tr>
               <th>CENTER CODE</th>
               <th>EVACUATION CENTER</th>
+              <th>ROOM / AREA</th>
               <th>CHECK ROUND</th>
               <th>PEOPLE CHECKED</th>
               <th>TIME STAMP</th>
@@ -142,7 +236,7 @@ export default function EvacueeMonitoring() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No monitoring records match the current filter criteria.
                 </td>
               </tr>
@@ -150,7 +244,13 @@ export default function EvacueeMonitoring() {
               filtered.map((item) => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.code}</td>
-                  <td style={{ fontWeight: 600 }}>{item.center}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Building size={15} color="#2563eb" />
+                      {item.center}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 600, color: '#475569' }}>{item.room}</td>
                   <td>{item.round}</td>
                   <td style={{ fontWeight: 700, color: '#0d3824' }}>{item.checked} individuals</td>
                   <td>

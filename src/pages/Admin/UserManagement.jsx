@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Shield, UserCheck, X, MoreVertical, ChevronDown } from 'lucide-react';
 import './UserManagement.css';
+import { useEvacuationCenters, isCenterMatch } from '../../lib/evacuationCenters.js';
 
 const INITIAL_USERS = [
   {
@@ -53,32 +54,36 @@ const ROLES = [
   'Evacuee Monitor',
 ];
 
-const CENTERS = [
-  'All Centers',
-  'All Centers (Command)',
-  'Vinzons Central Elementary School',
-  'Vinzons Covered Court',
-  'Calaguas National High School',
-];
-
 export default function UserManagement() {
+  const { centers } = useEvacuationCenters();
   const [users, setUsers] = useState(INITIAL_USERS);
   const [filterRole, setFilterRole] = useState('All Roles');
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [openFilter, setOpenFilter] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Alphabetical centers list from Supabase
+  const centerFilterOptions = useMemo(() => {
+    return ['All Centers', 'All Centers (Command)', ...centers.map((c) => c.displayName)];
+  }, [centers]);
+
   const [form, setForm] = useState({
     name: '',
     email: '',
     role: 'Field Coordinator',
-    assignedCenter: 'Vinzons Central Elementary School',
+    assignedCenter: 'All Centers (Command)',
   });
 
-  const filtered = users.filter((u) => {
-    const matchRole = filterRole === 'All Roles' || u.role === filterRole;
-    const matchCenter = filterCenter === 'All Centers' || u.assignedCenter === filterCenter;
-    return matchRole && matchCenter;
-  });
+  const filtered = useMemo(() => {
+    return users.filter((u) => {
+      const matchRole = filterRole === 'All Roles' || u.role === filterRole;
+      const matchCenter =
+        filterCenter === 'All Centers' ||
+        u.assignedCenter === filterCenter ||
+        isCenterMatch(u.assignedCenter, filterCenter, centers);
+      return matchRole && matchCenter;
+    });
+  }, [users, filterRole, filterCenter, centers]);
 
   const handleAddUser = (e) => {
     e.preventDefault();
@@ -183,7 +188,7 @@ export default function UserManagement() {
               {openFilter === 'center' && (
                 <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
                   <div className="vin-filter-pill-dropdown-title">Assigned Center</div>
-                  {CENTERS.map((c) => (
+                  {centerFilterOptions.map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -334,9 +339,11 @@ export default function UserManagement() {
                   onChange={(e) => setForm({ ...form, assignedCenter: e.target.value })}
                 >
                   <option value="All Centers (Command)">All Centers (Command)</option>
-                  <option value="Vinzons Central Elementary School">Vinzons Central Elementary School</option>
-                  <option value="Vinzons Covered Court">Vinzons Covered Court</option>
-                  <option value="Calaguas National High School">Calaguas National High School</option>
+                  {centers.map((c) => (
+                    <option key={c.id || c.displayName} value={c.displayName}>
+                      {c.displayName}
+                    </option>
+                  ))}
                 </select>
               </div>
 

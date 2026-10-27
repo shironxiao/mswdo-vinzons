@@ -129,6 +129,24 @@
   border-radius: 9999px;
 }
 
+.vin-active-pill.occupied {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.vin-active-pill.occupied .vin-active-dot {
+  background-color: #dc2626;
+}
+
+.vin-active-pill.empty {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.vin-active-pill.empty .vin-active-dot {
+  background-color: #94a3b8;
+}
+
 .vin-active-dot {
   width: 6px;
   height: 6px;
