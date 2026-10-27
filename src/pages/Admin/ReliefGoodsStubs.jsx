@@ -33,16 +33,6 @@ export default function ReliefGoodsStubs() {
     return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   };
 
-  // Dynamically sorted alphabetical centers
-  const centerFilterOptions = useMemo(() => {
-    return ['All Centers', ...centers.map((c) => c.displayName)];
-  }, [centers]);
-
-  // Dynamic rooms based on center filter
-  const roomFilterOptions = useMemo(() => {
-    return getRoomsForCenter(filterCenter, centers);
-  }, [filterCenter, centers]);
-
   // Generate batches dynamically connected with Supabase centers
   const allBatches = useMemo(() => {
     const defaultBatches = centers.map((c, index) => {
@@ -341,12 +331,7 @@ export default function ReliefGoodsStubs() {
       <AdminFilterModal
         isOpen={showFilterModal}
         title="Filter Relief Batches"
-        statusOptions={[
-          { id: 'All Status', label: 'All Status' },
-          { id: 'Distributed', label: 'Distributed' },
-          { id: 'Completed', label: 'Completed' },
-          { id: 'Queued', label: 'Queued' },
-        ]}
+        statusOptions={STATUSES.map((s) => ({ id: s, label: s }))}
         statusValue={filterStatus}
         centerValue={filterCenter}
         roomValue={filterRoom}

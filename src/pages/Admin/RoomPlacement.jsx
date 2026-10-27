@@ -28,16 +28,6 @@ export default function RoomPlacement() {
     status: 'Active',
   });
 
-  // Centers are already sorted alphabetically by useEvacuationCenters()
-  const centerFilterOptions = useMemo(() => {
-    return ['All Centers', ...centers.map((c) => c.displayName)];
-  }, [centers]);
-
-  // Dynamic rooms options based on current center filter
-  const roomFilterOptions = useMemo(() => {
-    return getRoomsForCenter(filterCenter, centers);
-  }, [filterCenter, centers]);
-
   // Combine generated center rooms with custom rooms
   const allRooms = useMemo(() => {
     const list = [];
@@ -321,11 +311,7 @@ export default function RoomPlacement() {
       <AdminFilterModal
         isOpen={showFilterModal}
         title="Filter Rooms"
-        statusOptions={[
-          { id: 'All Status', label: 'All Status' },
-          { id: 'Active', label: 'Active' },
-          { id: 'Full', label: 'Full' },
-        ]}
+        statusOptions={STATUSES.map((s) => ({ id: s, label: s }))}
         statusValue={filterStatus}
         centerValue={filterCenter}
         roomValue={filterRoom}

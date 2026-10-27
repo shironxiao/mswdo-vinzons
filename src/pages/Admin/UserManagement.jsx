@@ -63,11 +63,6 @@ export default function UserManagement() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Alphabetical centers list from Supabase
-  const centerFilterOptions = useMemo(() => {
-    return ['All Centers', 'All Centers (Command)', ...centers.map((c) => c.displayName)];
-  }, [centers]);
-
   const [form, setForm] = useState({
     name: '',
     email: '',

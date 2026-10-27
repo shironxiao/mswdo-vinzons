@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { MapPin, Plus, X, ChevronLeft, ChevronRight, Search, Building } from 'lucide-react';
+import { MapPin, Plus, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import './EvacuationCenter.css';
 import './AdminFeatures.css';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 export default function EvacuationCenter() {
-  const { centers: dbCenters, loading, refetch } = useEvacuationCenters();
+  const { centers: dbCenters, refetch } = useEvacuationCenters();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -117,7 +117,7 @@ export default function EvacuationCenter() {
   };
 
   return (
-    <div className="vin-evac-page" onClick={() => openFilter && setOpenFilter(null)}>
+    <div className="vin-evac-page">
       {/* Header section */}
       <header className="vin-evac-header">
         <div className="vin-evac-header-text">

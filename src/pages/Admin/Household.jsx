@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
-  CheckCircle2, Clock, Users, Home,
+  CheckCircle2, Clock, Users,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import checkIcon from '../../assets/check.png';

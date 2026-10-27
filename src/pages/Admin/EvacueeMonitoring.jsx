@@ -169,11 +169,7 @@ export default function EvacueeMonitoring() {
       <AdminFilterModal
         isOpen={showFilterModal}
         title="Filter Evacuee Monitoring"
-        statusOptions={[
-          { id: 'All Status', label: 'All Status' },
-          { id: 'Complete', label: 'Complete' },
-          { id: 'Pending', label: 'Pending' },
-        ]}
+        statusOptions={STATUSES.map((s) => ({ id: s, label: s }))}
         statusValue={filterStatus}
         centerValue={filterCenter}
         roomValue={filterRoom}
