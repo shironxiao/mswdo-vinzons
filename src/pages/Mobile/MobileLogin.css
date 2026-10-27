@@ -1,5 +1,6 @@
 /* ==========================================================
-   Mobile Login Screen Styles
+   Mobile Login Screen Styles — Fully Responsive
+   Mobile: full-screen card | Tablet & Desktop: centered floating panel
    ========================================================== */
 
 .vin-mobile-login-wrapper {
@@ -23,6 +24,36 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   position: relative;
   box-sizing: border-box;
+}
+
+/* ── Tablet & Desktop: centered floating panel ── */
+@media (min-width: 640px) {
+  .vin-mobile-login-wrapper {
+    align-items: center;
+    background: linear-gradient(135deg, #e8f4ec 0%, #f1f5f3 50%, #e4f0e8 100%);
+    padding: 40px 24px;
+  }
+
+  .vin-mobile-login-card {
+    min-height: unset;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(23, 66, 45, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    max-width: 460px;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .vin-mobile-login-wrapper {
+    padding: 60px 40px;
+    background: linear-gradient(135deg, #ddf0e4 0%, #f1f5f3 40%, #e4f0e8 100%);
+  }
+
+  .vin-mobile-login-card {
+    max-width: 480px;
+    box-shadow: 0 24px 80px rgba(23, 66, 45, 0.16), 0 6px 20px rgba(0, 0, 0, 0.06);
+  }
 }
 
 /* Header with dark green brand background */
