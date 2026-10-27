@@ -654,3 +654,52 @@
 .vin-mon-ratio.absent {
   color: #843232;
 }
+
+/* ==========================================================
+   Responsive Breakpoints for Desktop, Tablet, and Mobile
+   (Home, Household, Center, Monitor sections)
+   ========================================================== */
+@media (min-width: 640px) {
+  .vin-mob-page {
+    gap: 20px;
+  }
+  .vin-mob-title {
+    font-size: 1.85rem;
+  }
+  .vin-mob-subtitle {
+    font-size: 0.95rem;
+  }
+  /* Home: 4-column metric cards on tablet and desktop */
+  .vin-mob-metrics-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .vin-mob-table th {
+    padding: 13px 18px;
+    font-size: 0.74rem;
+  }
+  .vin-mob-table td {
+    padding: 14px 18px;
+    font-size: 0.88rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .vin-mob-page {
+    gap: 24px;
+  }
+  .vin-mob-title {
+    font-size: 2.1rem;
+  }
+  .vin-mob-subtitle {
+    font-size: 1rem;
+  }
+  .vin-mob-table th {
+    padding: 15px 22px;
+    font-size: 0.78rem;
+  }
+  .vin-mob-table td {
+    padding: 16px 22px;
+    font-size: 0.92rem;
+  }
+}

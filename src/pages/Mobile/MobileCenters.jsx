@@ -299,12 +299,6 @@ export default function MobileCenters() {
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '5' });
 
-  /* ── Status counts for pill labels ── */
-  const allCount       = centers.filter((c) => search ? (c.name.toLowerCase().includes(search.toLowerCase()) || c.location.toLowerCase().includes(search.toLowerCase())) : true).length;
-  const availableCount = centers.filter((c) => centerStatusLabel(c) === 'Available').length;
-  const occupiedCount  = centers.filter((c) => centerStatusLabel(c) === 'Occupied').length;
-  const emptyCount     = centers.filter((c) => centerStatusLabel(c) === 'Empty').length;
-
   /* ── Filter & Search ── */
   const filtered = centers.filter((c) => {
     const matchSearch =
@@ -350,12 +344,12 @@ export default function MobileCenters() {
     setIsAddOpen(false);
   };
 
-  /* Status filter pill options */
+  /* Status filter pill options (no numbers inside pills to prevent cutting off) */
   const STATUS_PILLS = [
-    { id: 'All',       label: 'All',       count: centers.length, dotClass: null },
-    { id: 'Available', label: 'Available', count: availableCount, dotClass: 'green' },
-    { id: 'Occupied',  label: 'Occupied',  count: occupiedCount,  dotClass: 'red'   },
-    { id: 'Empty',     label: 'Empty',     count: emptyCount,     dotClass: 'gray'  },
+    { id: 'All',       label: 'All',       dotClass: null },
+    { id: 'Available', label: 'Available', dotClass: 'green' },
+    { id: 'Occupied',  label: 'Occupied',  dotClass: 'red'   },
+    { id: 'Empty',     label: 'Empty',     dotClass: 'gray'  },
   ];
 
   return (
@@ -381,7 +375,7 @@ export default function MobileCenters() {
         />
       </div>
 
-      {/* ── Status Filter Pills (like the image reference) ── */}
+      {/* ── Status Filter Pills (Clean pills without numbers) ── */}
       <div className="vin-ctr-status-pills-row">
         {STATUS_PILLS.map((pill) => (
           <button
@@ -394,7 +388,6 @@ export default function MobileCenters() {
               <span className={`vin-ctr-pill-dot ${pill.dotClass}`} />
             )}
             <span className="vin-ctr-pill-label">{pill.label}</span>
-            <span className="vin-ctr-pill-count">·{pill.count}</span>
           </button>
         ))}
       </div>

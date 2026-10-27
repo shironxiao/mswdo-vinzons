@@ -959,7 +959,7 @@
 /* White Bottom Sheet Panel */
 .vin-hh-filter-sheet {
   width: 100%;
-  max-width: 440px;
+  max-width: 540px;
   background-color: #ffffff;
   color: #0f172a;
   border-top-left-radius: 24px;
@@ -1174,7 +1174,7 @@
 
 .vin-center-picker-sheet {
   width: 100%;
-  max-width: 440px;
+  max-width: 540px;
   max-height: 86vh;
   background-color: #ffffff;
   color: #0f172a;

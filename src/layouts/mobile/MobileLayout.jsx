@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   Menu,
   X,
+  Wifi,
   WifiOff,
   User,
   FileText,
@@ -16,7 +17,26 @@ import './MobileLayout.css';
 export default function MobileLayout({ children }) {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const isOffline = true; // UI indicator matching screenshot
+
+  // Dynamic Online/Offline detector
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean'
+      ? navigator.onLine
+      : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleLogout = () => {
     if (confirm('Are you sure you want to log out?')) {
@@ -37,9 +57,9 @@ export default function MobileLayout({ children }) {
           <h1 className="vin-mobile-brand-title">MSWDO - Vinzons</h1>
 
           <div className="vin-mobile-topbar-actions">
-            <div className={`vin-mobile-status-pill ${isOffline ? 'offline' : 'online'}`}>
-              <WifiOff size={14} />
-              <span>Offline</span>
+            <div className={`vin-mobile-status-pill ${isOnline ? 'online' : 'offline'}`}>
+              {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+              <span>{isOnline ? 'Online' : 'Offline'}</span>
             </div>
 
             <button

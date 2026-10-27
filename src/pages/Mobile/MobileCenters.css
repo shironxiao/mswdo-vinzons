@@ -24,12 +24,12 @@
 .vin-ctr-dot.gray  { background: #94a3b8; }
 
 /* ──────────────────────────────────────────────
-   Status Filter Pills Row (Dynamically adjustable)
+   Status Filter Pills Row (Dynamically adjustable, no cut-off)
    ────────────────────────────────────────────── */
 .vin-ctr-status-pills-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 4px 16px 12px;
   width: 100%;
   box-sizing: border-box;
@@ -41,13 +41,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
   border-radius: 9999px;
-  padding: 7px 4px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  padding: 8px 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: #475569;
   cursor: pointer;
   white-space: nowrap;
@@ -72,8 +72,8 @@
 
 .vin-ctr-pill-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -89,44 +89,22 @@
 
 .vin-ctr-pill-label {
   line-height: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-
-.vin-ctr-pill-count {
-  font-size: 0.78rem;
-  font-weight: 800;
-  opacity: 0.85;
-  flex-shrink: 0;
-}
-
-.vin-ctr-status-pill.active .vin-ctr-pill-count { opacity: 1; }
 
 /* Responsive adjustments for narrow screens */
 @media (max-width: 380px) {
   .vin-ctr-status-pills-row {
     padding: 4px 12px 10px;
+    gap: 5px;
+  }
+  .vin-ctr-status-pill {
+    padding: 7px 4px;
+    font-size: 0.76rem;
     gap: 4px;
   }
-  .vin-ctr-status-pill {
-    padding: 6px 2px;
-    font-size: 0.72rem;
-    gap: 3px;
-  }
   .vin-ctr-pill-dot {
-    width: 6px;
-    height: 6px;
-  }
-  .vin-ctr-pill-count {
-    font-size: 0.72rem;
-  }
-}
-
-@media (max-width: 330px) {
-  .vin-ctr-status-pill {
-    font-size: 0.67rem;
-    padding: 5px 1px;
-    gap: 2px;
+    width: 7px;
+    height: 7px;
   }
 }
 
