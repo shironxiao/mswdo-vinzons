@@ -434,3 +434,452 @@
 .vin-btn-submit:hover {
   background: #d1a52b;
 }
+
+/* ==========================================================
+   Mobile-Style Unified Filter Bar & Picker Modals for Admin
+   ========================================================== */
+.vin-admin-unified-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Left-aligned Filters Trigger Pill (Exact match to Mobile design) */
+.vin-hh-filters-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #ffffff;
+  border: 1.5px solid #14532d;
+  border-radius: 9999px;
+  padding: 7px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0d3824;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.vin-hh-filters-trigger:hover {
+  background: #f0fdf4;
+}
+
+.vin-hh-filters-trigger.active {
+  border-color: #166534;
+  background: #14532d;
+  color: #ffffff;
+}
+
+.vin-hh-filters-trigger.active .vin-hh-filters-trigger-icon {
+  color: #ffffff;
+}
+
+.vin-hh-filters-trigger-icon {
+  color: #166534;
+  flex-shrink: 0;
+}
+
+/* Active Filter Chips */
+.vin-hh-active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  color: #14532d;
+  border: 1.5px solid #86efac;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.vin-hh-active-chip:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.vin-hh-chip-close {
+  color: #166534;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.vin-hh-active-chip:hover .vin-hh-chip-close {
+  color: #dc2626;
+}
+
+/* Modal Overlay & Card for Desktop */
+.vin-center-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.vin-admin-picker-modal,
+.vin-admin-filter-sheet-modal {
+  width: 100%;
+  max-width: 460px;
+  max-height: 85vh;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 20px;
+  padding: 20px 22px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e2e8f0;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.vin-picker-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 2px;
+}
+
+.vin-picker-modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-picker-close-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-picker-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Filter Sheet Components */
+.vin-hh-filter-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vin-hh-filter-sheet-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-hh-filter-sheet-reset {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: color 0.15s ease;
+}
+
+.vin-hh-filter-sheet-reset:hover {
+  color: #0f172a;
+}
+
+.vin-hh-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vin-hh-filter-section-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vin-hh-filter-pills-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.vin-hh-filter-pill {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 7px 18px;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-hh-filter-pill:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.vin-hh-filter-pill.active {
+  border-color: #14532d;
+  background: #14532d;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+/* Tap Field to open Center / Room picker */
+.vin-hh-filter-tap-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-hh-filter-tap-field:hover {
+  background: #ffffff;
+  border-color: #14532d;
+}
+
+.vin-hh-filter-select-display-txt {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.vin-hh-filter-select-icon {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+/* Apply / Show Results Button */
+.vin-hh-filter-sheet-apply {
+  width: 100%;
+  background: #17422d;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  margin-top: 6px;
+  box-shadow: 0 4px 14px rgba(23, 66, 45, 0.22);
+  transition: all 0.15s ease;
+}
+
+.vin-hh-filter-sheet-apply:hover {
+  background: #1e5239;
+  box-shadow: 0 6px 18px rgba(23, 66, 45, 0.3);
+}
+
+/* Search Box in Center / Room picker */
+.vin-center-picker-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.vin-center-picker-search-box:focus-within {
+  background: #ffffff;
+  border-color: #14532d;
+  box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.08);
+}
+
+.vin-center-picker-search-icon {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.vin-center-picker-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 0.92rem;
+  color: #0f172a;
+  font-weight: 500;
+  padding: 0;
+}
+
+.vin-center-picker-clear-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vin-center-picker-clear-btn:hover {
+  color: #0f172a;
+}
+
+/* Scrollable Item List */
+.vin-center-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  max-height: 48vh;
+  padding-right: 4px;
+}
+
+.vin-center-picker-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.vin-center-picker-item:hover {
+  background: #f8fafc;
+}
+
+.vin-center-picker-item.selected {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.vin-center-picker-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  box-sizing: border-box;
+}
+
+.vin-center-picker-item.selected .vin-center-picker-radio {
+  border-color: #166534;
+}
+
+.vin-center-picker-radio-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #166534;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: all 0.15s ease;
+}
+
+.vin-center-picker-item.selected .vin-center-picker-radio-dot {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.vin-center-picker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.vin-center-picker-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.vin-center-picker-item.selected .vin-center-picker-name {
+  color: #14532d;
+}
+
+.vin-center-picker-loc {
+  font-size: 0.77rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.vin-center-picker-empty {
+  padding: 30px 16px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.vin-center-picker-submit {
+  width: 100%;
+  background: #17422d;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  margin-top: 4px;
+  box-shadow: 0 4px 14px rgba(23, 66, 45, 0.22);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.vin-center-picker-submit:hover {
+  background: #1e5239;
+  box-shadow: 0 6px 18px rgba(23, 66, 45, 0.3);
+}

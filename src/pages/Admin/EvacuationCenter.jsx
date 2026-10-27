@@ -1,16 +1,17 @@
 import { useState, useMemo } from 'react';
-import { MapPin, Plus, X, ChevronLeft, ChevronRight, Search, ChevronDown, Building, DoorOpen } from 'lucide-react';
+import { MapPin, Plus, X, ChevronLeft, ChevronRight, Search, Building } from 'lucide-react';
 import './EvacuationCenter.css';
 import './AdminFeatures.css';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
 import { supabase } from '../../lib/supabase.js';
+import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 export default function EvacuationCenter() {
   const { centers: dbCenters, loading, refetch } = useEvacuationCenters();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
-  const [openFilter, setOpenFilter] = useState(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
@@ -165,95 +166,30 @@ export default function EvacuationCenter() {
           )}
         </div>
 
-        {/* Filter Pills */}
-        <div className="vin-filter-pill-group">
-          {/* Status Filter */}
-          <div className="vin-filter-pill-wrapper">
-            <button
-              type="button"
-              className={`vin-filter-pill-btn ${filterStatus !== 'All Status' ? 'active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === 'status' ? null : 'status');
-              }}
-            >
-              <span>{filterStatus === 'All Status' ? 'All status' : filterStatus}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {openFilter === 'status' && (
-              <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
-                <div className="vin-filter-pill-dropdown-title">Center Status</div>
-                {['All Status', 'Available', 'Occupied', 'Empty'].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`vin-filter-pill-opt ${filterStatus === s ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterStatus(s);
-                      setOpenFilter(null);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <span>{s}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Room Filter */}
-          <div className="vin-filter-pill-wrapper">
-            <button
-              type="button"
-              className={`vin-filter-pill-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === 'room' ? null : 'room');
-              }}
-            >
-              <DoorOpen size={13} style={{ marginRight: 2 }} />
-              <span>{filterRoom === 'All Rooms' ? 'Rooms' : filterRoom}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {openFilter === 'room' && (
-              <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
-                <div className="vin-filter-pill-dropdown-title">Room Filter</div>
-                {['All Rooms', '1 Room', '2-5 Rooms', '6+ Rooms'].map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className={`vin-filter-pill-opt ${filterRoom === r ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterRoom(r);
-                      setOpenFilter(null);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <span>{r}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Clear Filters */}
-          {(filterStatus !== 'All Status' || filterRoom !== 'All Rooms' || search) && (
-            <button
-              type="button"
-              className="vin-filter-pill-clear"
-              onClick={() => {
+        <AdminFilterBar
+          hasActiveFilters={filterStatus !== 'All Status' || filterRoom !== 'All Rooms'}
+          onOpenFilters={() => setShowFilterModal(true)}
+          activeChips={[
+            filterStatus !== 'All Status' && {
+              key: 'status',
+              label: 'Status',
+              value: filterStatus,
+              onRemove: () => {
                 setFilterStatus('All Status');
-                setFilterRoom('All Rooms');
-                setSearch('');
                 setCurrentPage(1);
-              }}
-            >
-              Reset
-            </button>
-          )}
-        </div>
+              },
+            },
+            filterRoom !== 'All Rooms' && {
+              key: 'room',
+              label: 'Room',
+              value: filterRoom,
+              onRemove: () => {
+                setFilterRoom('All Rooms');
+                setCurrentPage(1);
+              },
+            },
+          ]}
+        />
       </div>
 
       {/* Grid of Evacuation Center Cards */}
@@ -451,6 +387,33 @@ export default function EvacuationCenter() {
           </div>
         </div>
       )}
+      {/* ── Mobile-Style Filter Modal ── */}
+      <AdminFilterModal
+        isOpen={showFilterModal}
+        title="Filter Centers"
+        hideCenter={true}
+        statusOptions={[
+          { id: 'All Status', label: 'All Status' },
+          { id: 'Available', label: 'Available' },
+          { id: 'Occupied', label: 'Occupied' },
+          { id: 'Empty', label: 'Empty' },
+        ]}
+        roomOptions={[
+          { id: 'All Rooms', label: 'All Rooms' },
+          { id: '1 Room', label: '1 Room' },
+          { id: '2-5 Rooms', label: '2-5 Rooms' },
+          { id: '6+ Rooms', label: '6+ Rooms' },
+        ]}
+        statusValue={filterStatus}
+        roomValue={filterRoom}
+        resultCount={filtered.length}
+        onApply={({ status, room }) => {
+          setFilterStatus(status);
+          setFilterRoom(room);
+          setCurrentPage(1);
+        }}
+        onClose={() => setShowFilterModal(false)}
+      />
     </div>
   );
 }

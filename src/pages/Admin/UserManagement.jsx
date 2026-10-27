@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Plus, Shield, UserCheck, X, MoreVertical, ChevronDown } from 'lucide-react';
+import { Plus, Shield, UserCheck, X, MoreVertical } from 'lucide-react';
 import './UserManagement.css';
 import { useEvacuationCenters, isCenterMatch } from '../../lib/evacuationCenters.js';
+import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 const INITIAL_USERS = [
   {
@@ -59,7 +60,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState(INITIAL_USERS);
   const [filterRole, setFilterRole] = useState('All Roles');
   const [filterCenter, setFilterCenter] = useState('All Centers');
-  const [openFilter, setOpenFilter] = useState(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Alphabetical centers list from Supabase
@@ -113,7 +114,7 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="vin-users-page" onClick={() => openFilter && setOpenFilter(null)}>
+    <div className="vin-users-page">
       {/* Header */}
       <header className="vin-users-header">
         <div className="vin-users-header-text">
@@ -136,89 +137,24 @@ export default function UserManagement() {
       {/* Table Card */}
       <div className="vin-users-table-card">
         <div className="vin-users-toolbar">
-          <div className="vin-filter-pill-group">
-            {/* Role Filter */}
-            <div className="vin-filter-pill-wrapper">
-              <button
-                type="button"
-                className={`vin-filter-pill-btn ${filterRole !== 'All Roles' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'role' ? null : 'role');
-                }}
-              >
-                <span>{filterRole === 'All Roles' ? 'All roles' : filterRole}</span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'role' && (
-                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-filter-pill-dropdown-title">User Role</div>
-                  {ROLES.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      className={`vin-filter-pill-opt ${filterRole === r ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterRole(r);
-                        setOpenFilter(null);
-                      }}
-                    >
-                      <span>{r}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Center Filter */}
-            <div className="vin-filter-pill-wrapper">
-              <button
-                type="button"
-                className={`vin-filter-pill-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'center' ? null : 'center');
-                }}
-              >
-                <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'center' && (
-                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-filter-pill-dropdown-title">Assigned Center</div>
-                  {centerFilterOptions.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`vin-filter-pill-opt ${filterCenter === c ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterCenter(c);
-                        setOpenFilter(null);
-                      }}
-                    >
-                      <span>{c}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Clear Filter */}
-            {(filterRole !== 'All Roles' || filterCenter !== 'All Centers') && (
-              <button
-                type="button"
-                className="vin-filter-pill-clear"
-                onClick={() => {
-                  setFilterRole('All Roles');
-                  setFilterCenter('All Centers');
-                }}
-              >
-                Clear <X size={12} />
-              </button>
-            )}
-          </div>
+          <AdminFilterBar
+            hasActiveFilters={filterRole !== 'All Roles' || filterCenter !== 'All Centers'}
+            onOpenFilters={() => setShowFilterModal(true)}
+            activeChips={[
+              filterCenter !== 'All Centers' && {
+                key: 'center',
+                label: 'Center',
+                value: filterCenter,
+                onRemove: () => setFilterCenter('All Centers'),
+              },
+              filterRole !== 'All Roles' && {
+                key: 'role',
+                label: 'Role',
+                value: filterRole,
+                onRemove: () => setFilterRole('All Roles'),
+              },
+            ]}
+          />
         </div>
 
         <table className="vin-users-table">
@@ -363,6 +299,22 @@ export default function UserManagement() {
           </div>
         </div>
       )}
+      {/* ── Mobile-Style Filter Modal (No room filter) ── */}
+      <AdminFilterModal
+        isOpen={showFilterModal}
+        title="Filter Users"
+        hideRoom={true}
+        statusOptions={ROLES.map((r) => ({ id: r, label: r }))}
+        statusValue={filterRole}
+        centerValue={filterCenter}
+        centersList={centers}
+        resultCount={filtered.length}
+        onApply={({ status, center }) => {
+          setFilterRole(status);
+          setFilterCenter(center);
+        }}
+        onClose={() => setShowFilterModal(false)}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Plus, User, Edit, X, Trash2,
-  AlertTriangle, Ticket, Printer, ChevronDown, Building, DoorOpen,
+  AlertTriangle, Ticket, Printer, Building,
   CheckCircle2, Clock, Users, Home,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -11,9 +11,9 @@ import './AdminFeatures.css';
 import './AdminHousehold.css';
 import {
   useEvacuationCenters,
-  getRoomsForCenter,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
+import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 /* ──────────────────────────────────────────────
    Seed Data (synced with mobile structure)
@@ -531,18 +531,10 @@ export default function Household() {
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
-  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | 'room' | null
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
-
-  const centerFilterOptions = useMemo(() => {
-    return ['All Centers', ...centers.map((c) => c.displayName)];
-  }, [centers]);
-
-  const roomFilterOptions = useMemo(() => {
-    return getRoomsForCenter(filterCenter, centers);
-  }, [filterCenter, centers]);
 
   const [activeForm, setActiveForm] = useState({
     id: '',
@@ -679,7 +671,7 @@ export default function Household() {
   };
 
   return (
-    <div className="vin-feature-page" onClick={() => openFilter && setOpenFilter(null)}>
+    <div className="vin-feature-page">
       {/* ── Page Header ── */}
       <header className="vin-admin-hh-header">
         <div className="vin-admin-hh-title-group">
@@ -735,139 +727,33 @@ export default function Household() {
         </div>
       </div>
 
-      {/* ── Toolbar & Filter Controls ── */}
+      {/* ── Toolbar & Filter Controls (Mobile-style Filter Button & Active Chips) ── */}
       <div className="vin-admin-hh-toolbar-card">
         <div className="vin-admin-hh-toolbar-top">
-          {/* Filter dropdowns & Print all button */}
-          <div className="vin-admin-hh-filter-controls">
-            {/* Status Filter */}
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                className={`vin-admin-filter-btn ${filterStub !== 'All' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'status' ? null : 'status');
-                }}
-              >
-                <span>{filterStub === 'All' ? 'All status' : filterStub}</span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'status' && (
-                <div className="vin-admin-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-admin-filter-section-title">STUB STATUS</div>
-                  {[
-                    { id: 'All', label: 'All Status', dot: 'all' },
-                    { id: 'Issued', label: 'Issued (Green)', dot: 'issued' },
-                    { id: 'Not Issued', label: 'Not Issued (Red)', dot: 'notissued' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      className={`vin-admin-filter-opt ${filterStub === opt.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterStub(opt.id);
-                        setOpenFilter(null);
-                      }}
-                    >
-                      <span className={`vin-admin-filter-dot ${opt.dot}`} />
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Evacuation Center Filter */}
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                className={`vin-admin-filter-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'center' ? null : 'center');
-                }}
-              >
-                <span>
-                  {filterCenter === 'All Centers'
-                    ? 'All centers'
-                    : filterCenter.split(' ').slice(0, 2).join(' ')}
-                </span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'center' && (
-                <div className="vin-admin-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-admin-filter-section-title">EVACUATION CENTER</div>
-                  {centerFilterOptions.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`vin-admin-filter-opt ${filterCenter === c ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterCenter(c);
-                        setFilterRoom('All Rooms');
-                        setOpenFilter(null);
-                      }}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Room Filter */}
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                className={`vin-admin-filter-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'room' ? null : 'room');
-                }}
-              >
-                <DoorOpen size={13} style={{ marginRight: 2 }} />
-                <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'room' && (
-                <div className="vin-admin-filter-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-admin-filter-section-title">ROOM DESIGNATION</div>
-                  {roomFilterOptions.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      className={`vin-admin-filter-opt ${filterRoom === r ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterRoom(r);
-                        setOpenFilter(null);
-                      }}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Clear filters pill */}
-            {(filterStub !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms') && (
-              <button
-                type="button"
-                className="vin-admin-clear-pill"
-                onClick={() => {
-                  setFilterStub('All');
-                  setFilterCenter('All Centers');
-                  setFilterRoom('All Rooms');
-                }}
-              >
-                Clear <X size={12} />
-              </button>
-            )}
-
+          <AdminFilterBar
+            hasActiveFilters={filterStub !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms'}
+            onOpenFilters={() => setShowFilterModal(true)}
+            activeChips={[
+              filterCenter !== 'All Centers' && {
+                key: 'center',
+                label: 'Center',
+                value: filterCenter,
+                onRemove: () => setFilterCenter('All Centers'),
+              },
+              filterRoom !== 'All Rooms' && {
+                key: 'room',
+                label: 'Room',
+                value: filterRoom,
+                onRemove: () => setFilterRoom('All Rooms'),
+              },
+              filterStub !== 'All' && {
+                key: 'stub',
+                label: 'Status',
+                value: filterStub,
+                onRemove: () => setFilterStub('All'),
+              },
+            ]}
+          >
             {/* Print All Button */}
             <button
               type="button"
@@ -878,8 +764,7 @@ export default function Household() {
               <Printer size={16} />
               <span>Print All ({filteredIssued.length})</span>
             </button>
-
-          </div>
+          </AdminFilterBar>
         </div>
 
         {/* Legend row */}
@@ -1190,6 +1075,28 @@ export default function Household() {
           </div>
         </div>
       )}
+
+      {/* ── Mobile-Style Filter Modal ── */}
+      <AdminFilterModal
+        isOpen={showFilterModal}
+        title="Filter Households"
+        statusOptions={[
+          { id: 'All', label: 'All Status' },
+          { id: 'Issued', label: 'Issued (Green)' },
+          { id: 'Not Issued', label: 'Not Issued (Red)' },
+        ]}
+        statusValue={filterStub}
+        centerValue={filterCenter}
+        roomValue={filterRoom}
+        centersList={centers}
+        resultCount={filtered.length}
+        onApply={({ status, center, room }) => {
+          setFilterStub(status);
+          setFilterCenter(center);
+          setFilterRoom(room);
+        }}
+        onClose={() => setShowFilterModal(false)}
+      />
 
       {/* ── HIDDEN QR SVGS FOR PRINTING ── */}
       <div

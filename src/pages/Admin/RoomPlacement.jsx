@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Plus, Building, ChevronDown, X, DoorOpen } from 'lucide-react';
+import { Plus, Building, X } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
-  getRoomsForCenter,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
+import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 const STATUSES = ['All Status', 'Active', 'Full'];
 
@@ -14,7 +14,7 @@ export default function RoomPlacement() {
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
-  const [openFilter, setOpenFilter] = useState(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
   // Custom added rooms state
   const [customRooms, setCustomRooms] = useState([]);
@@ -119,7 +119,7 @@ export default function RoomPlacement() {
   };
 
   return (
-    <div className="vin-feature-page" onClick={() => openFilter && setOpenFilter(null)}>
+    <div className="vin-feature-page">
       <header className="vin-feature-header">
         <div className="vin-feature-header-left">
           <span className="vin-feature-eyebrow">FACILITIES & ALLOCATIONS</span>
@@ -140,126 +140,30 @@ export default function RoomPlacement() {
 
       <div className="vin-feature-content-card">
         <div className="vin-feature-toolbar">
-          <div className="vin-filter-pill-group">
-            {/* Center Filter */}
-            <div className="vin-filter-pill-wrapper">
-              <button
-                type="button"
-                className={`vin-filter-pill-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'center' ? null : 'center');
-                }}
-              >
-                <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter}</span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'center' && (
-                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-filter-pill-dropdown-title">Evacuation Center</div>
-                  {centerFilterOptions.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`vin-filter-pill-opt ${filterCenter === c ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterCenter(c);
-                        setFilterRoom('All Rooms');
-                        setOpenFilter(null);
-                      }}
-                    >
-                      <span>{c}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Room Filter */}
-            <div className="vin-filter-pill-wrapper">
-              <button
-                type="button"
-                className={`vin-filter-pill-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'room' ? null : 'room');
-                }}
-              >
-                <DoorOpen size={13} style={{ marginRight: 2 }} />
-                <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'room' && (
-                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-filter-pill-dropdown-title">Room Designation</div>
-                  {roomFilterOptions.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      className={`vin-filter-pill-opt ${filterRoom === r ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterRoom(r);
-                        setOpenFilter(null);
-                      }}
-                    >
-                      <span>{r}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Status Filter */}
-            <div className="vin-filter-pill-wrapper">
-              <button
-                type="button"
-                className={`vin-filter-pill-btn ${filterStatus !== 'All Status' ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenFilter(openFilter === 'status' ? null : 'status');
-                }}
-              >
-                <span>{filterStatus === 'All Status' ? 'All status' : filterStatus}</span>
-                <ChevronDown size={13} />
-              </button>
-
-              {openFilter === 'status' && (
-                <div className="vin-filter-pill-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="vin-filter-pill-dropdown-title">Room Status</div>
-                  {STATUSES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`vin-filter-pill-opt ${filterStatus === s ? 'active' : ''}`}
-                      onClick={() => {
-                        setFilterStatus(s);
-                        setOpenFilter(null);
-                      }}
-                    >
-                      <span>{s}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Clear Filter */}
-            {(filterCenter !== 'All Centers' || filterRoom !== 'All Rooms' || filterStatus !== 'All Status') && (
-              <button
-                type="button"
-                className="vin-filter-pill-clear"
-                onClick={() => {
-                  setFilterCenter('All Centers');
-                  setFilterRoom('All Rooms');
-                  setFilterStatus('All Status');
-                }}
-              >
-                Clear <X size={12} />
-              </button>
-            )}
-          </div>
+          <AdminFilterBar
+            hasActiveFilters={filterCenter !== 'All Centers' || filterRoom !== 'All Rooms' || filterStatus !== 'All Status'}
+            onOpenFilters={() => setShowFilterModal(true)}
+            activeChips={[
+              filterCenter !== 'All Centers' && {
+                key: 'center',
+                label: 'Center',
+                value: filterCenter,
+                onRemove: () => setFilterCenter('All Centers'),
+              },
+              filterRoom !== 'All Rooms' && {
+                key: 'room',
+                label: 'Room',
+                value: filterRoom,
+                onRemove: () => setFilterRoom('All Rooms'),
+              },
+              filterStatus !== 'All Status' && {
+                key: 'status',
+                label: 'Status',
+                value: filterStatus,
+                onRemove: () => setFilterStatus('All Status'),
+              },
+            ]}
+          />
         </div>
 
         <table className="vin-feature-table">
@@ -413,6 +317,27 @@ export default function RoomPlacement() {
           </div>
         </div>
       )}
+      {/* ── Mobile-Style Filter Modal ── */}
+      <AdminFilterModal
+        isOpen={showFilterModal}
+        title="Filter Rooms"
+        statusOptions={[
+          { id: 'All Status', label: 'All Status' },
+          { id: 'Active', label: 'Active' },
+          { id: 'Full', label: 'Full' },
+        ]}
+        statusValue={filterStatus}
+        centerValue={filterCenter}
+        roomValue={filterRoom}
+        centersList={centers}
+        resultCount={filtered.length}
+        onApply={({ status, center, room }) => {
+          setFilterStatus(status);
+          setFilterCenter(center);
+          setFilterRoom(room);
+        }}
+        onClose={() => setShowFilterModal(false)}
+      />
     </div>
   );
 }
