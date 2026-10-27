@@ -10,6 +10,11 @@ import './MobileSubpages.css';
 import './MobileHouseholds.css';
 import checkIcon from '../../assets/check.png';
 import removeIcon from '../../assets/remove.png';
+import {
+  useEvacuationCenters,
+  isCenterMatch,
+  getRoomsForCenter,
+} from '../../lib/evacuationCenters';
 
 /* ──────────────────────────────────────────────
    Seed data – replace with Dexie in production
@@ -620,16 +625,16 @@ OFFICIAL_EVAC_CENTERS.forEach((c) => {
 /* ──────────────────────────────────────────────
    Center Selection Bottom Sheet (White Theme)
    ────────────────────────────────────────────── */
-function CenterSelectSheet({ selected, onSelect, onClose }) {
+function CenterSelectSheet({ selected, centersList = [], onSelect, onClose }) {
   const [tempSelected, setTempSelected] = useState(selected || 'All Centers');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCenters = OFFICIAL_EVAC_CENTERS.filter((c) => {
+  const filteredCenters = centersList.filter((c) => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
     return (
-      c.name.toLowerCase().includes(q) ||
-      (c.fullName && c.fullName.toLowerCase().includes(q)) ||
+      (c.displayName && c.displayName.toLowerCase().includes(q)) ||
+      (c.name && c.name.toLowerCase().includes(q)) ||
       (c.location && c.location.toLowerCase().includes(q))
     );
   });
@@ -651,7 +656,7 @@ function CenterSelectSheet({ selected, onSelect, onClose }) {
           <input
             type="text"
             className="vin-center-picker-search-input"
-            placeholder={`Search ${OFFICIAL_EVAC_CENTERS.length} centers...`}
+            placeholder={`Search ${centersList.length} centers...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -685,18 +690,19 @@ function CenterSelectSheet({ selected, onSelect, onClose }) {
           )}
 
           {filteredCenters.map((c) => {
-            const isSelected = tempSelected === c.name;
+            const centerVal = c.displayName || c.name;
+            const isSelected = tempSelected === centerVal || tempSelected === c.name;
             return (
               <div
-                key={c.name}
+                key={c.id || centerVal}
                 className={`vin-center-picker-item ${isSelected ? 'selected' : ''}`}
-                onClick={() => setTempSelected(c.name)}
+                onClick={() => setTempSelected(centerVal)}
               >
                 <div className="vin-center-picker-radio">
                   <div className="vin-center-picker-radio-dot" />
                 </div>
                 <div className="vin-center-picker-info">
-                  <span className="vin-center-picker-name">{c.name}</span>
+                  <span className="vin-center-picker-name">{centerVal}</span>
                   <span className="vin-center-picker-loc">{c.location}</span>
                 </div>
               </div>
@@ -726,17 +732,21 @@ function CenterSelectSheet({ selected, onSelect, onClose }) {
 /* ──────────────────────────────────────────────
    Room Selection Bottom Sheet (White Theme)
    ────────────────────────────────────────────── */
-function RoomSelectSheet({ selected, centerName, onSelect, onClose }) {
+function RoomSelectSheet({ selected, centerName, centersList = [], onSelect, onClose }) {
   const [tempSelected, setTempSelected] = useState(selected || 'All Rooms');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const roomsList = [
-    { id: 'Room 1', name: 'Room 1', description: 'Capacity: 30 persons' },
-    { id: 'Room 2', name: 'Room 2', description: 'Capacity: 25 persons' },
-    { id: 'Room 3', name: 'Room 3', description: 'Capacity: 25 persons' },
-    { id: 'Room 4', name: 'Room 4', description: 'Capacity: 20 persons' },
-    { id: 'Room 5', name: 'Room 5', description: 'Capacity: 20 persons' },
-  ];
+  const roomNames = getRoomsForCenter(centerName, centersList);
+  const roomsList = roomNames
+    .filter((r) => r !== 'All Rooms')
+    .map((r) => ({
+      id: r,
+      name: r,
+      description:
+        centerName && centerName !== 'All Centers'
+          ? `Designated room at ${centerName}`
+          : 'Evacuation room',
+    }));
 
   const filteredRooms = roomsList.filter((r) => {
     const q = searchQuery.trim().toLowerCase();
@@ -766,7 +776,7 @@ function RoomSelectSheet({ selected, centerName, onSelect, onClose }) {
           <input
             type="text"
             className="vin-center-picker-search-input"
-            placeholder="Search 5 rooms..."
+            placeholder={`Search ${roomsList.length} rooms...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -841,7 +851,7 @@ function RoomSelectSheet({ selected, centerName, onSelect, onClose }) {
 /* ──────────────────────────────────────────────
    Household Filter Sheet (bottom-sheet panel)
    ────────────────────────────────────────────── */
-function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, search, onApply, onClose }) {
+function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, search, centersList = [], onApply, onClose }) {
   /* Local draft state — only committed when user taps "Show results" */
   const [draftStub, setDraftStub] = useState(filterStub);
   const [draftCenter, setDraftCenter] = useState(filterCenter);
@@ -875,8 +885,7 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
       draftStub === 'All' ||
       (draftStub === 'Issued' && !!h.stubCode) ||
       (draftStub === 'Not Issued' && !h.stubCode);
-    const matchCenter =
-      draftCenter === 'All Centers' || h.center === draftCenter;
+    const matchCenter = isCenterMatch(h.center, draftCenter, centersList);
     const matchRoom =
       draftRoom === 'All Rooms' ||
       h.room === draftRoom ||
@@ -961,6 +970,7 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
       {showCenterPicker && (
         <CenterSelectSheet
           selected={draftCenter}
+          centersList={centersList}
           onSelect={(c) => handleCenterChange(c)}
           onClose={() => setShowCenterPicker(false)}
         />
@@ -971,6 +981,7 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
         <RoomSelectSheet
           selected={draftRoom}
           centerName={draftCenter}
+          centersList={centersList}
           onSelect={(r) => setDraftRoom(r)}
           onClose={() => setShowRoomPicker(false)}
         />
@@ -982,20 +993,24 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
 /* ──────────────────────────────────────────────
    Room Assignment Sheet
    ────────────────────────────────────────────── */
-function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
+function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, onClose }) {
   const [selectedCenter, setSelectedCenter] = useState(
     household.center && household.center !== 'All Centers'
       ? household.center
-      : OFFICIAL_EVAC_CENTERS[0].name
+      : (centersList[0]?.displayName || 'LGU EC (Mangcaway)')
   );
   const [feedback, setFeedback] = useState(null);
 
-  const rooms = centerRooms[selectedCenter] || [
-    { id: 'Room 1', name: 'Room 1', capacity: 30, occupied: 12 },
-    { id: 'Room 2', name: 'Room 2', capacity: 25, occupied: 8 },
+  const matchedCenterObj = centersList.find(
+    (c) => c.displayName === selectedCenter || c.name === selectedCenter
+  );
+
+  const rooms = (centerRooms && centerRooms[selectedCenter]) || matchedCenterObj?.rooms || [
+    { id: 'Room 1', name: 'Room 1', capacity: 30, occupied: 0 },
+    { id: 'Room 2', name: 'Room 2', capacity: 25, occupied: 0 },
     { id: 'Room 3', name: 'Room 3', capacity: 25, occupied: 0 },
-    { id: 'Room 4', name: 'Room 4', capacity: 20, occupied: 15 },
-    { id: 'Room 5', name: 'Room 5', capacity: 20, occupied: 5 },
+    { id: 'Room 4', name: 'Room 4', capacity: 20, occupied: 0 },
+    { id: 'Room 5', name: 'Room 5', capacity: 20, occupied: 0 },
   ];
   const neededSlots = household.familyCount || 1;
 
@@ -1104,9 +1119,12 @@ function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
               setFeedback(null);
             }}
           >
-            {CENTERS.filter((c) => c !== 'All Centers').map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+            {centersList.map((c) => {
+              const val = c.displayName || c.name;
+              return (
+                <option key={c.id || val} value={val}>{val}</option>
+              );
+            })}
           </select>
         </div>
 
@@ -1215,6 +1233,7 @@ function RoomAssignSheet({ household, centerRooms, onAssign, onClose }) {
    MAIN PAGE
    ══════════════════════════════════════════════ */
 export default function MobileHouseholds() {
+  const { centers } = useEvacuationCenters();
   const [households, setHouseholds] = useState(SEED);
   const [search, setSearch] = useState('');
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
@@ -1232,7 +1251,7 @@ export default function MobileHouseholds() {
 
   const [activeForm, setActiveForm] = useState({
     head: '', age: '', sex: 'Male',
-    center: OFFICIAL_EVAC_CENTERS[0].name,
+    center: 'LGU EC (Mangcaway)',
     room: 'Room 1', category: 'None', members: [],
   });
 
@@ -1246,8 +1265,7 @@ export default function MobileHouseholds() {
       filterStub === 'All' ||
       (filterStub === 'Issued' && !!h.stubCode) ||
       (filterStub === 'Not Issued' && !h.stubCode);
-    const matchCenter =
-      filterCenter === 'All Centers' || h.center === filterCenter;
+    const matchCenter = isCenterMatch(h.center, filterCenter, centers);
     const matchRoom =
       filterRoom === 'All Rooms' ||
       h.room === filterRoom ||
@@ -1646,6 +1664,7 @@ export default function MobileHouseholds() {
           filterRoom={filterRoom}
           households={households}
           search={search}
+          centersList={centers}
           onApply={(newStub, newCenter, newRoom) => {
             setFilterStub(newStub);
             setFilterCenter(newCenter);
@@ -1659,6 +1678,7 @@ export default function MobileHouseholds() {
       {assigningHousehold && (
         <RoomAssignSheet
           household={assigningHousehold}
+          centersList={centers}
           centerRooms={centerRooms}
           onAssign={handleAssignRoom}
           onClose={() => setAssigningHousehold(null)}
@@ -1704,20 +1724,21 @@ export default function MobileHouseholds() {
                   <label className="vin-mob-input-label">EVACUATION CENTER</label>
                   <select className="vin-mob-select" value={activeForm.center}
                     onChange={(e) => setActiveForm({ ...activeForm, center: e.target.value })}>
-                    {OFFICIAL_EVAC_CENTERS.map((c) => (
-                      <option key={c.name} value={c.name}>{c.name}</option>
-                    ))}
+                    {centers.map((c) => {
+                      const val = c.displayName || c.name;
+                      return (
+                        <option key={c.id || val} value={val}>{val}</option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label">ROOM</label>
                   <select className="vin-mob-select" value={activeForm.room}
                     onChange={(e) => setActiveForm({ ...activeForm, room: e.target.value })}>
-                    <option value="Room 1">Room 1</option>
-                    <option value="Room 2">Room 2</option>
-                    <option value="Room 3">Room 3</option>
-                    <option value="Room 4">Room 4</option>
-                    <option value="Room 5">Room 5</option>
+                    {getRoomsForCenter(activeForm.center, centers).filter((r) => r !== 'All Rooms').map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                     <option value="Unassigned">Unassigned</option>
                   </select>
                 </div>

@@ -5,7 +5,13 @@ import {
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
+import './MobileHouseholds.css';
 import './MobileMonitor.css';
+import {
+  useEvacuationCenters,
+  isCenterMatch,
+  getRoomsForCenter,
+} from '../../lib/evacuationCenters';
 
 const INITIAL_MONITOR_DATA = [
   {
@@ -173,6 +179,7 @@ const CENTERS = ['All Centers', ...OFFICIAL_EVAC_CENTERS.map((c) => c.name)];
 const ROOMS = ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
 
 export default function MobileMonitor() {
+  const { centers } = useEvacuationCenters();
   const [records] = useState(INITIAL_MONITOR_DATA);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Recorded' | 'Absent'
@@ -195,10 +202,11 @@ export default function MobileMonitor() {
       filterStatus === 'All' ||
       (filterStatus === 'Recorded' && r.status === 'Recorded') ||
       (filterStatus === 'Absent' && r.status === 'Absent');
-    const matchCenter =
-      filterCenter === 'All Centers' || r.center === filterCenter;
+    const matchCenter = isCenterMatch(r.center, filterCenter, centers);
     const matchRoom =
-      filterRoom === 'All Rooms' || r.room === filterRoom;
+      filterRoom === 'All Rooms' ||
+      r.room === filterRoom ||
+      `Room ${r.room}` === filterRoom;
     return matchSearch && matchStatus && matchCenter && matchRoom;
   });
 
@@ -498,6 +506,7 @@ export default function MobileMonitor() {
           filterRoom={filterRoom}
           records={records}
           search={search}
+          centersList={centers}
           onApply={(status, center, room) => {
             setFilterStatus(status);
             setFilterCenter(center);
@@ -513,7 +522,7 @@ export default function MobileMonitor() {
 /* ──────────────────────────────────────────────
    Monitor Filter Sheet (bottom sheet panel)
    ────────────────────────────────────────────── */
-function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, search, onApply, onClose }) {
+function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, search, centersList = [], onApply, onClose }) {
   const [draftStatus, setDraftStatus] = useState(filterStatus);
   const [draftCenter, setDraftCenter] = useState(filterCenter);
   const [draftRoom, setDraftRoom] = useState(filterRoom);
@@ -540,7 +549,7 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
       draftStatus === 'All' ||
       (draftStatus === 'Recorded' && r.status === 'Recorded') ||
       (draftStatus === 'Absent' && r.status === 'Absent');
-    const matchCenter = draftCenter === 'All Centers' || r.center === draftCenter;
+    const matchCenter = isCenterMatch(r.center, draftCenter, centersList);
     const matchRoom = draftRoom === 'All Rooms' || r.room === draftRoom;
     return matchSearch && matchStatus && matchCenter && matchRoom;
   }).length;
@@ -635,19 +644,22 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
                   <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>Show families from all evacuation centers</span>
                 </div>
               </button>
-              {OFFICIAL_EVAC_CENTERS.map((c) => (
-                <button
-                  key={c.name}
-                  type="button"
-                  className={`vin-hh-filter-opt ${draftCenter === c.name ? 'active' : ''}`}
-                  onClick={() => { setDraftCenter(c.name); setShowCenterPicker(false); }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                    <span style={{ fontWeight: 700 }}>{c.name}</span>
-                    <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>{c.location}</span>
-                  </div>
-                </button>
-              ))}
+              {centersList.map((c) => {
+                const val = c.displayName || c.name;
+                return (
+                  <button
+                    key={c.id || val}
+                    type="button"
+                    className={`vin-hh-filter-opt ${draftCenter === val ? 'active' : ''}`}
+                    onClick={() => { setDraftCenter(val); setShowCenterPicker(false); }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                      <span style={{ fontWeight: 700 }}>{val}</span>
+                      <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>{c.location}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -663,7 +675,7 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
               <button type="button" className="vin-hh-filter-sheet-reset" onClick={() => setShowRoomPicker(false)}>Close</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
-              {['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'].map((r) => (
+              {getRoomsForCenter(draftCenter, centersList).map((r) => (
                 <button
                   key={r}
                   type="button"

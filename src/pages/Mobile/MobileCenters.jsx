@@ -6,6 +6,8 @@ import {
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileCenters.css';
+import { useEvacuationCenters } from '../../lib/evacuationCenters';
+import { supabase } from '../../lib/supabase';
 
 /* ──────────────────────────────────────────────
    13 Official Vinzons Evacuation Centers
@@ -292,12 +294,31 @@ function RoomsSheet({ center, onClose }) {
    MAIN PAGE
    ────────────────────────────────────────────── */
 export default function MobileCenters() {
+  const { centers: dbCenters, refetch } = useEvacuationCenters();
   const [centers, setCenters] = useState(CENTERS_DATA);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Available' | 'Occupied' | 'Empty'
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '5' });
+
+  useEffect(() => {
+    if (dbCenters && dbCenters.length > 0) {
+      setCenters(
+        dbCenters.map((c) => ({
+          id: c.id,
+          name: c.displayName || c.name,
+          fullName: c.name,
+          location: c.location,
+          status: 'Active',
+          rooms:
+            c.rooms && c.rooms.length > 0
+              ? c.rooms
+              : [{ id: 'Room 1', capacity: 30, occupied: 0 }],
+        }))
+      );
+    }
+  }, [dbCenters]);
 
   /* ── Filter & Search ── */
   const filtered = centers.filter((c) => {
@@ -322,24 +343,23 @@ export default function MobileCenters() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedCenters = filtered.slice(startIndex, startIndex + pageSize);
 
-  const handleAddCenter = (e) => {
+  const handleAddCenter = async (e) => {
     e.preventDefault();
     if (!newCenter.name) return;
     const roomCount = Number(newCenter.rooms) || 5;
-    const rooms = Array.from({ length: roomCount }, (_, i) => ({
-      id: `Room ${i + 1}`,
-      capacity: 30,
-      occupied: 0,
-    }));
-    const item = {
-      id: Date.now(),
-      name: newCenter.name,
-      fullName: newCenter.name,
-      location: newCenter.location || 'Vinzons',
-      rooms,
-      status: 'Active',
-    };
-    setCenters([item, ...centers]);
+
+    try {
+      await supabase.from('evacuation_centers').insert({
+        name: newCenter.name,
+        location: newCenter.location || 'Vinzons, Camarines Norte',
+        total_rooms: roomCount,
+        capacity: roomCount * 25,
+      });
+      if (refetch) refetch();
+    } catch (err) {
+      console.warn('Could not insert to Supabase:', err);
+    }
+
     setNewCenter({ name: '', location: '', rooms: '5' });
     setIsAddOpen(false);
   };
