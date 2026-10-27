@@ -15,18 +15,26 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #1d4ed8;
-  color: #fff;
+  background-color: #dfb235;
+  color: #0d3824;
   border: none;
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(223, 178, 53, 0.25);
+  transition: background-color 0.15s ease, transform 0.1s ease;
 }
-.vin-hh-scan-btn:active { opacity: 0.85; }
+.vin-hh-scan-btn:hover {
+  background-color: #d1a52b;
+}
+.vin-hh-scan-btn:active {
+  transform: scale(0.97);
+  background-color: #c49925;
+}
 
 /* ── Filter bar (filter btn + chips + print all) ── */
 .vin-hh-filter-bar {
