@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown, Building,
-  ChevronLeft, ChevronRight,
+  Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown,
+  ChevronLeft, ChevronRight, SlidersHorizontal,
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
@@ -150,9 +150,13 @@ export default function MobileMonitor() {
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Recorded' | 'Absent'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
-  const [openFilter, setOpenFilter] = useState(null);          // 'status' | 'center' | 'room' | null
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeFamily, setActiveFamily] = useState(null);
   const [attendance, setAttendance] = useState({});
+
+  const activeFilters = (filterStatus !== 'All' ? 1 : 0) +
+    (filterCenter !== 'All Centers' ? 1 : 0) +
+    (filterRoom !== 'All Rooms' ? 1 : 0);
 
   const filtered = records.filter((r) => {
     const matchSearch =
@@ -176,7 +180,6 @@ export default function MobileMonitor() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, filterStatus, filterCenter, filterRoom]);
-
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRecords = filtered.slice(startIndex, startIndex + pageSize);
@@ -194,7 +197,7 @@ export default function MobileMonitor() {
   };
 
   return (
-    <div className="vin-mob-page" onClick={() => openFilter && setOpenFilter(null)}>
+    <div className="vin-mob-page">
       {/* Header */}
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
@@ -215,132 +218,57 @@ export default function MobileMonitor() {
         />
       </div>
 
-      {/* Separate Filter Buttons Bar */}
+      {/* Filter Bar — single Filters button + active chips */}
       <div className="vin-mon-filter-bar">
-        {/* Clear Filters Button if any active */}
-        {(filterStatus !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms') && (
+        {/* Filters trigger button */}
+        <button
+          type="button"
+          className={`vin-hh-filters-trigger ${activeFilters > 0 ? 'active' : ''}`}
+          onClick={() => setShowFilterSheet(true)}
+        >
+          <SlidersHorizontal size={14} className="vin-hh-filters-trigger-icon" />
+          <span>Filters</span>
+          {activeFilters > 0 && (
+            <span className="vin-hh-filters-trigger-badge">{activeFilters}</span>
+          )}
+        </button>
+
+        {/* Active filter chips */}
+        {filterStatus !== 'All' && (
           <button
             type="button"
-            className="vin-mon-clear-pill"
-            onClick={() => {
-              setFilterStatus('All');
-              setFilterCenter('All Centers');
-              setFilterRoom('All Rooms');
-            }}
+            className="vin-hh-active-chip"
+            onClick={() => setFilterStatus('All')}
           >
-            Clear <X size={11} />
+            <span>{filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
+            <X size={13} className="vin-hh-chip-close" />
+          </button>
+        )}
+        {filterCenter !== 'All Centers' && (
+          <button
+            type="button"
+            className="vin-hh-active-chip"
+            onClick={() => setFilterCenter('All Centers')}
+          >
+            <span>{filterCenter.split(' ').slice(0, 2).join(' ')}</span>
+            <X size={13} className="vin-hh-chip-close" />
+          </button>
+        )}
+        {filterRoom !== 'All Rooms' && (
+          <button
+            type="button"
+            className="vin-hh-active-chip"
+            onClick={() => setFilterRoom('All Rooms')}
+          >
+            <span>Room {filterRoom}</span>
+            <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
 
-        {/* Filters pushed to the right */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-          {/* Status Filter Button */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              className={`vin-mon-filter-btn ${filterStatus !== 'All' ? 'active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === 'status' ? null : 'status');
-              }}
-            >
-              <span>{filterStatus === 'All' ? 'All status' : filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {openFilter === 'status' && (
-              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                <div className="vin-mon-filter-title">MONITORING STATUS</div>
-                {[
-                  { id: 'All', label: 'All Status', dot: 'all' },
-                  { id: 'Recorded', label: 'Present / Recorded (Green)', dot: 'present' },
-                  { id: 'Absent', label: 'Absent (Red)', dot: 'absent' },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`vin-mon-filter-opt ${filterStatus === opt.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterStatus(opt.id);
-                      setOpenFilter(null);
-                    }}
-                  >
-                    <span className={`vin-mon-filter-dot ${opt.dot}`} />
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Evacuation Center Filter Button */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              className={`vin-mon-filter-btn ${filterCenter !== 'All Centers' ? 'active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === 'center' ? null : 'center');
-              }}
-            >
-              <span>{filterCenter === 'All Centers' ? 'All centers' : filterCenter.split(' ').slice(0, 2).join(' ')}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {openFilter === 'center' && (
-              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                <div className="vin-mon-filter-title">EVACUATION CENTER</div>
-                {CENTERS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`vin-mon-filter-opt ${filterCenter === c ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterCenter(c);
-                      setOpenFilter(null);
-                    }}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Room Filter Button */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              className={`vin-mon-filter-btn ${filterRoom !== 'All Rooms' ? 'active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === 'room' ? null : 'room');
-              }}
-            >
-              <span>{filterRoom === 'All Rooms' ? 'All rooms' : filterRoom}</span>
-              <ChevronDown size={13} />
-            </button>
-
-            {openFilter === 'room' && (
-              <div className="vin-mon-filter-dropdown" style={{ right: 0, left: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                <div className="vin-mon-filter-title">ROOM</div>
-                {ROOMS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className={`vin-mon-filter-opt ${filterRoom === r ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterRoom(r);
-                      setOpenFilter(null);
-                    }}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Result count pushed right */}
+        <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {/* Legend */}
@@ -528,6 +456,180 @@ export default function MobileMonitor() {
                 <Clock size={16} />
                 <span>No monitoring records yet.</span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FILTER SHEET */}
+      {showFilterSheet && (
+        <MonFilterSheet
+          filterStatus={filterStatus}
+          filterCenter={filterCenter}
+          filterRoom={filterRoom}
+          records={records}
+          search={search}
+          onApply={(status, center, room) => {
+            setFilterStatus(status);
+            setFilterCenter(center);
+            setFilterRoom(room);
+          }}
+          onClose={() => setShowFilterSheet(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Monitor Filter Sheet (bottom sheet panel)
+   ────────────────────────────────────────────── */
+function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, search, onApply, onClose }) {
+  const [draftStatus, setDraftStatus] = useState(filterStatus);
+  const [draftCenter, setDraftCenter] = useState(filterCenter);
+  const [draftRoom, setDraftRoom] = useState(filterRoom);
+  const [showCenterPicker, setShowCenterPicker] = useState(false);
+  const [showRoomPicker, setShowRoomPicker] = useState(false);
+
+  const handleReset = () => {
+    setDraftStatus('All');
+    setDraftCenter('All Centers');
+    setDraftRoom('All Rooms');
+  };
+
+  const handleApply = () => {
+    onApply(draftStatus, draftCenter, draftRoom);
+    onClose();
+  };
+
+  /* Live result count based on draft */
+  const draftCount = records.filter((r) => {
+    const matchSearch =
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.room.toLowerCase().includes(search.toLowerCase());
+    const matchStatus =
+      draftStatus === 'All' ||
+      (draftStatus === 'Recorded' && r.status === 'Recorded') ||
+      (draftStatus === 'Absent' && r.status === 'Absent');
+    const matchCenter = draftCenter === 'All Centers' || r.center === draftCenter;
+    const matchRoom = draftRoom === 'All Rooms' || r.room === draftRoom;
+    return matchSearch && matchStatus && matchCenter && matchRoom;
+  }).length;
+
+  return (
+    <div className="vin-mob-sheet-overlay" onClick={onClose}>
+      <div className="vin-hh-filter-sheet" onClick={(e) => e.stopPropagation()}>
+        {/* Drag handle */}
+        <div className="vin-hh-filter-sheet-handle" />
+
+        {/* Header */}
+        <div className="vin-hh-filter-sheet-header">
+          <span className="vin-hh-filter-sheet-title">Filters</span>
+          <button type="button" className="vin-hh-filter-sheet-reset" onClick={handleReset}>
+            Reset
+          </button>
+        </div>
+
+        {/* Status Pills */}
+        <div className="vin-hh-filter-section">
+          <div className="vin-hh-filter-section-label">Status</div>
+          <div className="vin-hh-filter-pills-row">
+            {[
+              { id: 'All', label: 'All' },
+              { id: 'Recorded', label: 'Present' },
+              { id: 'Absent', label: 'Absent' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`vin-hh-filter-pill ${draftStatus === opt.id ? 'active' : ''}`}
+                onClick={() => setDraftStatus(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Center Picker */}
+        <div className="vin-hh-filter-section">
+          <div className="vin-hh-filter-section-label">Center</div>
+          <div
+            className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+            onClick={() => setShowCenterPicker(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="vin-hh-filter-select-display-txt">{draftCenter}</div>
+            <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+          </div>
+        </div>
+
+        {/* Room Picker */}
+        <div className="vin-hh-filter-section">
+          <div className="vin-hh-filter-section-label">Room</div>
+          <div
+            className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+            onClick={() => setShowRoomPicker(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="vin-hh-filter-select-display-txt">{draftRoom}</div>
+            <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+          </div>
+        </div>
+
+        {/* Show Results Button */}
+        <button type="button" className="vin-hh-filter-sheet-apply" onClick={handleApply}>
+          Show {draftCount} result{draftCount !== 1 ? 's' : ''}
+        </button>
+      </div>
+
+      {/* Center pop-up picker */}
+      {showCenterPicker && (
+        <div className="vin-mob-sheet-overlay" onClick={() => setShowCenterPicker(false)}>
+          <div className="vin-hh-filter-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-hh-filter-sheet-handle" />
+            <div className="vin-hh-filter-sheet-header">
+              <span className="vin-hh-filter-sheet-title">Select Center</span>
+              <button type="button" className="vin-hh-filter-sheet-reset" onClick={() => setShowCenterPicker(false)}>Close</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {CENTERS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`vin-hh-filter-opt ${draftCenter === c ? 'active' : ''}`}
+                  onClick={() => { setDraftCenter(c); setShowCenterPicker(false); }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Room pop-up picker */}
+      {showRoomPicker && (
+        <div className="vin-mob-sheet-overlay" onClick={() => setShowRoomPicker(false)}>
+          <div className="vin-hh-filter-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-hh-filter-sheet-handle" />
+            <div className="vin-hh-filter-sheet-header">
+              <span className="vin-hh-filter-sheet-title">Select Room</span>
+              <button type="button" className="vin-hh-filter-sheet-reset" onClick={() => setShowRoomPicker(false)}>Close</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {ROOMS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={`vin-hh-filter-opt ${draftRoom === r ? 'active' : ''}`}
+                  onClick={() => { setDraftRoom(r); setShowRoomPicker(false); }}
+                >
+                  {r}
+                </button>
+              ))}
             </div>
           </div>
         </div>
