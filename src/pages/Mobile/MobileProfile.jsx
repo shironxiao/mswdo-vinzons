@@ -1,17 +1,10 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, Activity } from 'lucide-react';
-import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 
 export default function MobileProfile() {
   const navigate = useNavigate();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-
-  const handleLogout = () => {
-    setShowLogoutModal(true);
-  };
 
   return (
     <div className="vin-mob-page">
@@ -22,7 +15,7 @@ export default function MobileProfile() {
         </div>
       </header>
 
-      {/* Profile Card matching image 2 */}
+      {/* Profile Card */}
       <div className="vin-mob-profile-card">
         <div className="vin-mob-profile-top">
           <div className="vin-mob-avatar-gold">A</div>
@@ -60,31 +53,7 @@ export default function MobileProfile() {
           </span>
           <ChevronRight size={18} color="#64748b" />
         </div>
-
-        {/* Red outline Log out button */}
-        <button
-          type="button"
-          className="vin-mob-logout-outline-btn"
-          onClick={handleLogout}
-        >
-          Log out
-        </button>
       </div>
-
-      {/* Custom Logout Confirmation Dialog */}
-      <ConfirmModal
-        isOpen={showLogoutModal}
-        title="Log Out"
-        message="Are you sure you want to log out from your MSWDO Personnel account?"
-        confirmLabel="Log Out"
-        cancelLabel="Cancel"
-        variant="warning"
-        onConfirm={() => {
-          setShowLogoutModal(false);
-          navigate('/login');
-        }}
-        onCancel={() => setShowLogoutModal(false)}
-      />
     </div>
   );
 }

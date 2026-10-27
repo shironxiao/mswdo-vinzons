@@ -59,7 +59,7 @@ const RECENT_ACTIVITIES = [
   {
     id: 'act-2',
     section: 'relief',
-    path: '/mobile/relief',
+    path: '/mobile/households',
     type: 'Relief Stub Issued',
     title: 'Rosa Santos • RG-10249',
     sub: 'Family Food Pack • Marked Issued',
@@ -101,7 +101,7 @@ const RECENT_ACTIVITIES = [
   {
     id: 'act-5',
     section: 'relief',
-    path: '/mobile/relief',
+    path: '/mobile/households',
     type: 'Distribution Verification',
     title: 'Patricia Cruz • RG-10250',
     sub: 'Pending distribution verification',
@@ -225,12 +225,12 @@ export default function MobileDashboard() {
           <div className="vin-mob-metric-lbl">Centers</div>
         </div>
 
-        {/* Card 3: Stubs Recorded (Dynamic) */}
+        {/* Card 3: Stubs Recorded (Goes to Households) */}
         <div
           className="vin-mob-metric-card"
-          onClick={() => navigate('/mobile/relief')}
+          onClick={() => navigate('/mobile/households')}
           style={{ cursor: 'pointer' }}
-          title="View Relief Goods Stubs"
+          title="View Households & Stubs"
         >
           <div className="vin-mob-icon-box yellow">
             <Ticket size={22} />

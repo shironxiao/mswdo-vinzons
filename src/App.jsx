@@ -51,6 +51,7 @@ export default function App() {
           <Route path="households" element={<MobileHouseholds />} />
           <Route path="centers" element={<MobileCenters />} />
           <Route path="monitor" element={<MobileMonitor />} />
+          <Route path="relief" element={<Navigate to="/mobile/households" replace />} />
 
           {/* Hamburger Menu Destinations */}
           <Route path="profile" element={<MobileProfile />} />

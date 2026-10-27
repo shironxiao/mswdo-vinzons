@@ -6,13 +6,16 @@ import './MobileSubpages.css';
 export default function MobileSyncStatus() {
   const [offlineMode, setOfflineMode] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
 
   const handleSync = () => {
     setSyncing(true);
+    setSyncSuccess(false);
     setTimeout(() => {
       setSyncing(false);
-      alert('Offline records synced with Supabase cloud successfully!');
-    }, 1200);
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 3500);
+    }, 1000);
   };
 
   return (
@@ -26,6 +29,12 @@ export default function MobileSyncStatus() {
 
       {/* Sync Status Card matching Screenshot 2 Sync-status */}
       <div className="vin-mob-settings-card">
+        {syncSuccess && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: '0.85rem' }}>
+            <CheckCircle2 size={18} />
+            <span>Offline records synced with Supabase cloud successfully!</span>
+          </div>
+        )}
         <div className="vin-mob-toggle-item">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#fef3c7', color: '#c25e1a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
