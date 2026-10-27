@@ -21,6 +21,37 @@ export const FALLBACK_CENTERS = [
 ];
 
 const STORAGE_KEY = 'vinzons_cached_evac_centers';
+const ROOM_NAMES_KEY = 'vinzons_center_room_names';
+
+/**
+ * Retrieve saved custom room designations/names from storage
+ */
+export function getCustomRoomNamesMap() {
+  try {
+    const raw = localStorage.getItem(ROOM_NAMES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Save custom room designations/names for a center to storage
+ */
+export function saveCustomRoomNamesMap(centerKey, roomMap) {
+  try {
+    const existing = getCustomRoomNamesMap();
+    existing[centerKey] = {
+      ...(existing[centerKey] || {}),
+      ...roomMap,
+    };
+    localStorage.setItem(ROOM_NAMES_KEY, JSON.stringify(existing));
+    return existing;
+  } catch (err) {
+    console.warn('Could not save custom room names to storage:', err);
+    return {};
+  }
+}
 
 /**
  * Sample known occupancies for initial centers so filter statuses
@@ -75,15 +106,24 @@ export function normalizeCenters(rows = []) {
       KNOWN_OCCUPANCIES[r.name.toLowerCase()] ||
       [];
 
+    const savedRoomMap = getCustomRoomNamesMap();
+    const centerCustomRooms =
+      (r.id && savedRoomMap[r.id]) ||
+      savedRoomMap[displayName] ||
+      savedRoomMap[r.name] ||
+      {};
+
     const rooms = [];
     for (let i = 1; i <= roomCount; i++) {
       const occ = occList[i - 1] !== undefined ? occList[i - 1] : 0;
+      const defaultId = `Room ${i}`;
+      const customName = centerCustomRooms[defaultId] || (r.room_names && r.room_names[defaultId]) || defaultId;
       rooms.push({
-        id: `Room ${i}`,
-        name: `Room ${i}`,
+        id: defaultId,
+        name: customName,
         capacity: avgCap,
         occupied: Math.min(occ, avgCap),
-        description: `Capacity: ${avgCap} persons`,
+        description: customName !== defaultId ? `${customName} (Cap. ${avgCap})` : `Capacity: ${avgCap} persons`,
       });
     }
 
@@ -140,6 +180,84 @@ export async function fetchEvacuationCenters() {
   }
 }
 
+/**
+ * Update an existing evacuation center (details and room designations)
+ * in both Supabase and local cache
+ */
+export async function updateEvacuationCenter(centerId, { name, location, total_rooms, capacity, room_names }) {
+  // 1. If custom room names provided, save to localStorage
+  if (room_names && Object.keys(room_names).length > 0) {
+    if (centerId) saveCustomRoomNamesMap(centerId, room_names);
+    if (name) saveCustomRoomNamesMap(name, room_names);
+  }
+
+  // 2. Update Supabase
+  try {
+    const updatePayload = {
+      name: name.trim(),
+      location: (location || 'Vinzons, Camarines Norte').trim(),
+      total_rooms: Math.max(1, Number(total_rooms) || 1),
+      capacity: Number(capacity) || 50,
+    };
+
+    const { error } = await supabase
+      .from('evacuation_centers')
+      .update(updatePayload)
+      .eq('id', centerId);
+
+    if (error) {
+      console.warn('Supabase update error (id check):', error.message);
+      // Fallback update by name if id was a string or generated
+      await supabase
+        .from('evacuation_centers')
+        .update(updatePayload)
+        .eq('name', name.trim());
+    }
+  } catch (err) {
+    console.warn('Network error updating center in Supabase:', err);
+  }
+
+  // 3. Update localStorage cache
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const updated = parsed.map((c) => {
+        if (c.id === centerId || c.name === name || c.displayName === name) {
+          const roomCount = Math.max(1, Number(total_rooms) || c.total_rooms || 1);
+          const capNum = Number(capacity) || c.capacity || 50;
+          const avgCap = Math.round(capNum / roomCount);
+          const newRooms = [];
+          for (let i = 1; i <= roomCount; i++) {
+            const rId = `Room ${i}`;
+            const rName = room_names?.[rId] || c.rooms?.[i - 1]?.name || rId;
+            newRooms.push({
+              id: rId,
+              name: rName,
+              capacity: avgCap,
+              occupied: c.rooms?.[i - 1]?.occupied || 0,
+              description: rName !== rId ? `${rName} (Cap. ${avgCap})` : `Capacity: ${avgCap} persons`,
+            });
+          }
+          return {
+            ...c,
+            name: name.trim(),
+            displayName: name.trim(),
+            location: location.trim(),
+            total_rooms: roomCount,
+            capacity: capNum,
+            rooms: newRooms,
+          };
+        }
+        return c;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    }
+  } catch (err) {
+    console.warn('Cache update error:', err);
+  }
+}
+
 function getCachedOrFallbackCenters() {
   try {
     const cached = localStorage.getItem(STORAGE_KEY);
@@ -171,7 +289,7 @@ export function getRoomsForCenter(centerName, centersList = []) {
   );
 
   if (found && Array.isArray(found.rooms) && found.rooms.length > 0) {
-    return ['All Rooms', ...found.rooms.map((r) => r.id)];
+    return ['All Rooms', ...found.rooms.map((r) => r.name || r.id)];
   }
 
   return ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];

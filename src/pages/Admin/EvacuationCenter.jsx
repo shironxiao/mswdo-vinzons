@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react';
-import { MapPin, Plus, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import {
+  MapPin, Plus, X, ChevronLeft, ChevronRight, Search,
+  Building, Edit3, DoorOpen, CheckCircle2, Save, Info,
+} from 'lucide-react';
 import './EvacuationCenter.css';
 import './AdminFeatures.css';
-import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
+import { useEvacuationCenters, updateEvacuationCenter } from '../../lib/evacuationCenters.js';
 import { supabase } from '../../lib/supabase.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
@@ -15,6 +18,7 @@ export default function EvacuationCenter() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
+  const [selectedCenter, setSelectedCenter] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -241,7 +245,7 @@ export default function EvacuationCenter() {
               <button
                 type="button"
                 className="vin-view-btn"
-                onClick={() => alert(`Center: ${center.displayName || center.name}\nLocation: ${center.location}\nRooms: ${center.total_rooms}\nCapacity: ${totalCap} persons`)}
+                onClick={() => setSelectedCenter(center)}
               >
                 View center details &gt;
               </button>
@@ -414,6 +418,373 @@ export default function EvacuationCenter() {
         }}
         onClose={() => setShowFilterModal(false)}
       />
+
+      {/* ── Center Details & Room Renaming Pop-up Modal ── */}
+      {selectedCenter && (
+        <CenterDetailsModal
+          center={selectedCenter}
+          onClose={() => setSelectedCenter(null)}
+          onSaveSuccess={async () => {
+            if (refetch) await refetch();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Center Details & Room Renaming Modal
+   ────────────────────────────────────────────── */
+function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'edit'
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const [form, setForm] = useState({
+    name: center.displayName || center.name || '',
+    location: center.location || '',
+    total_rooms: String(center.total_rooms || (center.rooms || []).length || 1),
+    capacity: String(center.capacity || (center.total_rooms || 1) * 25),
+  });
+
+  const [roomNames, setRoomNames] = useState(() => {
+    const map = {};
+    (center.rooms || []).forEach((r) => {
+      map[r.id] = r.name || r.id;
+    });
+    return map;
+  });
+
+  const roomCountNum = Math.max(1, Number(form.total_rooms) || 1);
+  const currentRoomIds = Array.from({ length: roomCountNum }, (_, i) => `Room ${i + 1}`);
+
+  const totalCap = Number(form.capacity) || (center.capacity || (center.total_rooms * 25));
+  const totalOcc = (center.rooms || []).reduce((sum, r) => sum + (r.occupied || 0), 0);
+  const availableSlots = Math.max(0, totalCap - totalOcc);
+  const occPct = totalCap > 0 ? Math.min(100, Math.round((totalOcc / totalCap) * 100)) : 0;
+
+  const handleRoomNameChange = (roomId, newName) => {
+    setRoomNames((prev) => ({
+      ...prev,
+      [roomId]: newName,
+    }));
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setIsSaving(true);
+    setErrorMsg('');
+
+    try {
+      await updateEvacuationCenter(center.id, {
+        name: form.name,
+        location: form.location,
+        total_rooms: roomCountNum,
+        capacity: Number(form.capacity) || roomCountNum * 25,
+        room_names: roomNames,
+      });
+
+      setSaveSuccess(true);
+      if (onSaveSuccess) {
+        await onSaveSuccess();
+      }
+      setTimeout(() => {
+        onClose();
+      }, 700);
+    } catch (err) {
+      console.error('Failed to update center:', err);
+      setErrorMsg('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="vin-modal-overlay" onClick={onClose}>
+      <div className="vin-center-details-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="vin-center-details-header">
+          <div>
+            <span className="vin-center-modal-eyebrow">FACILITY DETAILS &amp; ROOM MANAGEMENT</span>
+            <h2 className="vin-center-modal-name">
+              <Building size={20} color="#15803d" />
+              <span>{center.displayName || center.name}</span>
+            </h2>
+            <div className="vin-center-modal-location">
+              <MapPin size={14} color="#64748b" />
+              <span>{center.location}</span>
+            </div>
+          </div>
+          <button type="button" className="vin-modal-close" onClick={onClose} aria-label="Close">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="vin-center-modal-tabs">
+          <button
+            type="button"
+            className={`vin-center-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            <Info size={16} />
+            <span>Center Overview</span>
+          </button>
+          <button
+            type="button"
+            className={`vin-center-tab-btn ${activeTab === 'edit' ? 'active' : ''}`}
+            onClick={() => setActiveTab('edit')}
+          >
+            <Edit3 size={16} />
+            <span>Edit Center &amp; Rooms</span>
+          </button>
+        </div>
+
+        {/* Tab 1: Overview */}
+        {activeTab === 'overview' && (
+          <div className="vin-center-modal-body">
+            {/* Stats Grid */}
+            <div className="vin-center-stats-grid">
+              <div className="vin-center-stat-box">
+                <span className="vin-center-stat-val">{center.total_rooms}</span>
+                <span className="vin-center-stat-lbl">Total Rooms</span>
+              </div>
+              <div className="vin-center-stat-box">
+                <span className="vin-center-stat-val">{totalCap}</span>
+                <span className="vin-center-stat-lbl">Max Capacity</span>
+              </div>
+              <div className="vin-center-stat-box">
+                <span className="vin-center-stat-val" style={{ color: '#166534' }}>{totalOcc}</span>
+                <span className="vin-center-stat-lbl">Current Occupants</span>
+              </div>
+              <div className="vin-center-stat-box">
+                <span className="vin-center-stat-val" style={{ color: availableSlots > 0 ? '#2563eb' : '#dc2626' }}>
+                  {availableSlots}
+                </span>
+                <span className="vin-center-stat-lbl">Slots Available</span>
+              </div>
+            </div>
+
+            {/* Occupancy Bar */}
+            <div className="vin-occupancy-card">
+              <div className="vin-occupancy-head">
+                <span className="vin-occupancy-title">Occupancy Status</span>
+                <span className="vin-occupancy-pct">{occPct}% Filled ({totalOcc} / {totalCap} persons)</span>
+              </div>
+              <div className="vin-occupancy-track">
+                <div
+                  className="vin-occupancy-fill"
+                  style={{
+                    width: `${occPct}%`,
+                    backgroundColor: occPct >= 100 ? '#dc2626' : occPct >= 75 ? '#eab308' : '#16a34a',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Designated Rooms List */}
+            <div className="vin-rooms-list-card">
+              <div className="vin-rooms-list-head">
+                <h3 className="vin-rooms-list-title">
+                  <DoorOpen size={18} color="#15803d" />
+                  <span>Designated Rooms &amp; Capacities ({currentRoomIds.length})</span>
+                </h3>
+                <button
+                  type="button"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#15803d',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                  onClick={() => setActiveTab('edit')}
+                >
+                  <Edit3 size={13} />
+                  <span>Rename Rooms</span>
+                </button>
+              </div>
+
+              <div className="vin-rooms-grid">
+                {(center.rooms || []).map((room, idx) => {
+                  const rName = roomNames[room.id] || room.name || room.id;
+                  const isFull = (room.occupied || 0) >= (room.capacity || 25);
+                  return (
+                    <div key={room.id || idx} className="vin-room-card-item">
+                      <div className="vin-room-card-top">
+                        <span className="vin-room-key-tag">{room.id}</span>
+                        <span className={`vin-status-tag ${isFull ? 'pending' : 'active'}`} style={{ margin: 0 }}>
+                          {isFull ? 'Full' : 'Available'}
+                        </span>
+                      </div>
+                      <div className="vin-room-display-name">
+                        {rName !== room.id ? rName : room.id}
+                      </div>
+                      <div className="vin-room-meta-info">
+                        <span>Capacity: <strong>{room.capacity || 25}</strong></span>
+                        <span>Occupants: <strong>{room.occupied || 0}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Edit Center & Rename Rooms */}
+        {activeTab === 'edit' && (
+          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <div className="vin-center-modal-body">
+              {errorMsg && (
+                <div style={{ padding: '10px 14px', background: '#fee2e2', color: '#b91c1c', borderRadius: 8, fontSize: '0.85rem' }}>
+                  {errorMsg}
+                </div>
+              )}
+              {saveSuccess && (
+                <div style={{ padding: '10px 14px', background: '#dcfce7', color: '#166534', borderRadius: 8, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle2 size={16} />
+                  <span>Center information and room names updated successfully!</span>
+                </div>
+              )}
+
+              {/* General Info Fields */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+                <div className="vin-form-group" style={{ margin: 0 }}>
+                  <label className="vin-form-label">Center Name</label>
+                  <input
+                    type="text"
+                    className="vin-form-input"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g. Vinzons Central Elementary School"
+                    required
+                  />
+                </div>
+
+                <div className="vin-form-group" style={{ margin: 0 }}>
+                  <label className="vin-form-label">Location / Barangay</label>
+                  <input
+                    type="text"
+                    className="vin-form-input"
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    placeholder="e.g. Brgy. Poblacion I, Vinzons"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div className="vin-form-group" style={{ margin: 0 }}>
+                    <label className="vin-form-label">Total Rooms</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="vin-form-input"
+                      value={form.total_rooms}
+                      onChange={(e) => setForm({ ...form, total_rooms: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="vin-form-group" style={{ margin: 0 }}>
+                    <label className="vin-form-label">Total Capacity (Persons)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="vin-form-input"
+                      value={form.capacity}
+                      onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Room Renaming List */}
+              <div className="vin-renaming-box">
+                <div className="vin-renaming-header">
+                  <h4 className="vin-renaming-title">
+                    <DoorOpen size={16} color="#15803d" />
+                    <span>Rename Rooms &amp; Assign Designations</span>
+                  </h4>
+                  <p className="vin-renaming-desc">
+                    Enter custom designations for each room (e.g. <em>Room 101 - Gumamela</em>, <em>Main Court - Stage Left</em>, <em>School Clinic</em>).
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {currentRoomIds.map((roomId, idx) => {
+                    const currentOcc = center.rooms?.[idx]?.occupied || 0;
+                    return (
+                      <div key={roomId} className="vin-room-rename-row">
+                        <div className="vin-room-badge-col">
+                          <DoorOpen size={14} color="#64748b" />
+                          <span>{roomId}</span>
+                        </div>
+                        <input
+                          type="text"
+                          className="vin-room-rename-input"
+                          placeholder={`Custom name for ${roomId}...`}
+                          value={roomNames[roomId] !== undefined ? roomNames[roomId] : roomId}
+                          onChange={(e) => handleRoomNameChange(roomId, e.target.value)}
+                        />
+                        <div className="vin-room-occ-col">
+                          {currentOcc} occ.
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Form Actions */}
+            <div className="vin-center-modal-footer">
+              <button
+                type="button"
+                className="vin-btn-cancel"
+                onClick={onClose}
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="vin-btn-submit"
+                disabled={isSaving}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Save size={16} />
+                <span>{isSaving ? 'Saving Changes...' : 'Save Changes'}</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Footer for Overview tab */}
+        {activeTab === 'overview' && (
+          <div className="vin-center-modal-footer">
+            <button type="button" className="vin-btn-cancel" onClick={onClose}>
+              Close
+            </button>
+            <button
+              type="button"
+              className="vin-btn-switch-edit"
+              onClick={() => setActiveTab('edit')}
+            >
+              <Edit3 size={15} />
+              <span>Edit Center &amp; Rooms</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
