@@ -11,8 +11,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 1,
     name: 'Antonio Magno',
-    center: 'Vinzons Central Elementary School',
-    room: 'C-1',
+    center: 'LGU EC (Mangcaway)',
+    room: 'Room 1',
     ratio: '4/4',
     timestamp: '9/17/2026, 5:00:00 PM',
     status: 'Recorded',
@@ -21,8 +21,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 2,
     name: 'Rosa Santos',
-    center: 'Vinzons Central Elementary School',
-    room: 'A-2',
+    center: 'LGU EC (Mangcaway)',
+    room: 'Room 2',
     ratio: '4/4',
     timestamp: '9/17/2026, 4:30:00 PM',
     status: 'Recorded',
@@ -31,8 +31,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 3,
     name: 'Patricia Cruz',
-    center: 'Vinzons Gymnasium',
-    room: 'B-1',
+    center: 'LGU EC (Bliss)',
+    room: 'Room 1',
     ratio: '0/3',
     timestamp: '9/17/2026, 1:00:00 PM',
     status: 'Absent',
@@ -41,8 +41,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 4,
     name: 'Juan Dela Cruz',
-    center: 'Calaguas National High School',
-    room: 'A-1',
+    center: 'PLGU EC (Mat-I)',
+    room: 'Room 1',
     ratio: '5/5',
     timestamp: '9/17/2026, 3:00:00 PM',
     status: 'Recorded',
@@ -51,8 +51,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 5,
     name: 'Elena Bautista',
-    center: 'Vinzons Central Elementary School',
-    room: 'A-1',
+    center: 'Pinagtigasan EC',
+    room: 'Room 1',
     ratio: '3/3',
     timestamp: '9/17/2026, 2:15:00 PM',
     status: 'Recorded',
@@ -61,8 +61,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 6,
     name: 'Roberto Diaz',
-    center: 'Vinzons Gymnasium',
-    room: 'Hall A',
+    center: 'St. Peter Parish AVR',
+    room: 'Room 2',
     ratio: '2/2',
     timestamp: '9/17/2026, 1:45:00 PM',
     status: 'Recorded',
@@ -71,8 +71,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 7,
     name: 'Carmen Ramos',
-    center: 'Calaguas National High School',
-    room: 'Rm-2',
+    center: 'Biday EC',
+    room: 'Room 3',
     ratio: '0/4',
     timestamp: '9/17/2026, 12:30:00 PM',
     status: 'Absent',
@@ -81,8 +81,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 8,
     name: 'Fernando Lopez',
-    center: 'Vinzons Central Elementary School',
-    room: 'B-2',
+    center: 'Sugod EC',
+    room: 'Room 2',
     ratio: '3/3',
     timestamp: '9/17/2026, 11:20:00 AM',
     status: 'Recorded',
@@ -91,8 +91,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 9,
     name: 'Teresa Morales',
-    center: 'Vinzons Gymnasium',
-    room: 'Hall B',
+    center: 'Mormons',
+    room: 'Room 1',
     ratio: '3/3',
     timestamp: '9/17/2026, 10:45:00 AM',
     status: 'Recorded',
@@ -101,8 +101,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 10,
     name: 'Danilo Soriano',
-    center: 'Vinzons Gymnasium',
-    room: 'Hall A',
+    center: 'Marabe Church',
+    room: 'Room 4',
     ratio: '0/2',
     timestamp: '9/17/2026, 10:15:00 AM',
     status: 'Absent',
@@ -111,8 +111,8 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 11,
     name: 'Marites Villanueva',
-    center: 'Calaguas National High School',
-    room: 'Rm-1',
+    center: 'Adorno Fathers',
+    room: 'Room 1',
     ratio: '3/3',
     timestamp: '9/17/2026, 9:30:00 AM',
     status: 'Recorded',
@@ -121,28 +121,56 @@ const INITIAL_MONITOR_DATA = [
   {
     id: 12,
     name: 'Gregorio Santos',
-    center: 'Calaguas National High School',
-    room: 'Rm-3',
+    center: 'Mangcawayan EC',
+    room: 'Room 2',
     ratio: '0/2',
     timestamp: '9/17/2026, 9:00:00 AM',
     status: 'Absent',
     members: ['Gregorio Santos', 'Amparo Santos'],
   },
+  {
+    id: 13,
+    name: 'Lorna Reyes',
+    center: 'Our Lady of Fatima Shrine',
+    room: 'Room 3',
+    ratio: '4/4',
+    timestamp: '9/17/2026, 8:30:00 AM',
+    status: 'Recorded',
+    members: ['Lorna Reyes', 'Ben Reyes', 'Kim Reyes', 'Chris Reyes'],
+  },
+  {
+    id: 14,
+    name: 'Mario Aguit',
+    center: 'Brgy. Hall (Aguit-it)',
+    room: 'Room 1',
+    ratio: '2/2',
+    timestamp: '9/17/2026, 8:00:00 AM',
+    status: 'Recorded',
+    members: ['Mario Aguit', 'Sandra Aguit'],
+  },
 ];
 
-const CENTERS = [
-  'All Centers',
-  'Vinzons Central Elementary School',
-  'Vinzons Gymnasium',
-  'Calaguas National High School',
+/* Exactly 13 Official Vinzons Evacuation Centers */
+const OFFICIAL_EVAC_CENTERS = [
+  { name: 'LGU EC (Mangcaway)',          location: 'Mangcaway Brgy. Cal. Sur, Vinzons, CN' },
+  { name: 'LGU EC (Bliss)',              location: 'Bliss Brgy. Cal Sur, VCN' },
+  { name: 'PLGU EC (Mat-I)',             location: 'Mat – I Brgy. Sto. Domingo, VCN' },
+  { name: 'Pinagtigasan EC',             location: 'P – 1 Brgy. Pinagtigasan, VCN' },
+  { name: 'St. Peter Parish AVR',        location: 'Brgy Poblacion III' },
+  { name: 'Biday EC',                    location: 'Brgy. Banocboc, VCN' },
+  { name: 'Sugod EC',                    location: 'Brgy. Banocboc, VCN' },
+  { name: 'Mormons',                     location: 'Brgy. Calangcawan Sur, VCN' },
+  { name: 'Marabe Church',               location: 'Brgy. Calangcawan Sur, VCN' },
+  { name: 'Adorno Fathers',              location: 'Sto. Domingo, VCN' },
+  { name: 'Mangcawayan EC',              location: 'Mangcawayan Is., VCN' },
+  { name: 'Our Lady of Fatima Shrine',   location: 'Mangcawayan Brgy. Calangawan Sur, VCN' },
+  { name: 'Brgy. Hall (Aguit-it)',       location: 'Brgy. Aguit – it, VCN' },
 ];
 
-const ROOMS = [
-  'All Rooms',
-  'A-1', 'A-2', 'B-1', 'B-2', 'C-1', 'C-2',
-  'Hall A', 'Hall B',
-  'Rm-1', 'Rm-2', 'Rm-3',
-];
+const CENTERS = ['All Centers', ...OFFICIAL_EVAC_CENTERS.map((c) => c.name)];
+
+/* Each center has 5 rooms */
+const ROOMS = ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
 
 export default function MobileMonitor() {
   const [records] = useState(INITIAL_MONITOR_DATA);
@@ -161,6 +189,7 @@ export default function MobileMonitor() {
   const filtered = records.filter((r) => {
     const matchSearch =
       r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.center.toLowerCase().includes(search.toLowerCase()) ||
       r.room.toLowerCase().includes(search.toLowerCase());
     const matchStatus =
       filterStatus === 'All' ||
@@ -260,7 +289,7 @@ export default function MobileMonitor() {
             className="vin-hh-active-chip"
             onClick={() => setFilterRoom('All Rooms')}
           >
-            <span>Room {filterRoom}</span>
+            <span>{filterRoom}</span>
             <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
@@ -594,15 +623,29 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
               <span className="vin-hh-filter-sheet-title">Select Center</span>
               <button type="button" className="vin-hh-filter-sheet-reset" onClick={() => setShowCenterPicker(false)}>Close</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {CENTERS.map((c) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
+              {/* All Centers option */}
+              <button
+                type="button"
+                className={`vin-hh-filter-opt ${draftCenter === 'All Centers' ? 'active' : ''}`}
+                onClick={() => { setDraftCenter('All Centers'); setShowCenterPicker(false); }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                  <span style={{ fontWeight: 700 }}>All Centers</span>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>Show families from all evacuation centers</span>
+                </div>
+              </button>
+              {OFFICIAL_EVAC_CENTERS.map((c) => (
                 <button
-                  key={c}
+                  key={c.name}
                   type="button"
-                  className={`vin-hh-filter-opt ${draftCenter === c ? 'active' : ''}`}
-                  onClick={() => { setDraftCenter(c); setShowCenterPicker(false); }}
+                  className={`vin-hh-filter-opt ${draftCenter === c.name ? 'active' : ''}`}
+                  onClick={() => { setDraftCenter(c.name); setShowCenterPicker(false); }}
                 >
-                  {c}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                    <span style={{ fontWeight: 700 }}>{c.name}</span>
+                    <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>{c.location}</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -619,8 +662,8 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
               <span className="vin-hh-filter-sheet-title">Select Room</span>
               <button type="button" className="vin-hh-filter-sheet-reset" onClick={() => setShowRoomPicker(false)}>Close</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {ROOMS.map((r) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
+              {['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'].map((r) => (
                 <button
                   key={r}
                   type="button"
