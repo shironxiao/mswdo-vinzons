@@ -20,6 +20,12 @@ import {
   RoomSelectSheet,
   CategorySelectSheet,
 } from '../../components/CenterSelectSheet.jsx';
+import {
+  useHouseholds,
+  createHousehold,
+  updateHousehold,
+  issueHouseholdStub,
+} from '../../lib/householdService.js';
 
 /* ──────────────────────────────────────────────
    Seed Data (synced with mobile structure)
@@ -543,7 +549,7 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
    ────────────────────────────────────────────── */
 export default function Household() {
   const { centers } = useEvacuationCenters();
-  const [households, setHouseholds] = useState(INITIAL_HOUSEHOLDS);
+  const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -598,10 +604,17 @@ export default function Household() {
   const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
 
   /* ── Issue stub ── */
-  const issueStub = (hhId) => {
+  const issueStub = async (hhId) => {
+    // Optimistic UI update
     setHouseholds((prev) =>
       prev.map((h) => (h.id === hhId ? { ...h, stubIssued: true } : h))
     );
+    try {
+      await issueHouseholdStub(hhId);
+      refreshHouseholds();
+    } catch (err) {
+      console.warn('Could not sync stub issuance to Supabase:', err);
+    }
   };
 
   /* Sync modal on state changes */
@@ -614,13 +627,14 @@ export default function Household() {
 
   /* ── Register / Edit Form Handlers ── */
   const openRegister = () => {
+    const defaultCenter = centers[0]?.displayName || centers[0]?.name || 'LGU EC (Mangcaway)';
     setActiveForm({
       id: `HH-00${households.length + 1}`,
       head: '',
       age: '',
       sex: 'Male',
-      center: 'Vinzons Central Elementary School',
-      room: 'A-1',
+      center: defaultCenter,
+      room: 'Room 1',
       category: 'None',
       members: [],
     });
@@ -634,21 +648,24 @@ export default function Household() {
       head: item.name,
       age: item.age || 40,
       sex: item.sex || 'Male',
-      center: item.center || 'Vinzons Central Elementary School',
-      room: item.room || 'A-1',
+      center: item.center || 'LGU EC (Mangcaway)',
+      room: item.room || 'Room 1',
       category: item.category || 'None',
       members: item.members || [],
     });
     setModalMode('edit');
   };
 
-  const handleSaveHousehold = (e) => {
+  const handleSaveHousehold = async (e) => {
     e.preventDefault();
     if (!activeForm.head.trim()) return;
 
     if (modalMode === 'register') {
+      const generatedCode = genStubCode();
+      const tempId = `temp-${Date.now()}`;
       const newH = {
-        id: activeForm.id || `HH-${String(Date.now()).slice(-4)}`,
+        id: tempId,
+        householdCode: activeForm.id || `HH-${String(Date.now()).slice(-4)}`,
         name: activeForm.head,
         age: Number(activeForm.age) || 35,
         sex: activeForm.sex,
@@ -657,11 +674,31 @@ export default function Household() {
         category: activeForm.category,
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
-        stubCode: genStubCode(),
+        stubCode: generatedCode,
         stubIssued: false,
       };
+
+      // Optimistic UI update
       setHouseholds([newH, ...households]);
+      setModalMode(null);
+
+      // Async save to Supabase
+      try {
+        await createHousehold(
+          {
+            ...activeForm,
+            householdCode: activeForm.id,
+            stubCode: generatedCode,
+            stubIssued: false,
+          },
+          centers
+        );
+        refreshHouseholds();
+      } catch (err) {
+        console.warn('Could not save household to Supabase:', err);
+      }
     } else if (modalMode === 'edit') {
+      // Optimistic UI update
       setHouseholds((prev) =>
         prev.map((h) =>
           h.id === activeForm.id
@@ -679,8 +716,16 @@ export default function Household() {
             : h
         )
       );
+      setModalMode(null);
+
+      // Async update in Supabase
+      try {
+        await updateHousehold(activeForm.id, activeForm, centers);
+        refreshHouseholds();
+      } catch (err) {
+        console.warn('Could not update household in Supabase:', err);
+      }
     }
-    setModalMode(null);
   };
 
   const addMember = () => {

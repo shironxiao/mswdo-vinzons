@@ -4,6 +4,12 @@ import './UserManagement.css';
 import { useEvacuationCenters, isCenterMatch } from '../../lib/evacuationCenters.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
+import {
+  useUserAccounts,
+  createUserAccount,
+  updateUserAccount,
+  deleteUserAccount,
+} from '../../lib/userAccountService.js';
 
 const INITIAL_USERS = [
   {
@@ -58,7 +64,7 @@ const ROLES = [
 
 export default function UserManagement() {
   const { centers } = useEvacuationCenters();
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const { users, setUsers, refresh: refreshUsers } = useUserAccounts(centers);
   const [filterRole, setFilterRole] = useState('All Roles');
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -115,7 +121,7 @@ export default function UserManagement() {
     });
   }, [users, filterRole, filterCenter, centers]);
 
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
     const errs = validateForm(form);
     if (Object.keys(errs).length > 0) {
@@ -131,8 +137,9 @@ export default function UserManagement() {
       .toUpperCase()
       .slice(0, 2);
 
+    const tempId = `temp-${Date.now()}`;
     const newUser = {
-      id: `USR-00${users.length + 1}`,
+      id: tempId,
       initials: initials || 'US',
       name: form.name.trim(),
       email: form.email.trim(),
@@ -142,11 +149,22 @@ export default function UserManagement() {
       status: 'Active',
     };
 
+    // Optimistic UI update
     setUsers([newUser, ...users]);
+    const addedName = form.name.trim();
     setForm({ name: '', email: '', role: 'Field Coordinator', assignedCenter: 'All Centers (Command)' });
     setAddErrors({});
     setIsModalOpen(false);
-    showToast(`User "${newUser.name}" added successfully.`);
+    showToast(`User "${addedName}" added successfully.`);
+
+    // Sync to Supabase
+    try {
+      await createUserAccount(newUser, centers);
+      refreshUsers();
+    } catch (err) {
+      console.warn('Could not create user account in Supabase:', err);
+      showToast(`Warning: User saved locally, Supabase auth: ${err?.message || 'Check connection'}`);
+    }
   };
 
   const handleStartEdit = (user) => {
@@ -161,7 +179,7 @@ export default function UserManagement() {
     setEditErrors({});
   };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     const errs = validateForm(editForm);
     if (Object.keys(errs).length > 0) {
@@ -177,6 +195,7 @@ export default function UserManagement() {
       .toUpperCase()
       .slice(0, 2);
 
+    // Optimistic UI update
     setUsers(
       users.map((u) =>
         u.id === editingUser.id
@@ -194,15 +213,34 @@ export default function UserManagement() {
       )
     );
 
+    const editedId = editingUser.id;
+    const editedName = editForm.name.trim();
     setEditingUser(null);
-    showToast(`User "${editForm.name}" updated successfully.`);
+    showToast(`User "${editedName}" updated successfully.`);
+
+    // Sync to Supabase
+    try {
+      await updateUserAccount(editedId, editForm, centers);
+      refreshUsers();
+    } catch (err) {
+      console.warn('Could not update user account in Supabase:', err);
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingUser) return;
-    setUsers(users.filter((u) => u.id !== deletingUser.id));
-    showToast(`User "${deletingUser.name}" has been deleted.`);
+    const target = deletingUser;
+    setUsers(users.filter((u) => u.id !== target.id));
+    showToast(`User "${target.name}" has been deleted.`);
     setDeletingUser(null);
+
+    // Sync to Supabase
+    try {
+      await deleteUserAccount(target.id);
+      refreshUsers();
+    } catch (err) {
+      console.warn('Could not delete user from Supabase:', err);
+    }
   };
 
   return (

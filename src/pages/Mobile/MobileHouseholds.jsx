@@ -16,6 +16,12 @@ import {
   isCenterMatch,
   getRoomsForCenter,
 } from '../../lib/evacuationCenters';
+import {
+  useHouseholds,
+  createHousehold,
+  updateHousehold,
+  issueHouseholdStub,
+} from '../../lib/householdService.js';
 
 /* ──────────────────────────────────────────────
    Seed data – replace with Dexie in production
@@ -1097,7 +1103,7 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
    ══════════════════════════════════════════════ */
 export default function MobileHouseholds() {
   const { centers } = useEvacuationCenters();
-  const [households, setHouseholds] = useState(SEED);
+  const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
   const [search, setSearch] = useState('');
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
@@ -1175,6 +1181,11 @@ export default function MobileHouseholds() {
         setSelectedHousehold({ ...found, stubIssued: true });
         setToastMsg(`✓ Stub scanned! ${found.name} (${found.stubCode}) is now labeled as ISSUED.`);
         setTimeout(() => setToastMsg(''), 4500);
+
+        // Sync to Supabase
+        issueHouseholdStub(found.id)
+          .then(() => refreshHouseholds())
+          .catch((err) => console.warn('Could not sync stub issuance to Supabase:', err));
       } else {
         setSelectedHousehold(found);
         setToastMsg(`ℹ ${found.name} (${found.stubCode}) is ALREADY ISSUED.`);
@@ -1183,10 +1194,10 @@ export default function MobileHouseholds() {
     } else {
       setScanError(`No household found matching QR code: "${trimmed}"`);
     }
-  }, [households]);
+  }, [households, refreshHouseholds, setHouseholds]);
 
   /* ── Issue stub ── */
-  const issueStub = (hhId) => {
+  const issueStub = async (hhId) => {
     setHouseholds((prev) =>
       prev.map((h) => (h.id === hhId ? { ...h, stubIssued: true, stubIssuedDate: new Date().toISOString() } : h))
     );
@@ -1195,6 +1206,13 @@ export default function MobileHouseholds() {
       setSelectedHousehold((prev) => (prev ? { ...prev, stubIssued: true } : null));
       setToastMsg(`✓ Stub for ${target.name} (${target.stubCode}) is now marked as ISSUED!`);
       setTimeout(() => setToastMsg(''), 4000);
+    }
+
+    try {
+      await issueHouseholdStub(hhId);
+      refreshHouseholds();
+    } catch (err) {
+      console.warn('Could not sync stub issuance to Supabase:', err);
     }
   };
 
@@ -1243,21 +1261,24 @@ export default function MobileHouseholds() {
 
   /* ── Register / Edit ── */
   const openRegister = () => {
-    setActiveForm({ head: '', age: '', sex: 'Male', center: OFFICIAL_EVAC_CENTERS[0].name, room: 'Room 1', category: 'None', members: [] });
+    const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
+    setActiveForm({ head: '', age: '', sex: 'Male', center: defaultCenter, room: 'Room 1', category: 'None', members: [] });
     setModalMode('register');
   };
   const openEdit = (item, e) => {
     e.stopPropagation();
-    setActiveForm({ id: item.id, head: item.name, age: item.age, sex: item.sex, center: item.center, room: item.room, category: item.category, members: item.members });
+    setActiveForm({ id: item.id, head: item.name, age: item.age, sex: item.sex, center: item.center, room: item.room, category: item.category, members: item.members || [] });
     setModalMode('edit');
   };
-  const handleSaveHousehold = (e) => {
+  const handleSaveHousehold = async (e) => {
     e.preventDefault();
     if (!activeForm.head) return;
+
     if (modalMode === 'register') {
       const generatedCode = genStubCode();
+      const tempId = `temp-${Date.now()}`;
       const newHousehold = {
-        id: Date.now(),
+        id: tempId,
         name: activeForm.head,
         age: Number(activeForm.age) || 30,
         sex: activeForm.sex,
@@ -1269,17 +1290,58 @@ export default function MobileHouseholds() {
         stubCode: generatedCode,
         stubIssued: false,
       };
+
+      // Optimistic UI update
       setHouseholds([newHousehold, ...households]);
       setToastMsg(`✓ Registered ${activeForm.head} with QR code ${generatedCode}!`);
       setTimeout(() => setToastMsg(''), 4000);
+      setModalMode(null);
+
+      // Async save to Supabase
+      try {
+        await createHousehold(
+          {
+            ...activeForm,
+            stubCode: generatedCode,
+            stubIssued: false,
+          },
+          centers
+        );
+        refreshHouseholds();
+      } catch (err) {
+        console.warn('Could not save household to Supabase:', err);
+      }
     } else if (modalMode === 'edit') {
-      setHouseholds((prev) => prev.map((h) =>
-        h.id === activeForm.id
-          ? { ...h, name: activeForm.head, age: Number(activeForm.age) || h.age, sex: activeForm.sex, center: activeForm.center, room: activeForm.room, category: activeForm.category, familyCount: 1 + activeForm.members.length, members: activeForm.members }
-          : h
-      ));
+      // Optimistic UI update
+      setHouseholds((prev) =>
+        prev.map((h) =>
+          h.id === activeForm.id
+            ? {
+                ...h,
+                name: activeForm.head,
+                age: Number(activeForm.age) || h.age,
+                sex: activeForm.sex,
+                center: activeForm.center,
+                room: activeForm.room,
+                category: activeForm.category,
+                familyCount: 1 + activeForm.members.length,
+                members: activeForm.members,
+              }
+            : h
+        )
+      );
+      setToastMsg(`✓ Saved changes for ${activeForm.head}!`);
+      setTimeout(() => setToastMsg(''), 3000);
+      setModalMode(null);
+
+      // Async update to Supabase
+      try {
+        await updateHousehold(activeForm.id, activeForm, centers);
+        refreshHouseholds();
+      } catch (err) {
+        console.warn('Could not update household in Supabase:', err);
+      }
     }
-    setModalMode(null);
   };
 
   const addMember = () =>
