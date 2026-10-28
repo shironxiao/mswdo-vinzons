@@ -542,7 +542,7 @@
   inset: 0;
   background-color: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(3px);
-  z-index: 1000;
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -550,6 +550,7 @@
   box-sizing: border-box;
 }
 
+.vin-center-picker-sheet,
 .vin-admin-picker-modal,
 .vin-admin-filter-sheet-modal {
   width: 100%;
@@ -566,6 +567,15 @@
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
   border: 1px solid #e2e8f0;
   animation: fadeInModal 0.2s ease-out;
+}
+
+.vin-center-picker-handle {
+  width: 40px;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 9999px;
+  margin: 0 auto 2px;
+  flex-shrink: 0;
 }
 
 @keyframes fadeInModal {

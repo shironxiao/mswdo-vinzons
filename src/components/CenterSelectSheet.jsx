@@ -2,6 +2,18 @@ import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { getRoomsForCenter } from '../lib/evacuationCenters.js';
 
+/* ── Shared category list ── */
+export const HOUSEHOLD_CATEGORIES = [
+  { value: 'None',               label: 'None',                        sub: 'No special classification' },
+  { value: 'Senior Citizen',     label: 'Senior Citizen',              sub: '60 years old and above' },
+  { value: 'PWD',                label: 'PWD (Person with Disability)', sub: 'Person with physical or mental disability' },
+  { value: 'Pregnant/Lactating', label: 'Pregnant / Lactating',        sub: 'Currently pregnant or breastfeeding' },
+  { value: 'Solo Parent',        label: 'Solo Parent',                  sub: 'Raising child/children alone' },
+  { value: 'Infant/Child',       label: 'Infant / Child',              sub: 'Age 0–12 years old' },
+  { value: 'Lactating Mother',   label: 'Lactating Mother',            sub: 'Breastfeeding mother' },
+  { value: 'Indigenous People',  label: 'Indigenous People (IP)',       sub: 'Indigenous cultural community member' },
+];
+
 /* ──────────────────────────────────────────────
    Center Selection Bottom Sheet (White Theme)
    ────────────────────────────────────────────── */
@@ -270,6 +282,108 @@ export function RoomSelectSheet({
           onClick={handleConfirm}
         >
           Select room
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Category Selection Bottom Sheet
+   ────────────────────────────────────────────── */
+export function CategorySelectSheet({
+  selected,
+  onSelect,
+  onClose,
+  title = 'Special Category',
+}) {
+  const [tempSelected, setTempSelected] = useState(selected || 'None');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCategories = HOUSEHOLD_CATEGORIES.filter((cat) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      cat.label.toLowerCase().includes(q) ||
+      cat.value.toLowerCase().includes(q) ||
+      cat.sub.toLowerCase().includes(q)
+    );
+  });
+
+  const handleConfirm = () => {
+    onSelect(tempSelected);
+    onClose();
+  };
+
+  return (
+    <div className="vin-center-picker-overlay" onClick={onClose}>
+      <div className="vin-center-picker-sheet" onClick={(e) => e.stopPropagation()}>
+        {/* Drag handle */}
+        <div className="vin-center-picker-handle" />
+
+        {/* Header subtitle */}
+        <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, padding: '0 4px', marginBottom: 2 }}>
+          {title}
+        </div>
+
+        {/* Search Bar */}
+        <div className="vin-center-picker-search-box">
+          <Search size={16} className="vin-center-picker-search-icon" />
+          <input
+            type="text"
+            className="vin-center-picker-search-input"
+            placeholder={`Search ${HOUSEHOLD_CATEGORIES.length} categories...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="vin-center-picker-clear-btn"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {/* Category List */}
+        <div className="vin-center-picker-list">
+          {filteredCategories.map((cat) => {
+            const isSelected = tempSelected === cat.value;
+            return (
+              <div
+                key={cat.value}
+                className={`vin-center-picker-item ${isSelected ? 'selected' : ''}`}
+                onClick={() => setTempSelected(cat.value)}
+              >
+                <div className="vin-center-picker-radio">
+                  <div className="vin-center-picker-radio-dot" />
+                </div>
+                <div className="vin-center-picker-info">
+                  <span className="vin-center-picker-name">{cat.label}</span>
+                  <span className="vin-center-picker-loc">{cat.sub}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredCategories.length === 0 && searchQuery && (
+            <div className="vin-center-picker-empty">
+              No categories found matching &ldquo;{searchQuery}&rdquo;
+            </div>
+          )}
+        </div>
+
+        {/* Select Button */}
+        <button
+          type="button"
+          className="vin-center-picker-submit"
+          onClick={handleConfirm}
+        >
+          Select category
         </button>
       </div>
     </div>

@@ -10,7 +10,7 @@ import './MobileSubpages.css';
 import './MobileHouseholds.css';
 import checkIcon from '../../assets/check.png';
 import removeIcon from '../../assets/remove.png';
-import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
+import { CenterSelectSheet, RoomSelectSheet, CategorySelectSheet } from '../../components/CenterSelectSheet';
 import {
   useEvacuationCenters,
   isCenterMatch,
@@ -1114,6 +1114,7 @@ export default function MobileHouseholds() {
   /* ── Form pickers for register/edit ── */
   const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
   const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
+  const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
 
   const [activeForm, setActiveForm] = useState({
     head: '', age: '', sex: 'Male',
@@ -1627,17 +1628,16 @@ export default function MobileHouseholds() {
               </div>
               <div className="vin-mob-input-group">
                 <label className="vin-mob-input-label">CATEGORY</label>
-                <select className="vin-mob-select" value={activeForm.category}
-                  onChange={(e) => setActiveForm({ ...activeForm, category: e.target.value })}>
-                  <option value="None">None</option>
-                  <option value="Senior Citizen">Senior Citizen</option>
-                  <option value="PWD">PWD (Person with Disability)</option>
-                  <option value="Pregnant/Lactating">Pregnant / Lactating</option>
-                  <option value="Solo Parent">Solo Parent</option>
-                  <option value="Infant/Child">Infant / Child</option>
-                  <option value="Lactating Mother">Lactating Mother</option>
-                  <option value="Indigenous People">Indigenous People (IP)</option>
-                </select>
+                <div
+                  className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+                  onClick={() => setShowFormCategoryPicker({ target: 'head' })}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setShowFormCategoryPicker({ target: 'head' })}
+                >
+                  <div className="vin-hh-filter-select-display-txt">{activeForm.category || 'None'}</div>
+                  <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span className="vin-mob-input-label">FAMILY MEMBERS</span>
@@ -1657,7 +1657,7 @@ export default function MobileHouseholds() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.3fr', gap: 8 }}>
                     <input type="number" placeholder="Age" className="vin-mob-select" value={m.age}
                       onChange={(e) => { const u = [...activeForm.members]; u[idx].age = e.target.value; setActiveForm({ ...activeForm, members: u }); }}
                       style={{ padding: 8 }} />
@@ -1666,18 +1666,26 @@ export default function MobileHouseholds() {
                       style={{ padding: 8 }}>
                       <option>Male</option><option>Female</option>
                     </select>
-                    <select className="vin-mob-select" value={m.category}
-                      onChange={(e) => { const u = [...activeForm.members]; u[idx].category = e.target.value; setActiveForm({ ...activeForm, members: u }); }}
-                      style={{ padding: 8 }}>
-                      <option value="None">None</option>
-                      <option value="Senior Citizen">Senior Citizen</option>
-                      <option value="PWD">PWD (Person with Disability)</option>
-                      <option value="Pregnant/Lactating">Pregnant / Lactating</option>
-                      <option value="Solo Parent">Solo Parent</option>
-                      <option value="Infant/Child">Infant / Child</option>
-                      <option value="Lactating Mother">Lactating Mother</option>
-                      <option value="Indigenous People">Indigenous People (IP)</option>
-                    </select>
+                    <div
+                      className="vin-mob-select"
+                      style={{
+                        padding: '8px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        boxSizing: 'border-box',
+                        minHeight: 38
+                      }}
+                      onClick={() => setShowFormCategoryPicker({ target: 'member', index: idx })}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
+                        {m.category || 'None'}
+                      </span>
+                      <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1716,6 +1724,33 @@ export default function MobileHouseholds() {
             setShowFormRoomPicker(false);
           }}
           onClose={() => setShowFormRoomPicker(false)}
+        />
+      )}
+
+      {/* ── FORM CATEGORY PICKER ── */}
+      {showFormCategoryPicker && (
+        <CategorySelectSheet
+          selected={
+            showFormCategoryPicker.target === 'member'
+              ? activeForm.members[showFormCategoryPicker.index]?.category || 'None'
+              : activeForm.category || 'None'
+          }
+          title={
+            showFormCategoryPicker.target === 'member'
+              ? `Category for ${activeForm.members[showFormCategoryPicker.index]?.name || `Member #${showFormCategoryPicker.index + 1}`}`
+              : 'Household Head Category'
+          }
+          onSelect={(cat) => {
+            if (showFormCategoryPicker.target === 'member') {
+              const u = [...activeForm.members];
+              u[showFormCategoryPicker.index].category = cat;
+              setActiveForm((prev) => ({ ...prev, members: u }));
+            } else {
+              setActiveForm((prev) => ({ ...prev, category: cat }));
+            }
+            setShowFormCategoryPicker(null);
+          }}
+          onClose={() => setShowFormCategoryPicker(null)}
         />
       )}
 

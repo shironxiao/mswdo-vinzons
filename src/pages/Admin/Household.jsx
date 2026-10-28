@@ -3,6 +3,7 @@ import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
   CheckCircle2, Clock, Users, ChevronLeft, ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import checkIcon from '../../assets/check.png';
@@ -14,6 +15,11 @@ import {
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
+import {
+  CenterSelectSheet,
+  RoomSelectSheet,
+  CategorySelectSheet,
+} from '../../components/CenterSelectSheet.jsx';
 
 /* ──────────────────────────────────────────────
    Seed Data (synced with mobile structure)
@@ -548,6 +554,11 @@ export default function Household() {
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
 
+  /* ── Form pickers for register/edit ── */
+  const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
+  const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
+  const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
+
   const [activeForm, setActiveForm] = useState({
     id: '',
     head: '',
@@ -1007,43 +1018,44 @@ export default function Household() {
               <div className="vin-admin-form-row">
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label">EVACUATION CENTER</label>
-                  <select
-                    className="vin-admin-form-select"
-                    value={activeForm.center}
-                    onChange={(e) => setActiveForm({ ...activeForm, center: e.target.value })}
+                  <div
+                    className="vin-hh-filter-tap-field"
+                    onClick={() => setShowFormCenterPicker(true)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormCenterPicker(true)}
                   >
-                    {centers.map((c) => (
-                      <option key={c.id || c.displayName} value={c.displayName}>
-                        {c.displayName}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="vin-hh-filter-select-display-txt">{activeForm.center}</div>
+                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                  </div>
                 </div>
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label">ROOM NUMBER / AREA</label>
-                  <input
-                    type="text"
-                    placeholder="C-1"
-                    className="vin-admin-form-input"
-                    value={activeForm.room}
-                    onChange={(e) => setActiveForm({ ...activeForm, room: e.target.value })}
-                  />
+                  <div
+                    className="vin-hh-filter-tap-field"
+                    onClick={() => setShowFormRoomPicker(true)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormRoomPicker(true)}
+                  >
+                    <div className="vin-hh-filter-select-display-txt">{activeForm.room || 'Room 1'}</div>
+                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                  </div>
                 </div>
               </div>
 
               <div className="vin-admin-form-group">
                 <label className="vin-admin-form-label">SPECIAL CATEGORY</label>
-                <select
-                  className="vin-admin-form-select"
-                  value={activeForm.category}
-                  onChange={(e) => setActiveForm({ ...activeForm, category: e.target.value })}
+                <div
+                  className="vin-hh-filter-tap-field"
+                  onClick={() => setShowFormCategoryPicker({ target: 'head' })}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setShowFormCategoryPicker({ target: 'head' })}
                 >
-                  <option value="None">None</option>
-                  <option value="Senior">Senior Citizen</option>
-                  <option value="PWD">Person with Disability (PWD)</option>
-                  <option value="Pregnant/Lactating">Pregnant / Lactating</option>
-                  <option value="Solo Parent">Solo Parent</option>
-                </select>
+                  <div className="vin-hh-filter-select-display-txt">{activeForm.category || 'None'}</div>
+                  <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                </div>
               </div>
 
               {/* Family members section */}
@@ -1118,21 +1130,27 @@ export default function Household() {
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
                         </select>
-                        <select
+                        <div
                           className="vin-admin-form-select"
-                          style={{ padding: '6px 10px' }}
-                          value={m.category}
-                          onChange={(e) => {
-                            const updated = [...activeForm.members];
-                            updated[idx].category = e.target.value;
-                            setActiveForm({ ...activeForm, members: updated });
+                          style={{
+                            padding: '6px 10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            background: '#ffffff',
+                            minHeight: 38,
+                            boxSizing: 'border-box',
                           }}
+                          onClick={() => setShowFormCategoryPicker({ target: 'member', index: idx })}
+                          role="button"
+                          tabIndex={0}
                         >
-                          <option value="None">None</option>
-                          <option value="Senior">Senior</option>
-                          <option value="PWD">PWD</option>
-                          <option value="Pregnant/Lactating">Pregnant</option>
-                        </select>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
+                            {m.category || 'None'}
+                          </span>
+                          <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1169,6 +1187,65 @@ export default function Household() {
         }}
         onClose={() => setShowFilterModal(false)}
       />
+
+      {/* ── ADMIN FORM CENTER PICKER ── */}
+      {showFormCenterPicker && (
+        <CenterSelectSheet
+          selected={activeForm.center}
+          centersList={centers}
+          showAllOption={false}
+          allCentersSub="Select the evacuation center for this household"
+          onSelect={(c) => {
+            setActiveForm((prev) => ({ ...prev, center: c, room: 'Room 1' }));
+            setShowFormCenterPicker(false);
+          }}
+          onClose={() => setShowFormCenterPicker(false)}
+        />
+      )}
+
+      {/* ── ADMIN FORM ROOM PICKER ── */}
+      {showFormRoomPicker && (
+        <RoomSelectSheet
+          selected={activeForm.room}
+          centerName={activeForm.center}
+          centersList={centers}
+          showAllOption={false}
+          includeUnassigned={true}
+          allRoomsSub="Select the room at this evacuation center"
+          onSelect={(r) => {
+            setActiveForm((prev) => ({ ...prev, room: r }));
+            setShowFormRoomPicker(false);
+          }}
+          onClose={() => setShowFormRoomPicker(false)}
+        />
+      )}
+
+      {/* ── ADMIN FORM CATEGORY PICKER ── */}
+      {showFormCategoryPicker && (
+        <CategorySelectSheet
+          selected={
+            showFormCategoryPicker.target === 'member'
+              ? activeForm.members[showFormCategoryPicker.index]?.category || 'None'
+              : activeForm.category || 'None'
+          }
+          title={
+            showFormCategoryPicker.target === 'member'
+              ? `Category for ${activeForm.members[showFormCategoryPicker.index]?.name || `Member #${showFormCategoryPicker.index + 1}`}`
+              : 'Household Head Category'
+          }
+          onSelect={(cat) => {
+            if (showFormCategoryPicker.target === 'member') {
+              const u = [...activeForm.members];
+              u[showFormCategoryPicker.index].category = cat;
+              setActiveForm((prev) => ({ ...prev, members: u }));
+            } else {
+              setActiveForm((prev) => ({ ...prev, category: cat }));
+            }
+            setShowFormCategoryPicker(null);
+          }}
+          onClose={() => setShowFormCategoryPicker(null)}
+        />
+      )}
 
       {/* ── HIDDEN QR SVGS FOR PRINTING ── */}
       <div
