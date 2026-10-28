@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown,
-  ChevronLeft, ChevronRight, SlidersHorizontal,
+  ChevronLeft, ChevronRight, SlidersHorizontal, AlertTriangle, Building,
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
@@ -13,6 +13,7 @@ import {
   getRoomsForCenter,
 } from '../../lib/evacuationCenters';
 import { useHouseholds } from '../../lib/householdService.js';
+import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 
 const INITIAL_MONITOR_DATA = [
@@ -183,22 +184,36 @@ const ROOMS = ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
 export default function MobileMonitor() {
   const { centers } = useEvacuationCenters();
   const { households } = useHouseholds(centers);
+  const { logs, refresh: refreshLogs } = useMonitoringLogs(centers);
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Recorded' | 'Absent'
+  const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Present' | 'For Follow-up' | 'Absent' | 'Transferred'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeFamily, setActiveFamily] = useState(null);
   const [attendance, setAttendance] = useState({});
+  const [checkInTimes, setCheckInTimes] = useState({});
+  const [monitorForm, setMonitorForm] = useState({
+    interval: 'Every 2-3 hours',
+    checkedBy: 'Brgy. Capt. Reyes',
+    householdStatus: 'Present',
+    remarks: '',
+  });
 
-  // Dynamic monitor records derived from live Supabase households
+  // Dynamic monitor records derived from live Supabase households & monitoring logs
   const records = useMemo(() => {
     if (!households || households.length === 0) return INITIAL_MONITOR_DATA;
     return households.map((h, idx) => {
       const allNames = [h.name, ...(h.members || []).map((m) => m.name || m)];
       const total = allNames.length;
-      const dateFormatted = h.createdAt
+
+      // Find most recent monitoring log for this household
+      const latestLog = logs.find((l) => l.householdId === h.id);
+
+      let status = 'Present';
+      let ratio = `${total}/${total}`;
+      let dateFormatted = h.createdAt
         ? new Date(h.createdAt).toLocaleString('en-US', {
             month: 'numeric',
             day: 'numeric',
@@ -207,14 +222,34 @@ export default function MobileMonitor() {
             minute: '2-digit',
             hour12: true,
           })
-        : 'Recorded';
+        : 'Registered';
 
+      if (latestLog) {
+        status = latestLog.householdStatus || 'Present';
+        ratio = `${latestLog.presentCount}/${latestLog.totalMembers}`;
+        dateFormatted = new Date(latestLog.createdAt).toLocaleString('en-US', {
+          month: 'numeric',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+      }
+
+      // Check for local optimistic override
       const override = attendanceOverrides[h.id];
-      const status = override ? override.status : 'Recorded';
-      const ratio = override ? override.ratio : `${total}/${total}`;
+      if (override) {
+        status = override.status;
+        ratio = override.ratio;
+        if (override.timestamp) dateFormatted = override.timestamp;
+      }
 
       return {
         id: h.id || idx + 1,
+        householdId: h.id,
+        centerId: h.centerId,
+        roomId: h.roomId,
         name: h.name,
         center: h.center || 'LGU EC (Mangcaway)',
         room: h.room || 'Room 1',
@@ -222,9 +257,10 @@ export default function MobileMonitor() {
         timestamp: dateFormatted,
         status,
         members: allNames,
+        latestLog,
       };
     });
-  }, [households, attendanceOverrides]);
+  }, [households, logs, attendanceOverrides]);
 
   const activeFilters = (filterStatus !== 'All' ? 1 : 0) +
     (filterCenter !== 'All Centers' ? 1 : 0) +
@@ -237,8 +273,10 @@ export default function MobileMonitor() {
       r.room.toLowerCase().includes(search.toLowerCase());
     const matchStatus =
       filterStatus === 'All' ||
-      (filterStatus === 'Recorded' && r.status === 'Recorded') ||
-      (filterStatus === 'Absent' && r.status === 'Absent');
+      (filterStatus === 'Present' && (r.status === 'Present' || r.status === 'Recorded')) ||
+      (filterStatus === 'For Follow-up' && r.status === 'For Follow-up') ||
+      (filterStatus === 'Absent' && r.status === 'Absent') ||
+      (filterStatus === 'Transferred' && r.status === 'Transferred');
     const matchCenter = isCenterMatch(r.center, filterCenter, centers);
     const matchRoom =
       filterRoom === 'All Rooms' ||
@@ -260,26 +298,95 @@ export default function MobileMonitor() {
 
   const openMonitoringSheet = (family) => {
     setActiveFamily(family);
-    const init = {};
-    family.members.forEach((m) => { init[m] = 'Accounted For'; });
-    setAttendance(init);
+    const now = new Date();
+    const currentTimeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    // Look up previous log for this family if any
+    const prevLog = logs.find((l) => l.householdId === (family.householdId || family.id));
+    const initAttendance = {};
+    const initTimes = {};
+
+    family.members.forEach((m) => {
+      const prevMem = prevLog?.membersAttendance?.find((item) => item.name === m);
+      const memStatus = prevMem ? prevMem.status : 'Accounted For';
+      initAttendance[m] = memStatus;
+      initTimes[m] = memStatus !== 'Absent' ? (prevMem?.check_in_time || currentTimeStr) : null;
+    });
+
+    setAttendance(initAttendance);
+    setCheckInTimes(initTimes);
+    setMonitorForm({
+      interval: 'Every 2-3 hours',
+      checkedBy: prevLog?.checkedBy || 'Brgy. Capt. Reyes',
+      householdStatus: prevLog ? prevLog.householdStatus : 'Present',
+      remarks: '',
+    });
   };
 
-  const handleSaveUpdate = () => {
-    if (!activeFamily) return;
-    const accountedCount = Object.values(attendance).filter((s) => s === 'Accounted For').length;
-    const totalCount = activeFamily.members.length;
-    const isAllAbsent = accountedCount === 0;
+  const handleToggleMember = (member, key) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const updated = { ...attendance, [member]: key };
+    setAttendance(updated);
 
+    setCheckInTimes((prev) => ({
+      ...prev,
+      [member]: key === 'Absent' ? null : (prev[member] || timeStr),
+    }));
+
+    // Auto-suggest household status based on member attendance
+    const hasAbsent = Object.values(updated).some((s) => s === 'Absent');
+    const hasLate = Object.values(updated).some((s) => s === 'Late');
+    if (hasAbsent || hasLate) {
+      setMonitorForm((prev) => ({ ...prev, householdStatus: 'For Follow-up' }));
+    } else {
+      setMonitorForm((prev) => ({ ...prev, householdStatus: 'Present' }));
+    }
+  };
+
+  const handleSaveUpdate = async () => {
+    if (!activeFamily) return;
+    const presentCount = Object.values(attendance).filter((s) => s === 'Accounted For').length;
+    const lateCount = Object.values(attendance).filter((s) => s === 'Late').length;
+    const absentCount = Object.values(attendance).filter((s) => s === 'Absent').length;
+    const totalCount = activeFamily.members.length;
+
+    // Optimistic local override
     setAttendanceOverrides((prev) => ({
       ...prev,
       [activeFamily.id]: {
-        status: isAllAbsent ? 'Absent' : 'Recorded',
-        ratio: `${accountedCount}/${totalCount}`,
+        status: monitorForm.householdStatus,
+        ratio: `${presentCount + lateCount}/${totalCount}`,
+        timestamp: 'Just now',
       },
     }));
 
+    const familyToSave = activeFamily;
     setActiveFamily(null);
+
+    try {
+      await recordMonitoringLog({
+        householdId: familyToSave.householdId || familyToSave.id,
+        centerId: familyToSave.centerId,
+        roomId: familyToSave.roomId,
+        monitoringInterval: monitorForm.interval,
+        checkedBy: monitorForm.checkedBy,
+        householdStatus: monitorForm.householdStatus,
+        membersAttendance: familyToSave.members.map((m) => ({
+          name: m,
+          status: attendance[m] || 'Accounted For',
+          check_in_time: checkInTimes[m] || null,
+        })),
+        totalMembers: totalCount,
+        presentCount: presentCount + lateCount,
+        absentCount,
+        lateCount,
+        remarks: monitorForm.remarks,
+      });
+      refreshLogs();
+    } catch (err) {
+      console.warn('Could not save monitoring log to Supabase:', err);
+    }
   };
 
   return (
@@ -326,7 +433,7 @@ export default function MobileMonitor() {
             className="vin-hh-active-chip"
             onClick={() => setFilterStatus('All')}
           >
-            <span>{filterStatus === 'Recorded' ? 'Present' : 'Absent'}</span>
+            <span>{filterStatus}</span>
             <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
@@ -358,9 +465,16 @@ export default function MobileMonitor() {
       </div>
 
       {/* Legend */}
-      <div className="vin-mon-legend">
-        <CheckCircle2 size={14} color="#2d7a57" /> Present / Recorded
-        <XCircle size={14} color="#9c4444" style={{ marginLeft: 12 }} /> Absent
+      <div className="vin-mon-legend" style={{ flexWrap: 'wrap', gap: 10 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <CheckCircle2 size={14} color="#2d7a57" /> Present
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <AlertTriangle size={14} color="#b45309" /> For Follow-up
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <XCircle size={14} color="#9c4444" /> Absent
+        </span>
       </div>
 
       {/* ── MONITOR DATA TABLE ── */}
@@ -382,7 +496,29 @@ export default function MobileMonitor() {
                 </tr>
               ) : (
                 paginatedRecords.map((item) => {
-                  const isPresent = item.status === 'Recorded';
+                  const statusKey = item.status === 'Recorded' ? 'Present' : item.status;
+                  let iconCls = 'present';
+                  let badgeCls = 'badge-present';
+                  let IconComp = CheckCircle2;
+
+                  if (statusKey === 'For Follow-up') {
+                    iconCls = 'followup';
+                    badgeCls = 'badge-followup';
+                    IconComp = AlertTriangle;
+                  } else if (statusKey === 'Transferred') {
+                    iconCls = 'transferred';
+                    badgeCls = 'badge-transferred';
+                    IconComp = Building;
+                  } else if (statusKey === 'Decamped') {
+                    iconCls = 'decamped';
+                    badgeCls = 'badge-decamped';
+                    IconComp = Clock;
+                  } else if (statusKey === 'Absent') {
+                    iconCls = 'absent';
+                    badgeCls = 'badge-absent';
+                    IconComp = XCircle;
+                  }
+
                   return (
                     <tr
                       key={item.id}
@@ -391,8 +527,8 @@ export default function MobileMonitor() {
                     >
                       <td>
                         <div className="vin-mob-td-name">
-                          <div className={`vin-mon-table-icon ${isPresent ? 'present' : 'absent'}`}>
-                            {isPresent ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                          <div className={`vin-mon-table-icon ${iconCls}`}>
+                            <IconComp size={16} />
                           </div>
                           <div className="vin-mob-head-details">
                             <div className="vin-mob-head-name">{item.name}</div>
@@ -402,8 +538,8 @@ export default function MobileMonitor() {
                               <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
                             </div>
                             <div className="vin-mob-head-badges">
-                              <span className={`vin-mon-tile-badge ${isPresent ? 'badge-present' : 'badge-absent'}`}>
-                                {item.status} ({item.ratio})
+                              <span className={`vin-mon-tile-badge ${badgeCls}`}>
+                                {statusKey} ({item.ratio})
                               </span>
                               <span className="vin-mon-table-time">{item.timestamp}</span>
                             </div>
@@ -468,7 +604,7 @@ export default function MobileMonitor() {
               <div>
                 <h2 className="vin-mob-sheet-title">Evacuee Monitoring</h2>
                 <span style={{ fontSize: '.78rem', color: '#64748b' }}>
-                  {activeFamily.center} • Room {activeFamily.room}
+                  {activeFamily.center} • {activeFamily.room}
                 </span>
               </div>
               <button type="button" className="vin-mob-sheet-close" onClick={() => setActiveFamily(null)}>
@@ -482,11 +618,21 @@ export default function MobileMonitor() {
 
             <div className="vin-mob-input-group">
               <label className="vin-mob-input-label">MONITORING INTERVAL</label>
-              <input type="text" className="vin-mob-select" defaultValue="Every 2-3 hours" />
+              <input
+                type="text"
+                className="vin-mob-select"
+                value={monitorForm.interval}
+                onChange={(e) => setMonitorForm((f) => ({ ...f, interval: e.target.value }))}
+              />
             </div>
             <div className="vin-mob-input-group" style={{ marginTop: 12 }}>
               <label className="vin-mob-input-label">CHECKED BY</label>
-              <input type="text" className="vin-mob-select" defaultValue="Brgy. Capt. Reyes" />
+              <input
+                type="text"
+                className="vin-mob-select"
+                value={monitorForm.checkedBy}
+                onChange={(e) => setMonitorForm((f) => ({ ...f, checkedBy: e.target.value }))}
+              />
             </div>
 
             <h4 style={{ margin: '16px 0 8px', fontSize: '.92rem', fontWeight: 800 }}>
@@ -506,7 +652,7 @@ export default function MobileMonitor() {
                       key={key}
                       type="button"
                       className={`vin-mob-att-btn ${attendance[member] === key ? cls : ''}`}
-                      onClick={() => setAttendance({ ...attendance, [member]: key })}
+                      onClick={() => handleToggleMember(member, key)}
                     >
                       {key}
                     </button>
@@ -515,23 +661,94 @@ export default function MobileMonitor() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#64748b', fontSize: '.78rem' }}>
                   <span>CHECK-IN TIME</span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <Clock size={14} /> --:-- --
+                    <Clock size={14} />
+                    {checkInTimes[member] || '--:-- --'}
                   </span>
                 </div>
               </div>
             ))}
 
-            <button type="button" className="vin-mob-sheet-submit-btn" onClick={handleSaveUpdate}
-              style={{ marginTop: 12 }}>
+            {/* Household Status selector */}
+            <div className="vin-mob-input-group" style={{ marginTop: 12 }}>
+              <label className="vin-mob-input-label">HOUSEHOLD STATUS</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {['Present', 'For Follow-up', 'Transferred', 'Decamped'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`vin-hh-filter-pill ${monitorForm.householdStatus === s ? 'active' : ''}`}
+                    onClick={() => setMonitorForm((f) => ({ ...f, householdStatus: s }))}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Remarks */}
+            <div className="vin-mob-input-group" style={{ marginTop: 12 }}>
+              <label className="vin-mob-input-label">REMARKS (optional)</label>
+              <textarea
+                className="vin-mob-select"
+                rows={2}
+                style={{ resize: 'none' }}
+                placeholder="e.g. Member went to check house, returned later"
+                value={monitorForm.remarks}
+                onChange={(e) => setMonitorForm((f) => ({ ...f, remarks: e.target.value }))}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="vin-mob-sheet-submit-btn"
+              onClick={handleSaveUpdate}
+              style={{ marginTop: 12 }}
+            >
               Save Monitoring Update
             </button>
 
+            {/* Monitoring History from DB */}
             <div style={{ marginTop: 10 }}>
               <h4 style={{ margin: '0 0 6px', fontSize: '.9rem', fontWeight: 800 }}>Monitoring History</h4>
-              <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0', display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '.85rem' }}>
-                <Clock size={16} />
-                <span>No monitoring records yet.</span>
-              </div>
+              {activeFamily.latestLog ? (
+                <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.8rem', color: '#475569' }}>
+                    <span><strong>{activeFamily.latestLog.checkedBy}</strong></span>
+                    <span>
+                      {activeFamily.latestLog.createdAt
+                        ? new Date(activeFamily.latestLog.createdAt).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })
+                        : ''}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: '.8rem', color: '#64748b' }}>
+                    {activeFamily.latestLog.presentCount}/{activeFamily.latestLog.totalMembers} present •{' '}
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: activeFamily.latestLog.householdStatus === 'Present' ? '#166534' : '#92400e',
+                      }}
+                    >
+                      {activeFamily.latestLog.householdStatus}
+                    </span>
+                  </div>
+                  {activeFamily.latestLog.remarks && (
+                    <div style={{ marginTop: 4, fontSize: '.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                      {activeFamily.latestLog.remarks}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0', display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '.85rem' }}>
+                  <Clock size={16} />
+                  <span>No monitoring records yet for this household.</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -586,8 +803,10 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
       r.room.toLowerCase().includes(search.toLowerCase());
     const matchStatus =
       draftStatus === 'All' ||
-      (draftStatus === 'Recorded' && r.status === 'Recorded') ||
-      (draftStatus === 'Absent' && r.status === 'Absent');
+      (draftStatus === 'Present' && (r.status === 'Present' || r.status === 'Recorded')) ||
+      (draftStatus === 'For Follow-up' && r.status === 'For Follow-up') ||
+      (draftStatus === 'Absent' && r.status === 'Absent') ||
+      (draftStatus === 'Transferred' && r.status === 'Transferred');
     const matchCenter = isCenterMatch(r.center, draftCenter, centersList);
     const matchRoom = draftRoom === 'All Rooms' || r.room === draftRoom;
     return matchSearch && matchStatus && matchCenter && matchRoom;
@@ -613,8 +832,10 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
           <div className="vin-hh-filter-pills-row">
             {[
               { id: 'All', label: 'All' },
-              { id: 'Recorded', label: 'Present' },
+              { id: 'Present', label: 'Present' },
+              { id: 'For Follow-up', label: 'For Follow-up' },
               { id: 'Absent', label: 'Absent' },
+              { id: 'Transferred', label: 'Transferred' },
             ].map((opt) => (
               <button
                 key={opt.id}

@@ -132,6 +132,21 @@
   color: #dc2626;
 }
 
+.vin-admin-hh-stat-icon.present {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.vin-admin-hh-stat-icon.followup {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.vin-admin-hh-stat-icon.transferred {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
 /* Toolbar & Filter Bar */
 .vin-admin-hh-toolbar-card {
   background: #ffffff;

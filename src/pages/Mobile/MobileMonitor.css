@@ -194,9 +194,46 @@
   color: #843232;
   border: 1px solid #ebd3d3;
 }
+.badge-followup {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+.badge-transferred {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+.badge-decamped {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.mon-tile-followup {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #fde68a;
+}
+.mon-tile-transferred {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-color: #bae6fd;
+}
 
 .vin-mon-tile-time {
   font-size: 0.68rem;
   color: #94a3b8;
   margin-top: 2px;
+}
+
+.vin-mon-table-icon.followup {
+  color: #b45309;
+  background: #fef3c7;
+}
+.vin-mon-table-icon.transferred {
+  color: #0369a1;
+  background: #e0f2fe;
+}
+.vin-mon-table-icon.decamped {
+  color: #475569;
+  background: #f1f5f9;
 }

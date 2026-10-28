@@ -196,6 +196,21 @@
   color: #d97706;
 }
 
+.vin-status-tag.followup {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.vin-status-tag.transferred {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.vin-status-tag.absent {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
 /* ── Simple Pill Filter Button (matches oval pill style from user image) ── */
 .vin-filter-pill-group {
   display: flex;
