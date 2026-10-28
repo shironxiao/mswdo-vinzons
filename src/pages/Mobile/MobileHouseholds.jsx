@@ -32,7 +32,8 @@ const SEED = [
       { name: 'Pablo Magno', age: 20, sex: 'Male',   category: 'None'   },
       { name: 'Sofia Magno', age: 17, sex: 'Female', category: 'None'   },
     ],
-    stubCode: null,
+    stubCode: 'STB-001001',
+    stubIssued: false,
   },
   {
     id: 2,
@@ -46,6 +47,7 @@ const SEED = [
       { name: 'Leo Santos',   age: 12, sex: 'Male',   category: 'None' },
     ],
     stubCode: 'STB-001002',
+    stubIssued: true,
   },
   {
     id: 3,
@@ -57,7 +59,8 @@ const SEED = [
       { name: 'Mark Cruz', age: 38, sex: 'Male',   category: 'None' },
       { name: 'Lina Cruz', age: 10, sex: 'Female', category: 'None' },
     ],
-    stubCode: null,
+    stubCode: 'STB-003014',
+    stubIssued: false,
   },
   {
     id: 4,
@@ -70,6 +73,7 @@ const SEED = [
       { name: 'John Dela Cruz',  age: 22, sex: 'Male',   category: 'None' },
     ],
     stubCode: 'STB-004021',
+    stubIssued: true,
   },
   {
     id: 5,
@@ -81,7 +85,8 @@ const SEED = [
       { name: 'Carlos Bautista', age: 14, sex: 'Male',   category: 'None' },
       { name: 'Jenny Bautista',  age: 9,  sex: 'Female', category: 'None' },
     ],
-    stubCode: null,
+    stubCode: 'STB-005018',
+    stubIssued: false,
   },
   {
     id: 6,
@@ -93,6 +98,7 @@ const SEED = [
       { name: 'Clara Diaz', age: 52, sex: 'Female', category: 'None' },
     ],
     stubCode: 'STB-006033',
+    stubIssued: true,
   },
   {
     id: 7,
@@ -105,7 +111,8 @@ const SEED = [
       { name: 'Mia Ramos',    age: 5,  sex: 'Female', category: 'None' },
       { name: 'Leo Ramos',    age: 2,  sex: 'Male',   category: 'None' },
     ],
-    stubCode: null,
+    stubCode: 'STB-007015',
+    stubIssued: false,
   },
   {
     id: 8,
@@ -118,6 +125,7 @@ const SEED = [
       { name: 'Joy Lopez',   age: 18, sex: 'Female', category: 'None' },
     ],
     stubCode: 'STB-008012',
+    stubIssued: true,
   },
   {
     id: 9,
@@ -130,6 +138,7 @@ const SEED = [
       { name: 'Ella Morales',  age: 8,  sex: 'Female', category: 'None' },
     ],
     stubCode: 'STB-009045',
+    stubIssued: true,
   },
   {
     id: 10,
@@ -140,7 +149,8 @@ const SEED = [
     members: [
       { name: 'Beth Soriano', age: 49, sex: 'Female', category: 'None' },
     ],
-    stubCode: null,
+    stubCode: 'STB-010028',
+    stubIssued: false,
   },
   {
     id: 11,
@@ -153,6 +163,7 @@ const SEED = [
       { name: 'Hannah Villanueva', age: 6,  sex: 'Female', category: 'None' },
     ],
     stubCode: 'STB-011089',
+    stubIssued: true,
   },
   {
     id: 12,
@@ -163,7 +174,8 @@ const SEED = [
     members: [
       { name: 'Amparo Santos', age: 60, sex: 'Female', category: 'Senior' },
     ],
-    stubCode: null,
+    stubCode: 'STB-012007',
+    stubIssued: false,
   },
 ];
 
@@ -218,7 +230,7 @@ function findDuplicateHolder(households, targetHHId, memberName) {
   return households.find(
     (h) =>
       h.id !== targetHHId &&
-      h.stubCode &&
+      h.stubIssued &&
       (h.name === memberName || h.members.some((m) => m.name === memberName))
   );
 }
@@ -477,6 +489,7 @@ function printStub(household) {
    ────────────────────────────────────────────── */
 function QrScannerModal({ onScan, onClose }) {
   const instanceRef = { current: null };
+  const [manualCode, setManualCode] = useState('');
 
   useEffect(() => {
     let scanner;
@@ -495,6 +508,14 @@ function QrScannerModal({ onScan, onClose }) {
     return () => { if (instanceRef.current) instanceRef.current.stop().catch(() => {}); };
   }, [onScan]);
 
+  const handleManualSubmit = (e) => {
+    e.preventDefault();
+    if (manualCode.trim()) {
+      if (instanceRef.current) instanceRef.current.stop().catch(() => {});
+      onScan(manualCode.trim());
+    }
+  };
+
   return (
     <div className="vin-hh-qr-overlay" onClick={onClose}>
       <div className="vin-hh-qr-box" onClick={(e) => e.stopPropagation()}>
@@ -503,7 +524,33 @@ function QrScannerModal({ onScan, onClose }) {
           <button type="button" className="vin-mob-sheet-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div id="qr-reader-el" style={{ width: '100%' }} />
-        <p className="vin-hh-qr-hint">Point camera at stub QR. Requires HTTPS &amp; camera permission.</p>
+        <p className="vin-hh-qr-hint">Point camera at printed stub QR code to automatically label as Issued.</p>
+        
+        {/* Manual code input alternative */}
+        <form onSubmit={handleManualSubmit} style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 10, display: 'flex', gap: 6 }}>
+          <input
+            type="text"
+            placeholder="Or enter/paste code (e.g. STB-001001)..."
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value)}
+            style={{
+              flex: 1,
+              border: '1.5px solid #cbd5e1',
+              borderRadius: 8,
+              padding: '8px 10px',
+              fontSize: '0.84rem',
+              color: '#0f172a',
+              outline: 'none',
+            }}
+          />
+          <button
+            type="submit"
+            className="vin-mob-row-btn assign"
+            style={{ padding: '0 12px', whiteSpace: 'nowrap' }}
+          >
+            Scan / Issue
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -516,13 +563,13 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
   const duplicates = household.members
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
-  const alreadyIssued = !!household.stubCode;
+  const alreadyIssued = !!household.stubIssued;
 
   return (
     <div className="vin-mob-sheet-overlay" onClick={onClose}>
       <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
         <div className="vin-mob-sheet-header">
-          <h2 className="vin-mob-sheet-title">Stub Issuance</h2>
+          <h2 className="vin-mob-sheet-title">Household &amp; Stub Details</h2>
           <button type="button" className="vin-mob-sheet-close" onClick={onClose}><X size={18} /></button>
         </div>
 
@@ -578,36 +625,68 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
           </div>
         )}
 
-        {/* QR + code (if issued) */}
-        {alreadyIssued && (
-          <div className="vin-hh-issued-block">
-            <div style={{ textAlign: 'center' }}>
-              <div className="vin-mob-input-label" style={{ marginBottom: 8 }}>STUB CODE</div>
-              <div className="vin-hh-stub-code-display">{household.stubCode}</div>
-              <div style={{ marginTop: 12 }}>
-                <QRCodeSVG id={`panel-qr-${household.id}`} value={household.stubCode}
-                  size={140} level="M" bgColor="#ffffff" fgColor="#166534" />
-              </div>
-              <div style={{ marginTop: 8, fontSize: '0.84rem', fontWeight: 700, color: '#166534' }}>
-                Room: {household.room && household.room !== 'Unassigned' ? household.room : 'Unassigned'}
-              </div>
+        {/* Unique Household QR Code (Always present upon registration) */}
+        <div className="vin-hh-issued-block" style={{ marginTop: 14 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="vin-mob-input-label" style={{ marginBottom: 6 }}>OFFICIAL QR CODE / STUB CODE</div>
+            <div className="vin-hh-stub-code-display">{household.stubCode}</div>
+            <div style={{ marginTop: 12, display: 'inline-block', padding: 8, background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <QRCodeSVG
+                id={`panel-qr-${household.id}`}
+                value={household.stubCode}
+                size={140}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#166534"
+              />
             </div>
-            <button type="button" className="vin-hh-print-btn" onClick={() => printStub(household)}>
-              <Printer size={16} /> Print This Stub
-            </button>
+            <div style={{ marginTop: 8, fontSize: '0.84rem', fontWeight: 700, color: '#166534' }}>
+              Room: {household.room && household.room !== 'Unassigned' ? household.room : 'Unassigned'}
+            </div>
+            <div style={{ marginTop: 4, fontSize: '0.78rem', color: alreadyIssued ? '#166534' : '#64748b' }}>
+              {alreadyIssued
+                ? '✓ Status: ISSUED'
+                : 'Scan this printed QR code using the Scan button to automatically label as Issued'}
+            </div>
           </div>
-        )}
+          <button type="button" className="vin-hh-print-btn" onClick={() => printStub(household)}>
+            <Printer size={16} /> Print This Stub
+          </button>
+        </div>
 
-        {/* Issue button */}
-        <button
-          type="button"
-          className={`vin-hh-issue-btn ${alreadyIssued ? 'vin-hh-issue-btn--disabled' : ''}`}
-          disabled={alreadyIssued}
-          onClick={() => !alreadyIssued && onIssue(household.id)}
-        >
-          <Ticket size={18} />
-          {alreadyIssued ? 'Stub Already Issued' : 'Issue Stub'}
-        </button>
+        {/* Issue status or action button */}
+        {alreadyIssued ? (
+          <div
+            style={{
+              padding: 13,
+              borderRadius: 12,
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              color: '#166534',
+              fontWeight: 700,
+              textAlign: 'center',
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              marginTop: 10,
+            }}
+          >
+            <CheckCircle2 size={18} />
+            Stub Verified &amp; Issued
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="vin-hh-issue-btn"
+            onClick={() => onIssue(household.id)}
+            style={{ marginTop: 10 }}
+          >
+            <Ticket size={18} />
+            Mark as Issued
+          </button>
+        )}
       </div>
     </div>
   );
@@ -658,8 +737,8 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
       (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
     const matchStub =
       draftStub === 'All' ||
-      (draftStub === 'Issued' && !!h.stubCode) ||
-      (draftStub === 'Not Issued' && !h.stubCode);
+      (draftStub === 'Issued' && h.stubIssued) ||
+      (draftStub === 'Not Issued' && !h.stubIssued);
     const matchCenter = isCenterMatch(h.center, draftCenter, centersList);
     const matchRoom =
       draftRoom === 'All Rooms' ||
@@ -1047,8 +1126,8 @@ export default function MobileHouseholds() {
       (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
     const matchStub =
       filterStub === 'All' ||
-      (filterStub === 'Issued' && !!h.stubCode) ||
-      (filterStub === 'Not Issued' && !h.stubCode);
+      (filterStub === 'Issued' && h.stubIssued) ||
+      (filterStub === 'Not Issued' && !h.stubIssued);
     const matchCenter = isCenterMatch(h.center, filterCenter, centers);
     const matchRoom =
       filterRoom === 'All Rooms' ||
@@ -1057,8 +1136,8 @@ export default function MobileHouseholds() {
     return matchSearch && matchStub && matchCenter && matchRoom;
   });
 
-  const issuedCount = households.filter((h) => h.stubCode).length;
-  const filteredIssued = filtered.filter((h) => h.stubCode);
+  const issuedCount = households.filter((h) => h.stubIssued).length;
+  const filteredIssued = filtered.filter((h) => h.stubIssued);
   const activeFilters =
     (filterStub !== 'All' ? 1 : 0) +
     (filterCenter !== 'All Centers' ? 1 : 0) +
@@ -1076,20 +1155,43 @@ export default function MobileHouseholds() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
 
-  /* ── QR scan ── */
+  /* ── QR scan & Auto-issue ── */
   const handleScan = useCallback((code) => {
     setShowScanner(false);
-    const found = households.find((h) => h.stubCode === code);
-    if (found) setSelectedHousehold(found);
-    else setScanError(`No household found for code: ${code}`);
+    const trimmed = (code || '').trim();
+    const found = households.find((h) =>
+      (h.stubCode && h.stubCode.toLowerCase() === trimmed.toLowerCase()) ||
+      String(h.id) === trimmed
+    );
+    if (found) {
+      if (!found.stubIssued) {
+        setHouseholds((prev) =>
+          prev.map((h) => (h.id === found.id ? { ...h, stubIssued: true, stubIssuedDate: new Date().toISOString() } : h))
+        );
+        setSelectedHousehold({ ...found, stubIssued: true });
+        setToastMsg(`✓ Stub scanned! ${found.name} (${found.stubCode}) is now labeled as ISSUED.`);
+        setTimeout(() => setToastMsg(''), 4500);
+      } else {
+        setSelectedHousehold(found);
+        setToastMsg(`ℹ ${found.name} (${found.stubCode}) is ALREADY ISSUED.`);
+        setTimeout(() => setToastMsg(''), 4000);
+      }
+    } else {
+      setScanError(`No household found matching QR code: "${trimmed}"`);
+    }
   }, [households]);
 
   /* ── Issue stub ── */
   const issueStub = (hhId) => {
-    const newCode = genStubCode();
     setHouseholds((prev) =>
-      prev.map((h) => h.id === hhId ? { ...h, stubCode: newCode } : h)
+      prev.map((h) => (h.id === hhId ? { ...h, stubIssued: true, stubIssuedDate: new Date().toISOString() } : h))
     );
+    const target = households.find((h) => h.id === hhId);
+    if (target) {
+      setSelectedHousehold((prev) => (prev ? { ...prev, stubIssued: true } : null));
+      setToastMsg(`✓ Stub for ${target.name} (${target.stubCode}) is now marked as ISSUED!`);
+      setTimeout(() => setToastMsg(''), 4000);
+    }
   };
 
   /* ── Room assignment ── */
@@ -1149,12 +1251,23 @@ export default function MobileHouseholds() {
     e.preventDefault();
     if (!activeForm.head) return;
     if (modalMode === 'register') {
-      setHouseholds([{
-        id: Date.now(), name: activeForm.head, age: Number(activeForm.age) || 30,
-        sex: activeForm.sex, center: activeForm.center, room: activeForm.room,
-        category: activeForm.category, familyCount: 1 + activeForm.members.length,
-        members: activeForm.members, stubCode: null,
-      }, ...households]);
+      const generatedCode = genStubCode();
+      const newHousehold = {
+        id: Date.now(),
+        name: activeForm.head,
+        age: Number(activeForm.age) || 30,
+        sex: activeForm.sex,
+        center: activeForm.center,
+        room: activeForm.room,
+        category: activeForm.category,
+        familyCount: 1 + activeForm.members.length,
+        members: activeForm.members,
+        stubCode: generatedCode,
+        stubIssued: false,
+      };
+      setHouseholds([newHousehold, ...households]);
+      setToastMsg(`✓ Registered ${activeForm.head} with QR code ${generatedCode}!`);
+      setTimeout(() => setToastMsg(''), 4000);
     } else if (modalMode === 'edit') {
       setHouseholds((prev) => prev.map((h) =>
         h.id === activeForm.id
@@ -1271,11 +1384,12 @@ export default function MobileHouseholds() {
           <button
             type="button"
             className="vin-hh-print-all-btn"
-            onClick={() => printAllStubs(filteredIssued)}
-            disabled={filteredIssued.length === 0}
+            onClick={() => printAllStubs(filtered.filter((h) => h.stubCode))}
+            disabled={filtered.filter((h) => h.stubCode).length === 0}
+            title="Print QR stubs for households in view"
           >
             <Printer size={14} />
-            Print All ({filteredIssued.length})
+            Print Stubs ({filtered.filter((h) => h.stubCode).length})
           </button>
         </div>
       </div>
@@ -1332,13 +1446,13 @@ export default function MobileHouseholds() {
                             <span>{item.familyCount} pers.</span>
                           </div>
                           <div className="vin-mob-head-badges">
-                            <span className={item.stubCode ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
+                            <span className={item.stubIssued ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
                               <img
-                                src={item.stubCode ? checkIcon : removeIcon}
+                                src={item.stubIssued ? checkIcon : removeIcon}
                                 alt=""
                                 className="vin-badge-img-icon"
                               />
-                              <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
+                              <span>{item.stubIssued ? 'Issued' : 'Not Issued'}</span>
                             </span>
                           </div>
                         </div>

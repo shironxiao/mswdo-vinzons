@@ -33,7 +33,8 @@ const INITIAL_HOUSEHOLDS = [
       { name: 'Pablo Magno', age: 20, sex: 'Male', category: 'None' },
       { name: 'Sofia Magno', age: 17, sex: 'Female', category: 'None' },
     ],
-    stubCode: null,
+    stubCode: 'STB-001001',
+    stubIssued: false,
   },
   {
     id: 'HH-002',
@@ -50,6 +51,7 @@ const INITIAL_HOUSEHOLDS = [
       { name: 'Leo Santos', age: 12, sex: 'Male', category: 'None' },
     ],
     stubCode: 'STB-001002',
+    stubIssued: true,
   },
   {
     id: 'HH-003',
@@ -64,7 +66,8 @@ const INITIAL_HOUSEHOLDS = [
       { name: 'Mark Cruz', age: 38, sex: 'Male', category: 'None' },
       { name: 'Lina Cruz', age: 10, sex: 'Female', category: 'None' },
     ],
-    stubCode: null,
+    stubCode: 'STB-003014',
+    stubIssued: false,
   },
   {
     id: 'HH-004',
@@ -80,6 +83,7 @@ const INITIAL_HOUSEHOLDS = [
       { name: 'John Dela Cruz', age: 22, sex: 'Male', category: 'None' },
     ],
     stubCode: 'STB-004021',
+    stubIssued: true,
   },
   {
     id: 'HH-005',
@@ -94,7 +98,8 @@ const INITIAL_HOUSEHOLDS = [
       { name: 'Carlos Bautista', age: 14, sex: 'Male', category: 'None' },
       { name: 'Jenny Bautista', age: 9, sex: 'Female', category: 'None' },
     ],
-    stubCode: null,
+    stubCode: 'STB-005018',
+    stubIssued: false,
   },
 ];
 
@@ -373,7 +378,7 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
 
-  const alreadyIssued = !!household.stubCode;
+  const alreadyIssued = !!household.stubIssued;
 
   return (
     <div className="vin-admin-modal-overlay" onClick={onClose}>
@@ -553,8 +558,8 @@ export default function Household() {
   const filtered = households.filter((h) => {
     const matchStub =
       filterStub === 'All' ||
-      (filterStub === 'Issued' && !!h.stubCode) ||
-      (filterStub === 'Not Issued' && !h.stubCode);
+      (filterStub === 'Issued' && h.stubIssued) ||
+      (filterStub === 'Not Issued' && !h.stubIssued);
     const matchCenter =
       filterCenter === 'All Centers' ||
       h.center === filterCenter ||
@@ -568,9 +573,9 @@ export default function Household() {
   });
 
   const totalCount = households.length;
-  const issuedCount = households.filter((h) => h.stubCode).length;
+  const issuedCount = households.filter((h) => h.stubIssued).length;
   const pendingCount = totalCount - issuedCount;
-  const filteredIssued = filtered.filter((h) => h.stubCode);
+  const filteredIssued = filtered.filter((h) => h.stubIssued);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -578,9 +583,8 @@ export default function Household() {
 
   /* ── Issue stub ── */
   const issueStub = (hhId) => {
-    const newCode = genStubCode();
     setHouseholds((prev) =>
-      prev.map((h) => (h.id === hhId ? { ...h, stubCode: newCode } : h))
+      prev.map((h) => (h.id === hhId ? { ...h, stubIssued: true } : h))
     );
   };
 
@@ -637,7 +641,8 @@ export default function Household() {
         category: activeForm.category,
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
-        stubCode: null,
+        stubCode: genStubCode(),
+        stubIssued: false,
       };
       setHouseholds([newH, ...households]);
     } else if (modalMode === 'edit') {
@@ -844,13 +849,13 @@ export default function Household() {
                     )}
                   </td>
                   <td>
-                    <span className={item.stubCode ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
+                    <span className={item.stubIssued ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
                       <img
-                        src={item.stubCode ? checkIcon : removeIcon}
+                        src={item.stubIssued ? checkIcon : removeIcon}
                         alt=""
                         className="vin-badge-img-icon"
                       />
-                      <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
+                      <span>{item.stubIssued ? 'Issued' : 'Not Issued'}</span>
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
@@ -858,14 +863,14 @@ export default function Household() {
                       <button
                         type="button"
                         className={`vin-admin-tile-action-btn ${
-                          item.stubCode ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
+                          item.stubIssued ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
                         }`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedHousehold(item);
                         }}
                       >
-                        {item.stubCode ? 'View QR' : 'Issue Stub'} →
+                        {item.stubIssued ? 'View QR' : 'Issue Stub'} →
                       </button>
                       <button
                         type="button"
