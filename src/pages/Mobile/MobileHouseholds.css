@@ -1194,7 +1194,11 @@
 .vin-center-picker-sheet {
   width: 100%;
   max-width: 540px;
+  height: 72vh;
+  height: 72dvh;
+  min-height: 440px;
   max-height: 86vh;
+  max-height: 86dvh;
   background-color: #ffffff;
   color: #0f172a;
   border-top-left-radius: 24px;
@@ -1282,7 +1286,8 @@
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
-  max-height: 52vh;
+  flex: 1;
+  min-height: 0;
   padding-right: 2px;
   overscroll-behavior: contain;
 }
@@ -1368,10 +1373,15 @@
 }
 
 .vin-center-picker-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 30px 16px;
   text-align: center;
   font-size: 0.88rem;
   color: #64748b;
+  min-height: 180px;
 }
 
 /* Select Center Button */

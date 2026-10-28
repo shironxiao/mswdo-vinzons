@@ -12,6 +12,7 @@ import {
   isCenterMatch,
   getRoomsForCenter,
 } from '../../lib/evacuationCenters';
+import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 
 const INITIAL_MONITOR_DATA = [
   {
@@ -613,80 +614,30 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
         </button>
       </div>
 
-      {/* Center pop-up picker */}
+      {/* Center Picker Bottom Sheet */}
       {showCenterPicker && (
-        <div className="vin-mob-sheet-overlay" onClick={() => setShowCenterPicker(false)}>
-          <div className="vin-hh-filter-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="vin-hh-filter-sheet-handle" />
-            <div className="vin-hh-filter-sheet-header">
-              <span className="vin-hh-filter-sheet-title">Select Center</span>
-              <button type="button" className="vin-hh-filter-sheet-reset" onClick={() => setShowCenterPicker(false)}>Close</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
-              {/* All Centers option */}
-              <button
-                type="button"
-                className={`vin-hh-filter-opt ${draftCenter === 'All Centers' ? 'active' : ''}`}
-                onClick={() => { setDraftCenter('All Centers'); setShowCenterPicker(false); }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                  <span style={{ fontWeight: 700 }}>All Centers</span>
-                  <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>Show families from all evacuation centers</span>
-                </div>
-              </button>
-              {centersList
-                .slice()
-                .sort((a, b) =>
-                  (a.displayName || a.name || '').localeCompare(
-                    b.displayName || b.name || '',
-                    undefined,
-                    { sensitivity: 'base', numeric: true }
-                  )
-                )
-                .map((c) => {
-                  const val = c.displayName || c.name;
-                  return (
-                    <button
-                      key={c.id || val}
-                      type="button"
-                      className={`vin-hh-filter-opt ${draftCenter === val ? 'active' : ''}`}
-                      onClick={() => { setDraftCenter(val); setShowCenterPicker(false); }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                        <span style={{ fontWeight: 700 }}>{val}</span>
-                        <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 400 }}>{c.location}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
-        </div>
+        <CenterSelectSheet
+          selected={draftCenter}
+          centersList={centersList}
+          allCentersSub="Show records from all evacuation centers"
+          onSelect={(c) => {
+            setDraftCenter(c);
+            setDraftRoom('All Rooms');
+          }}
+          onClose={() => setShowCenterPicker(false)}
+        />
       )}
 
-      {/* Room pop-up picker */}
+      {/* Room Picker Bottom Sheet */}
       {showRoomPicker && (
-        <div className="vin-mob-sheet-overlay" onClick={() => setShowRoomPicker(false)}>
-          <div className="vin-hh-filter-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="vin-hh-filter-sheet-handle" />
-            <div className="vin-hh-filter-sheet-header">
-              <span className="vin-hh-filter-sheet-title">Select Room</span>
-              <button type="button" className="vin-hh-filter-sheet-reset" onClick={() => setShowRoomPicker(false)}>Close</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
-              {getRoomsForCenter(draftCenter, centersList).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={`vin-hh-filter-opt ${draftRoom === r ? 'active' : ''}`}
-                  onClick={() => { setDraftRoom(r); setShowRoomPicker(false); }}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <RoomSelectSheet
+          selected={draftRoom}
+          centerName={draftCenter}
+          centersList={centersList}
+          allRoomsSub="Show records from all rooms"
+          onSelect={(r) => setDraftRoom(r)}
+          onClose={() => setShowRoomPicker(false)}
+        />
       )}
     </div>
   );
