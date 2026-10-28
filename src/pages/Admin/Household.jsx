@@ -481,35 +481,40 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
             </div>
           )}
 
-          {/* Issued block (QR code + Code + Print) */}
-          {alreadyIssued && (
-            <div className="vin-admin-issued-block">
-              <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#166534', textTransform: 'uppercase' }}>
-                  ACTIVE CLAIM STUB CODE
-                </span>
-                <div className="vin-admin-issued-code">{household.stubCode}</div>
+          {/* QR Code + Stub Code block — shown for ALL households (issued or not) */}
+          <div className="vin-admin-issued-block">
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: alreadyIssued ? '#166534' : '#92400e', textTransform: 'uppercase' }}>
+                {alreadyIssued ? 'ACTIVE CLAIM STUB CODE' : 'HOUSEHOLD QR CODE (NOT YET ISSUED)'}
+              </span>
+              <div className="vin-admin-issued-code" style={{ color: alreadyIssued ? '#166534' : '#b45309' }}>
+                {household.stubCode}
               </div>
-
-              <div style={{ background: '#ffffff', padding: 12, borderRadius: 12, border: '1px solid #bbf7d0' }}>
-                <QRCodeSVG
-                  value={household.stubCode}
-                  size={140}
-                  level="M"
-                  bgColor="#ffffff"
-                  fgColor="#166534"
-                />
-              </div>
-
-              <button
-                type="button"
-                className="vin-admin-print-stub-btn"
-                onClick={() => printStub(household)}
-              >
-                <Printer size={16} /> Print This Stub
-              </button>
             </div>
-          )}
+
+            <div style={{
+              background: '#ffffff',
+              padding: 12,
+              borderRadius: 12,
+              border: `1px solid ${alreadyIssued ? '#bbf7d0' : '#fde68a'}`,
+            }}>
+              <QRCodeSVG
+                value={household.stubCode}
+                size={140}
+                level="M"
+                bgColor="#ffffff"
+                fgColor={alreadyIssued ? '#166534' : '#92400e'}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="vin-admin-print-stub-btn"
+              onClick={() => printStub(household)}
+            >
+              <Printer size={16} /> Print This Stub
+            </button>
+          </div>
 
           {/* Big action button */}
           <button
