@@ -1584,16 +1584,6 @@ export default function MobileHouseholds() {
                       <div className="vin-mob-table-actions">
                         <button
                           type="button"
-                          className={`vin-mob-row-btn ${item.stubCode ? 'view' : 'issue'}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedHousehold(item);
-                          }}
-                        >
-                          {item.stubCode ? 'QR' : 'Issue'}
-                        </button>
-                        <button
-                          type="button"
                           className="vin-mob-row-btn assign"
                           onClick={(e) => {
                             e.stopPropagation();
