@@ -1111,6 +1111,9 @@ export default function MobileHouseholds() {
   const [modalMode, setModalMode] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const [scanError, setScanError] = useState('');
+  /* ── Form pickers for register/edit ── */
+  const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
+  const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
 
   const [activeForm, setActiveForm] = useState({
     head: '', age: '', sex: 'Male',
@@ -1597,42 +1600,43 @@ export default function MobileHouseholds() {
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 12 }}>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label">EVACUATION CENTER</label>
-                  <select className="vin-mob-select" value={activeForm.center}
-                    onChange={(e) => setActiveForm({ ...activeForm, center: e.target.value })}>
-                    {centers
-                      .slice()
-                      .sort((a, b) =>
-                        (a.displayName || a.name || '').localeCompare(
-                          b.displayName || b.name || '',
-                          undefined,
-                          { sensitivity: 'base', numeric: true }
-                        )
-                      )
-                      .map((c) => {
-                        const val = c.displayName || c.name;
-                        return (
-                          <option key={c.id || val} value={val}>{val}</option>
-                        );
-                      })}
-                  </select>
+                  <div
+                    className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+                    onClick={() => setShowFormCenterPicker(true)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormCenterPicker(true)}
+                  >
+                    <div className="vin-hh-filter-select-display-txt">{activeForm.center}</div>
+                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                  </div>
                 </div>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label">ROOM</label>
-                  <select className="vin-mob-select" value={activeForm.room}
-                    onChange={(e) => setActiveForm({ ...activeForm, room: e.target.value })}>
-                    {getRoomsForCenter(activeForm.center, centers).filter((r) => r !== 'All Rooms').map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                    <option value="Unassigned">Unassigned</option>
-                  </select>
+                  <div
+                    className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+                    onClick={() => setShowFormRoomPicker(true)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormRoomPicker(true)}
+                  >
+                    <div className="vin-hh-filter-select-display-txt">{activeForm.room}</div>
+                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                  </div>
                 </div>
               </div>
               <div className="vin-mob-input-group">
                 <label className="vin-mob-input-label">CATEGORY</label>
                 <select className="vin-mob-select" value={activeForm.category}
                   onChange={(e) => setActiveForm({ ...activeForm, category: e.target.value })}>
-                  <option>None</option><option>Senior</option>
-                  <option>PWD</option><option>Pregnant/Lactating</option>
+                  <option value="None">None</option>
+                  <option value="Senior Citizen">Senior Citizen</option>
+                  <option value="PWD">PWD (Person with Disability)</option>
+                  <option value="Pregnant/Lactating">Pregnant / Lactating</option>
+                  <option value="Solo Parent">Solo Parent</option>
+                  <option value="Infant/Child">Infant / Child</option>
+                  <option value="Lactating Mother">Lactating Mother</option>
+                  <option value="Indigenous People">Indigenous People (IP)</option>
                 </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1665,7 +1669,14 @@ export default function MobileHouseholds() {
                     <select className="vin-mob-select" value={m.category}
                       onChange={(e) => { const u = [...activeForm.members]; u[idx].category = e.target.value; setActiveForm({ ...activeForm, members: u }); }}
                       style={{ padding: 8 }}>
-                      <option>None</option><option>Senior</option><option>PWD</option>
+                      <option value="None">None</option>
+                      <option value="Senior Citizen">Senior Citizen</option>
+                      <option value="PWD">PWD (Person with Disability)</option>
+                      <option value="Pregnant/Lactating">Pregnant / Lactating</option>
+                      <option value="Solo Parent">Solo Parent</option>
+                      <option value="Infant/Child">Infant / Child</option>
+                      <option value="Lactating Mother">Lactating Mother</option>
+                      <option value="Indigenous People">Indigenous People (IP)</option>
                     </select>
                   </div>
                 </div>
@@ -1674,6 +1685,38 @@ export default function MobileHouseholds() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* ── FORM CENTER PICKER ── */}
+      {showFormCenterPicker && (
+        <CenterSelectSheet
+          selected={activeForm.center}
+          centersList={centers}
+          showAllOption={false}
+          allCentersSub="Select the evacuation center for this household"
+          onSelect={(c) => {
+            setActiveForm((prev) => ({ ...prev, center: c, room: 'Room 1' }));
+            setShowFormCenterPicker(false);
+          }}
+          onClose={() => setShowFormCenterPicker(false)}
+        />
+      )}
+
+      {/* ── FORM ROOM PICKER ── */}
+      {showFormRoomPicker && (
+        <RoomSelectSheet
+          selected={activeForm.room}
+          centerName={activeForm.center}
+          centersList={centers}
+          showAllOption={false}
+          includeUnassigned={true}
+          allRoomsSub="Select the room at this evacuation center"
+          onSelect={(r) => {
+            setActiveForm((prev) => ({ ...prev, room: r }));
+            setShowFormRoomPicker(false);
+          }}
+          onClose={() => setShowFormRoomPicker(false)}
+        />
       )}
 
       {/* ── HIDDEN QR SVGS FOR PRINTING ── */}

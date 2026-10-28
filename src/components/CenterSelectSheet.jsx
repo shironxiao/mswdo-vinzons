@@ -11,8 +11,13 @@ export function CenterSelectSheet({
   onSelect,
   onClose,
   allCentersSub = 'Show records from all evacuation centers',
+  showAllOption = true,
 }) {
-  const [tempSelected, setTempSelected] = useState(selected || 'All Centers');
+  const initialSelected =
+    !showAllOption && (!selected || selected === 'All Centers')
+      ? (centersList[0]?.displayName || centersList[0]?.name || '')
+      : (selected || 'All Centers');
+  const [tempSelected, setTempSelected] = useState(initialSelected);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredCenters = centersList
@@ -70,7 +75,7 @@ export function CenterSelectSheet({
         {/* Center List */}
         <div className="vin-center-picker-list">
           {/* All Centers Option */}
-          {(!searchQuery || 'all centers'.includes(searchQuery.toLowerCase())) && (
+          {showAllOption && (!searchQuery || 'all centers'.includes(searchQuery.toLowerCase())) && (
             <div
               className={`vin-center-picker-item ${tempSelected === 'All Centers' ? 'selected' : ''}`}
               onClick={() => setTempSelected('All Centers')}
@@ -135,12 +140,11 @@ export function RoomSelectSheet({
   onSelect,
   onClose,
   allRoomsSub = 'Show records from all rooms',
+  showAllOption = true,
+  includeUnassigned = false,
 }) {
-  const [tempSelected, setTempSelected] = useState(selected || 'All Rooms');
-  const [searchQuery, setSearchQuery] = useState('');
-
   const roomNames = getRoomsForCenter(centerName, centersList);
-  const roomsList = roomNames
+  const baseRooms = roomNames
     .filter((r) => r !== 'All Rooms')
     .map((r) => ({
       id: r,
@@ -150,6 +154,25 @@ export function RoomSelectSheet({
           ? `Designated room at ${centerName}`
           : 'Evacuation room',
     }));
+
+  const roomsList = includeUnassigned
+    ? [
+        ...baseRooms,
+        {
+          id: 'Unassigned',
+          name: 'Unassigned',
+          description: 'Not yet assigned to a specific room',
+        },
+      ]
+    : baseRooms;
+
+  const initialSelected =
+    !showAllOption && (!selected || selected === 'All Rooms')
+      ? (roomsList[0]?.id || 'Room 1')
+      : (selected || 'All Rooms');
+
+  const [tempSelected, setTempSelected] = useState(initialSelected);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filteredRooms = roomsList.filter((r) => {
     const q = searchQuery.trim().toLowerCase();
@@ -199,7 +222,7 @@ export function RoomSelectSheet({
         {/* Room List */}
         <div className="vin-center-picker-list">
           {/* All Rooms Option */}
-          {(!searchQuery || 'all rooms'.includes(searchQuery.toLowerCase())) && (
+          {showAllOption && (!searchQuery || 'all rooms'.includes(searchQuery.toLowerCase())) && (
             <div
               className={`vin-center-picker-item ${tempSelected === 'All Rooms' ? 'selected' : ''}`}
               onClick={() => setTempSelected('All Rooms')}
