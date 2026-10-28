@@ -6,12 +6,14 @@ import {
   getRoomsForCenter,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
+import { useHouseholds } from '../../lib/householdService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 const STATUSES = ['All Status', 'Distributed', 'Completed', 'Queued'];
 
 export default function ReliefGoodsStubs() {
   const { centers } = useEvacuationCenters();
+  const { households } = useHouseholds(centers);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
@@ -35,27 +37,67 @@ export default function ReliefGoodsStubs() {
     return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   };
 
-  // Generate batches dynamically connected with Supabase centers
+  // Generate batches dynamically connected with Supabase centers & live households
   const allBatches = useMemo(() => {
-    const defaultBatches = centers.map((c, index) => {
+    const defaultBatches = [];
+
+    centers.forEach((c, index) => {
       const code = c.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
-      const cap = c.capacity || (c.total_rooms * 25);
-      const dist = Math.min(cap, Math.round(cap * 0.9));
-      const statuses = ['Distributed', 'Completed', 'Distributed', 'Queued'];
-      return {
+      const centerHouseholds = households.filter(
+        (h) => h.center === c.displayName || isCenterMatch(h.center, c.displayName, centers)
+      );
+
+      const totalHouseholds = centerHouseholds.length;
+      const distributedCount = centerHouseholds.filter((h) => h.stubIssued).length;
+
+      // Status determined by live stub issuance
+      let batchStatus = 'Queued';
+      if (totalHouseholds > 0 && distributedCount >= totalHouseholds) {
+        batchStatus = 'Completed';
+      } else if (distributedCount > 0) {
+        batchStatus = 'Distributed';
+      }
+
+      defaultBatches.push({
         batchId: `BATCH-2026-${String(index + 1).padStart(3, '0')}`,
         code,
         center: c.displayName,
         room: 'All Rooms',
-        allocated: cap,
-        distributed: statuses[index % statuses.length] === 'Queued' ? 0 : dist,
+        allocated: totalHouseholds > 0 ? totalHouseholds : c.capacity || 30,
+        distributed: distributedCount,
         date: getTodayFormatted(),
-        status: statuses[index % statuses.length],
-      };
+        status: batchStatus,
+      });
+
+      // Specific room distribution if center has registered households in rooms
+      const distinctRooms = Array.from(new Set(centerHouseholds.map((h) => h.room).filter(Boolean)));
+      distinctRooms.forEach((rName, rIdx) => {
+        const roomHH = centerHouseholds.filter((h) => h.room === rName);
+        const roomDist = roomHH.filter((h) => h.stubIssued).length;
+        const roomTotal = roomHH.length;
+
+        let rStatus = 'Queued';
+        if (roomTotal > 0 && roomDist >= roomTotal) {
+          rStatus = 'Completed';
+        } else if (roomDist > 0) {
+          rStatus = 'Distributed';
+        }
+
+        defaultBatches.push({
+          batchId: `BATCH-2026-${String(index + 1).padStart(3, '0')}-R${rIdx + 1}`,
+          code,
+          center: c.displayName,
+          room: rName,
+          allocated: roomTotal,
+          distributed: roomDist,
+          date: getTodayFormatted(),
+          status: rStatus,
+        });
+      });
     });
 
     return [...customBatches, ...defaultBatches];
-  }, [centers, customBatches]);
+  }, [centers, households, customBatches]);
 
   const getNextBatchId = () => {
     const nums = allBatches.map((s) => {

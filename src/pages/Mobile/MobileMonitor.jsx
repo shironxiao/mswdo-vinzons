@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown,
   ChevronLeft, ChevronRight, SlidersHorizontal,
@@ -12,6 +12,7 @@ import {
   isCenterMatch,
   getRoomsForCenter,
 } from '../../lib/evacuationCenters';
+import { useHouseholds } from '../../lib/householdService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 
 const INITIAL_MONITOR_DATA = [
@@ -181,7 +182,8 @@ const ROOMS = ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
 
 export default function MobileMonitor() {
   const { centers } = useEvacuationCenters();
-  const [records] = useState(INITIAL_MONITOR_DATA);
+  const { households } = useHouseholds(centers);
+  const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Recorded' | 'Absent'
   const [filterCenter, setFilterCenter] = useState('All Centers');
@@ -189,6 +191,40 @@ export default function MobileMonitor() {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeFamily, setActiveFamily] = useState(null);
   const [attendance, setAttendance] = useState({});
+
+  // Dynamic monitor records derived from live Supabase households
+  const records = useMemo(() => {
+    if (!households || households.length === 0) return INITIAL_MONITOR_DATA;
+    return households.map((h, idx) => {
+      const allNames = [h.name, ...(h.members || []).map((m) => m.name || m)];
+      const total = allNames.length;
+      const dateFormatted = h.createdAt
+        ? new Date(h.createdAt).toLocaleString('en-US', {
+            month: 'numeric',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          })
+        : 'Recorded';
+
+      const override = attendanceOverrides[h.id];
+      const status = override ? override.status : 'Recorded';
+      const ratio = override ? override.ratio : `${total}/${total}`;
+
+      return {
+        id: h.id || idx + 1,
+        name: h.name,
+        center: h.center || 'LGU EC (Mangcaway)',
+        room: h.room || 'Room 1',
+        ratio,
+        timestamp: dateFormatted,
+        status,
+        members: allNames,
+      };
+    });
+  }, [households, attendanceOverrides]);
 
   const activeFilters = (filterStatus !== 'All' ? 1 : 0) +
     (filterCenter !== 'All Centers' ? 1 : 0) +
@@ -230,7 +266,19 @@ export default function MobileMonitor() {
   };
 
   const handleSaveUpdate = () => {
-    alert(`Monitoring update saved for ${activeFamily.name}! (UI only)`);
+    if (!activeFamily) return;
+    const accountedCount = Object.values(attendance).filter((s) => s === 'Accounted For').length;
+    const totalCount = activeFamily.members.length;
+    const isAllAbsent = accountedCount === 0;
+
+    setAttendanceOverrides((prev) => ({
+      ...prev,
+      [activeFamily.id]: {
+        status: isAllAbsent ? 'Absent' : 'Recorded',
+        ratio: `${accountedCount}/${totalCount}`,
+      },
+    }));
+
     setActiveFamily(null);
   };
 

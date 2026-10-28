@@ -5,12 +5,14 @@ import {
   useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
+import { useHouseholds } from '../../lib/householdService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 const STATUSES = ['All Status', 'Complete', 'Pending'];
 
 export default function EvacueeMonitoring() {
   const { centers } = useEvacuationCenters();
+  const { households } = useHouseholds(centers);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
@@ -18,45 +20,57 @@ export default function EvacueeMonitoring() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  // Generate monitoring records dynamically based on Supabase centers
+  // Generate monitoring records dynamically connected to live Supabase households & centers
   const monitoringRecords = useMemo(() => {
     if (!centers || centers.length === 0) return [];
 
     const list = [];
     centers.forEach((c, index) => {
       const code = c.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
-      const rooms = c.rooms || [];
-      const totalOcc = rooms.reduce((sum, r) => sum + (r.occupied || 0), 0);
+      const centerHouseholds = households.filter(
+        (h) => h.center === c.displayName || isCenterMatch(h.center, c.displayName, centers)
+      );
 
-      // Morning check for the entire center
+      // Real count of checked individuals (head + dependents)
+      const totalChecked = centerHouseholds.reduce((sum, h) => sum + (h.familyCount || 1), 0);
+      const allIssued = centerHouseholds.length > 0 && centerHouseholds.every((h) => h.stubIssued);
+
+      // Morning Verification round for the entire center
       list.push({
         id: `CHK-${String(index * 2 + 1).padStart(2, '0')}`,
         code,
         center: c.displayName,
         room: 'All Rooms',
-        checked: totalOcc || 35,
+        checked: totalChecked,
         round: 'Morning Verification',
         time: '08:30 AM',
-        status: index % 3 === 0 ? 'Pending' : 'Complete',
+        status: allIssued ? 'Complete' : 'Pending',
       });
 
-      // Specific room check if center has multiple rooms
-      if (rooms.length > 1) {
-        list.push({
-          id: `CHK-${String(index * 2 + 2).padStart(2, '0')}`,
-          code,
-          center: c.displayName,
-          room: rooms[0]?.id || 'Room 1',
-          checked: rooms[0]?.occupied || 15,
-          round: 'Afternoon Verification',
-          time: '02:00 PM',
-          status: index % 2 === 0 ? 'Complete' : 'Pending',
+      // Group by distinct room if center has registered households with room designations
+      const roomsWithEvacuees = Array.from(new Set(centerHouseholds.map((h) => h.room).filter(Boolean)));
+      if (roomsWithEvacuees.length > 0) {
+        roomsWithEvacuees.slice(0, 2).forEach((roomName, rIdx) => {
+          const roomHH = centerHouseholds.filter((h) => h.room === roomName);
+          const roomChecked = roomHH.reduce((sum, h) => sum + (h.familyCount || 1), 0);
+          const roomAllIssued = roomHH.length > 0 && roomHH.every((h) => h.stubIssued);
+
+          list.push({
+            id: `CHK-${String(index * 2 + 2 + rIdx).padStart(2, '0')}`,
+            code,
+            center: c.displayName,
+            room: roomName,
+            checked: roomChecked,
+            round: 'Afternoon Verification',
+            time: '02:00 PM',
+            status: roomAllIssued ? 'Complete' : 'Pending',
+          });
         });
       }
     });
 
     return list;
-  }, [centers]);
+  }, [centers, households]);
 
   const filtered = useMemo(() => {
     return monitoringRecords.filter((m) => {

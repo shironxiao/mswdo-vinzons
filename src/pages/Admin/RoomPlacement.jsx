@@ -5,12 +5,16 @@ import {
   useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
+import { useHouseholds } from '../../lib/householdService.js';
+import { useRooms, createRoom } from '../../lib/roomService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 
 const STATUSES = ['All Status', 'Active', 'Full'];
 
 export default function RoomPlacement() {
   const { centers } = useEvacuationCenters();
+  const { households } = useHouseholds(centers);
+  const { rooms: dbRooms, refresh: refreshRooms } = useRooms(centers);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
@@ -18,7 +22,7 @@ export default function RoomPlacement() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  // Custom added rooms state
+  // Custom added rooms state (fallback / optimistic)
   const [customRooms, setCustomRooms] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,32 +30,63 @@ export default function RoomPlacement() {
     center: '',
     id: '',
     name: '',
+    capacity: 30,
     occupied: 0,
     status: 'Active',
   });
 
-  // Combine generated center rooms with custom rooms
+  // Calculate live room occupancies from Supabase database
   const allRooms = useMemo(() => {
-    const list = [];
+    // 1. If we have rooms from Supabase dbRooms
+    if (dbRooms && dbRooms.length > 0) {
+      return dbRooms.map((r) => {
+        // Calculate real occupancy for this room
+        const roomOccupants = households.filter((h) => {
+          const matchC = h.center === r.center || isCenterMatch(h.center, r.center, centers);
+          const matchR = h.room === r.roomName || h.roomId === r.id;
+          return matchC && matchR;
+        });
+        const occupied = roomOccupants.reduce((sum, h) => sum + (h.familyCount || 1), 0);
+        const isFull = occupied >= r.capacity;
 
-    // Add generated rooms from Supabase centers
+        return {
+          id: r.code || r.id,
+          roomKey: r.roomName,
+          center: r.center,
+          name: `${r.roomName} - Capacity ${r.capacity}`,
+          occupied,
+          capacity: r.capacity,
+          status: isFull ? 'Full' : 'Active',
+        };
+      });
+    }
+
+    // 2. Fallback to centers generated rooms if dbRooms is loading
+    const list = [];
     centers.forEach((center) => {
       (center.rooms || []).forEach((r) => {
-        const isFull = (r.occupied || 0) >= (r.capacity || 25);
+        const roomOccupants = households.filter((h) => {
+          const matchC = h.center === center.displayName || isCenterMatch(h.center, center.displayName, centers);
+          const matchR = h.room === r.id || h.room === r.name;
+          return matchC && matchR;
+        });
+        const occupied = roomOccupants.reduce((sum, h) => sum + (h.familyCount || 1), 0);
+        const isFull = occupied >= (r.capacity || 25);
+
         list.push({
           id: `${center.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()}-${r.id.replace(/\s+/g, '')}`,
-          roomKey: r.id, // e.g. "Room 1"
+          roomKey: r.id,
           center: center.displayName,
           name: `${r.name} - Capacity ${r.capacity || 25}`,
-          occupied: r.occupied || 0,
+          occupied,
+          capacity: r.capacity || 25,
           status: isFull ? 'Full' : 'Active',
         });
       });
     });
 
-    // Add custom rooms created by user
     return [...customRooms, ...list];
-  }, [centers, customRooms]);
+  }, [dbRooms, centers, households, customRooms]);
 
   const filtered = useMemo(() => {
     return allRooms.filter((r) => {
@@ -94,7 +129,7 @@ export default function RoomPlacement() {
     setIsModalOpen(true);
   };
 
-  const handleAddRoom = (e) => {
+  const handleAddRoom = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return;
 
@@ -103,7 +138,7 @@ export default function RoomPlacement() {
 
     const newRoom = {
       id: code,
-      roomKey: form.name.match(/Room\s*\d+/i)?.[0] || 'Room 1',
+      roomKey: form.name.match(/Room\s*\d+/i)?.[0] || form.name.trim(),
       center: form.center,
       name: form.name.trim(),
       occupied: occupiedNum,
@@ -112,6 +147,20 @@ export default function RoomPlacement() {
 
     setCustomRooms([newRoom, ...customRooms]);
     setIsModalOpen(false);
+
+    try {
+      await createRoom(
+        {
+          center: form.center,
+          roomName: form.name.trim(),
+          capacity: form.capacity || 30,
+        },
+        centers
+      );
+      refreshRooms();
+    } catch (err) {
+      console.warn('Could not save room to Supabase:', err);
+    }
   };
 
   return (
