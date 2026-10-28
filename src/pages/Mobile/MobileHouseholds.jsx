@@ -1573,9 +1573,6 @@ export default function MobileHouseholds() {
                               />
                               <span>{item.stubCode ? 'Issued' : 'Not Issued'}</span>
                             </span>
-                            {item.stubCode && (
-                              <span className="vin-mob-stub-code-badge">{item.stubCode}</span>
-                            )}
                           </div>
                         </div>
                       </div>
