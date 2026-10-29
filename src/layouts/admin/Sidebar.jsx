@@ -1,5 +1,6 @@
 import { MoreHorizontal, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import mswdoLogo from '../../assets/mswdo logo.png';
 import { DEFAULT_ADMIN_NAV_SECTIONS } from './navConfig';
 import './Sidebar.css';
 
@@ -65,8 +66,13 @@ export default function Sidebar({
             className="vin-sidebar-brand"
             onClick={(e) => handleItemClick({ path: brand.href }, e)}
           >
-            <span className="vin-brand-title">{brand.name}</span>
-            <span className="vin-brand-subtitle">{brand.subtitle}</span>
+            <div className="vin-sidebar-logo-box">
+              <img src={brand.logo || mswdoLogo} alt="MSWDO Logo" className="vin-sidebar-logo" />
+            </div>
+            <div className="vin-sidebar-brand-text">
+              <span className="vin-brand-title">{brand.name}</span>
+              <span className="vin-brand-subtitle">{brand.subtitle}</span>
+            </div>
           </Link>
 
           {onCloseMobile && (
