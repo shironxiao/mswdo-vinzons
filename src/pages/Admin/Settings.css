@@ -54,7 +54,7 @@
 }
 
 .vin-btn-reset {
-  background-color: #0b3524;
+  background-color: #6b21a8;
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -66,12 +66,12 @@
 }
 
 .vin-btn-reset:hover {
-  background-color: #124b34;
+  background-color: #581c87;
 }
 
 .vin-btn-save-changes {
   background-color: #dfb235;
-  color: #0d3824;
+  color: #3b0764;
   border: none;
   border-radius: 8px;
   padding: 10px 22px;
@@ -119,7 +119,7 @@
 }
 
 .vin-section-icon {
-  color: #0b3524;
+  color: #7c3aed;
 }
 
 .vin-section-title {
@@ -167,8 +167,8 @@
 }
 
 .vin-field-input:focus, .vin-field-select:focus {
-  border-color: #0b3524;
-  box-shadow: 0 0 0 3px rgba(11, 53, 36, 0.1);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
 /* Toggle rows */
@@ -239,7 +239,7 @@
 }
 
 input:checked + .vin-slider {
-  background-color: #0b3524;
+  background-color: #7c3aed;
 }
 
 input:checked + .vin-slider:before {

@@ -271,13 +271,13 @@ export default function UserManagement() {
       {toastMessage && (
         <div className="vin-toast-banner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} color="#15803d" />
+            <CheckCircle2 size={18} color="#7c3aed" />
             <span>{toastMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setToastMessage(null)}
-            style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer', padding: 2 }}
+            style={{ background: 'none', border: 'none', color: '#6b21a8', cursor: 'pointer', padding: 2 }}
           >
             <X size={16} />
           </button>

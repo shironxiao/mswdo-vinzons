@@ -16,12 +16,12 @@
   align-items: center;
   gap: 5px;
   background: #ffffff;
-  border: 1.5px solid #14532d;
+  border: 1.5px solid #7c3aed;
   border-radius: 9999px;
   padding: 6px 15px;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #0d3824;
+  color: #581c87;
   cursor: pointer;
   position: relative;
   white-space: nowrap;
@@ -29,13 +29,13 @@
 }
 
 .vin-mon-filter-btn:hover {
-  background: #f0fdf4;
+  background: #f5f3ff;
 }
 
 .vin-mon-filter-btn.active {
-  background: #14532d;
+  background: #6b21a8;
   color: #fff;
-  border-color: #14532d;
+  border-color: #6b21a8;
 }
 
 .vin-mon-filter-dot {
@@ -45,9 +45,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.vin-mon-filter-dot.present { background: #2d7a57; }
+.vin-mon-filter-dot.present { background: #7c3aed; }
 .vin-mon-filter-dot.absent  { background: #9c4444; }
-.vin-mon-filter-dot.all     { background: linear-gradient(90deg, #2d7a57 50%, #9c4444 50%); }
+.vin-mon-filter-dot.all     { background: linear-gradient(90deg, #7c3aed 50%, #9c4444 50%); }
 
 .vin-mon-filter-dropdown {
   position: absolute;
@@ -140,8 +140,8 @@
 .vin-mon-tile:active { transform: scale(0.97); }
 
 .mon-tile-present {
-  background: linear-gradient(135deg, #f6fbf8 0%, #ebf5f0 100%);
-  border-color: #bddad0;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #ddd6fe;
 }
 .mon-tile-absent {
   background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
@@ -149,7 +149,7 @@
 }
 
 .vin-mon-tile-icon { margin-bottom: 2px; }
-.mon-tile-present .vin-mon-tile-icon { color: #2d7a57; }
+.mon-tile-present .vin-mon-tile-icon { color: #7c3aed; }
 .mon-tile-absent  .vin-mon-tile-icon { color: #9c4444; }
 
 .vin-mon-tile-name {
@@ -171,7 +171,7 @@
   letter-spacing: 0.5px;
   margin-top: 2px;
 }
-.mon-tile-present .vin-mon-tile-ratio { color: #1b593f; }
+.mon-tile-present .vin-mon-tile-ratio { color: #6b21a8; }
 .mon-tile-absent  .vin-mon-tile-ratio { color: #843232; }
 
 .vin-mon-tile-badge {
@@ -185,9 +185,9 @@
   margin-top: 2px;
 }
 .badge-present {
-  background: #eaf4ef;
-  color: #1b593f;
-  border: 1px solid #bddad0;
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #ddd6fe;
 }
 .badge-absent {
   background: #f7eded;

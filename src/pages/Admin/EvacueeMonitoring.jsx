@@ -241,7 +241,7 @@ export default function EvacueeMonitoring() {
         <div className="vin-admin-hh-stat-card">
           <div className="vin-admin-hh-stat-info">
             <span className="vin-admin-hh-stat-label">Present / Accounted</span>
-            <span className="vin-admin-hh-stat-value" style={{ color: '#166534' }}>{stats.presentCount}</span>
+            <span className="vin-admin-hh-stat-value" style={{ color: '#6b21a8' }}>{stats.presentCount}</span>
           </div>
           <div className="vin-admin-hh-stat-icon present">
             <CheckCircle2 size={22} />
@@ -344,7 +344,7 @@ export default function EvacueeMonitoring() {
                       <div style={{ fontSize: '.75rem', color: '#64748b' }}>{item.householdCode}</div>
                     </div>
                   </td>
-                  <td style={{ fontWeight: 700, color: '#0d3824' }}>
+                  <td style={{ fontWeight: 700, color: '#6b21a8' }}>
                     {item.checked} present
                   </td>
                   <td style={{ color: '#334155' }}>
@@ -476,7 +476,7 @@ export default function EvacueeMonitoring() {
                   Inspection Time
                 </span>
                 <div style={{ fontWeight: 700, color: '#0f172a' }}>{selectedRecord.time}</div>
-                <div style={{ fontSize: '.78rem', color: '#166534', fontWeight: 700 }}>
+                <div style={{ fontSize: '.78rem', color: '#6b21a8', fontWeight: 700 }}>
                   {selectedRecord.checked} Present
                 </div>
               </div>
@@ -493,8 +493,8 @@ export default function EvacueeMonitoring() {
                   const memStatus = typeof m === 'string' ? 'Accounted For' : (m.status || 'Accounted For');
                   const checkInTime = m.check_in_time;
 
-                  let badgeColor = '#166534';
-                  let badgeBg = '#dcfce7';
+                  let badgeColor = '#6b21a8';
+                  let badgeBg = '#f3e8ff';
                   if (memStatus === 'Late') {
                     badgeColor = '#b45309';
                     badgeBg = '#fef3c7';

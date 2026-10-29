@@ -25,7 +25,7 @@ export default function MobileReports() {
       {/* Report Configuration Card matching Screenshot 2 Reports */}
       <form onSubmit={handleGenerate} className="vin-mob-report-card">
         <div className="vin-mob-report-header">
-          <FileText size={20} color="#15803d" />
+          <FileText size={20} color="#7c3aed" />
           <span>Report Configuration</span>
         </div>
 

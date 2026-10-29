@@ -104,7 +104,7 @@ export default function MobileLayout({ children }) {
                   className="vin-drawer-link"
                   onClick={() => handleNavigateMenu('/mobile/profile')}
                 >
-                  <User size={22} color="#15803d" />
+                  <User size={22} color="#7c3aed" />
                   <span>Profile</span>
                 </button>
 
@@ -113,7 +113,7 @@ export default function MobileLayout({ children }) {
                   className="vin-drawer-link"
                   onClick={() => handleNavigateMenu('/mobile/reports')}
                 >
-                  <FileText size={22} color="#15803d" />
+                  <FileText size={22} color="#7c3aed" />
                   <span>Reports</span>
                 </button>
 
@@ -122,7 +122,7 @@ export default function MobileLayout({ children }) {
                   className="vin-drawer-link"
                   onClick={() => handleNavigateMenu('/mobile/sync-status')}
                 >
-                  <RefreshCw size={22} color="#15803d" />
+                  <RefreshCw size={22} color="#7c3aed" />
                   <span>Sync status</span>
                 </button>
 
@@ -131,7 +131,7 @@ export default function MobileLayout({ children }) {
                   className="vin-drawer-link"
                   onClick={() => handleNavigateMenu('/mobile/settings')}
                 >
-                  <Settings size={22} color="#15803d" />
+                  <Settings size={22} color="#7c3aed" />
                   <span>Settings</span>
                 </button>
               </nav>

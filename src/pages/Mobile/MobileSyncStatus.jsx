@@ -30,7 +30,7 @@ export default function MobileSyncStatus() {
       {/* Sync Status Card matching Screenshot 2 Sync-status */}
       <div className="vin-mob-settings-card">
         {syncSuccess && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f3e8ff', color: '#7c3aed', fontWeight: 700, fontSize: '0.85rem' }}>
             <CheckCircle2 size={18} />
             <span>Offline records synced with Supabase cloud successfully!</span>
           </div>
@@ -67,7 +67,7 @@ export default function MobileSyncStatus() {
           <span>{syncing ? 'Syncing...' : 'Sync Now'}</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontSize: '0.82rem', fontWeight: 600 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', fontSize: '0.82rem', fontWeight: 600 }}>
           <CheckCircle2 size={16} />
           <span>New offline registrations are checked for duplicates on sync.</span>
         </div>

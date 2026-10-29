@@ -28,7 +28,7 @@ export default function MobileProfile() {
         <div className="vin-mob-profile-field">
           <span className="vin-mob-field-label">FULL NAME</span>
           <span className="vin-mob-field-val">
-            Augorio Abarca <CheckCircle2 size={16} color="#15803d" />
+            Augorio Abarca <CheckCircle2 size={16} color="#7c3aed" />
           </span>
         </div>
 
@@ -47,7 +47,7 @@ export default function MobileProfile() {
           className="vin-mob-link-row"
           onClick={() => navigate('/mobile/monitor')}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed' }}>
             <Activity size={18} />
             Evacuee Monitoring
           </span>

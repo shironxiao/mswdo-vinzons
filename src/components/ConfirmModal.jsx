@@ -20,7 +20,7 @@ export function ConfirmModal({
         return <LogOut size={24} color="#d97706" />;
       case 'primary':
       default:
-        return <AlertTriangle size={24} color="#15803d" />;
+        return <AlertTriangle size={24} color="#7c3aed" />;
     }
   };
 
@@ -32,7 +32,7 @@ export function ConfirmModal({
         return '#fef3c7';
       case 'primary':
       default:
-        return '#dcfce7';
+        return '#f3e8ff';
     }
   };
 
@@ -46,14 +46,14 @@ export function ConfirmModal({
         };
       case 'warning':
         return {
-          background: '#15803d',
+          background: '#7c3aed',
           color: '#ffffff',
           border: 'none',
         };
       case 'primary':
       default:
         return {
-          background: '#15803d',
+          background: '#7c3aed',
           color: '#ffffff',
           border: 'none',
         };

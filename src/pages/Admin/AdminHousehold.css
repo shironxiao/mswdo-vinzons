@@ -22,7 +22,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #15803d;
+  color: #7c3aed;
 }
 
 .vin-admin-hh-title {
@@ -52,7 +52,7 @@
   align-items: center;
   gap: 8px;
   background-color: #dfb235;
-  color: #0d3824;
+  color: #581c87;
   border: none;
   border-radius: 12px;
   padding: 10px 20px;
@@ -123,8 +123,8 @@
 }
 
 .vin-admin-hh-stat-icon.issued {
-  background: #dcfce7;
-  color: #15803d;
+  background: #f3e8ff;
+  color: #7c3aed;
 }
 
 .vin-admin-hh-stat-icon.pending {
@@ -133,8 +133,8 @@
 }
 
 .vin-admin-hh-stat-icon.present {
-  background: #dcfce7;
-  color: #15803d;
+  background: #f3e8ff;
+  color: #7c3aed;
 }
 
 .vin-admin-hh-stat-icon.followup {
@@ -189,9 +189,9 @@
 }
 
 .vin-admin-hh-search-input-wrap:focus-within {
-  border-color: #15803d;
+  border-color: #7c3aed;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .vin-admin-hh-search-input-wrap input {
@@ -235,12 +235,12 @@
   align-items: center;
   gap: 6px;
   background: #ffffff;
-  border: 1.5px solid #14532d;
+  border: 1.5px solid #7c3aed;
   border-radius: 9999px;
   padding: 6px 16px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #0d3824;
+  color: #581c87;
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
@@ -248,13 +248,13 @@
 }
 
 .vin-admin-filter-btn:hover {
-  background: #f0fdf4;
+  background: #f5f3ff;
 }
 
 .vin-admin-filter-btn.active {
-  background: #14532d;
+  background: #6b21a8;
   color: #ffffff;
-  border-color: #14532d;
+  border-color: #6b21a8;
 }
 
 .vin-admin-filter-dot {
@@ -265,9 +265,9 @@
   flex-shrink: 0;
 }
 
-.vin-admin-filter-dot.issued { background: #16a34a; }
+.vin-admin-filter-dot.issued { background: #7c3aed; }
 .vin-admin-filter-dot.notissued { background: #dc2626; }
-.vin-admin-filter-dot.all { background: linear-gradient(90deg, #16a34a 50%, #dc2626 50%); }
+.vin-admin-filter-dot.all { background: linear-gradient(90deg, #7c3aed 50%, #dc2626 50%); }
 
 .vin-admin-filter-dropdown {
   position: absolute;
@@ -315,8 +315,8 @@
 }
 
 .vin-admin-filter-opt.active {
-  background: #f0fdf4;
-  color: #166534;
+  background: #f5f3ff;
+  color: #6b21a8;
   font-weight: 800;
 }
 
@@ -342,7 +342,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #166534;
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -351,11 +351,12 @@
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(107, 33, 168, 0.25);
 }
 
 .vin-admin-print-all-btn:hover:not(:disabled) {
-  background: #14532d;
+  background: linear-gradient(135deg, #6d28d9 0%, #581c87 100%);
 }
 
 .vin-admin-print-all-btn:disabled {
@@ -450,8 +451,8 @@
 
 /* Tile color variants */
 .vin-admin-hh-tile--issued {
-  background: linear-gradient(145deg, #f0fdf4 0%, #e6fced 100%);
-  border-color: #86efac;
+  background: linear-gradient(145deg, #faf5ff 0%, #f3e8ff 100%);
+  border-color: #ddd6fe;
 }
 
 .vin-admin-hh-tile--notissued {
@@ -478,7 +479,7 @@
 }
 
 .vin-admin-hh-tile--issued .vin-admin-hh-avatar-wrap {
-  color: #16a34a;
+  color: #7c3aed;
 }
 
 .vin-admin-hh-tile--notissued .vin-admin-hh-avatar-wrap {
@@ -489,9 +490,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #86efac;
+  background: #f3e8ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
   border-radius: 20px;
   padding: 3px 10px;
   font-size: 0.72rem;
@@ -563,7 +564,7 @@
 .vin-admin-hh-tile-code {
   font-size: 0.85rem;
   font-weight: 900;
-  color: #166534;
+  color: #6b21a8;
   letter-spacing: 0.05em;
 }
 
@@ -628,17 +629,17 @@
   transform: translateY(-1px);
 }
 
-/* Issued -> Green outline (matches 'Positive' semantic outlined button) */
+/* Issued -> Purple outline */
 .vin-admin-tile-action-btn--view {
-  border: 1px solid #22c55e;
-  color: #15803d;
+  border: 1px solid #7c3aed;
+  color: #6b21a8;
 }
 
 .vin-admin-tile-action-btn--view:hover {
-  background: #16a34a;
-  border-color: #16a34a;
+  background: #7c3aed;
+  border-color: #7c3aed;
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
   transform: translateY(-1px);
 }
 
@@ -793,8 +794,8 @@
 
 /* Issued Stub Block (QR code display) */
 .vin-admin-issued-block {
-  background: #f0fdf4;
-  border: 1.5px solid #86efac;
+  background: #f5f3ff;
+  border: 1.5px solid #ddd6fe;
   border-radius: 16px;
   padding: 20px;
   display: flex;
@@ -808,7 +809,7 @@
   font-size: 1.8rem;
   font-weight: 900;
   letter-spacing: 2px;
-  color: #166534;
+  color: #6b21a8;
 }
 
 .vin-admin-print-stub-btn {
@@ -816,8 +817,8 @@
   align-items: center;
   gap: 6px;
   background: #ffffff;
-  border: 1.5px solid #16a34a;
-  color: #15803d;
+  border: 1.5px solid #7c3aed;
+  color: #6b21a8;
   border-radius: 10px;
   padding: 9px 20px;
   font-size: 0.88rem;
@@ -827,7 +828,7 @@
 }
 
 .vin-admin-print-stub-btn:hover {
-  background: #f0fdf4;
+  background: #f5f3ff;
 }
 
 /* Big issue stub button */
@@ -842,16 +843,16 @@
   font-size: 1.05rem;
   font-weight: 800;
   border: none;
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
   color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+  box-shadow: 0 4px 12px rgba(107, 33, 168, 0.25);
   transition: all 0.15s ease;
 }
 
 .vin-admin-big-issue-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35);
+  box-shadow: 0 6px 16px rgba(107, 33, 168, 0.35);
 }
 
 .vin-admin-big-issue-btn:disabled {
@@ -890,9 +891,9 @@
 
 .vin-admin-form-input:focus,
 .vin-admin-form-select:focus {
-  border-color: #15803d;
+  border-color: #7c3aed;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
 .vin-admin-form-row {
@@ -912,7 +913,7 @@
 }
 
 .vin-admin-modal-submit-btn {
-  background: #0d3824;
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
   color: #ffffff;
   border: none;
   border-radius: 12px;
@@ -921,11 +922,12 @@
   font-weight: 800;
   cursor: pointer;
   margin-top: 8px;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(107, 33, 168, 0.25);
 }
 
 .vin-admin-modal-submit-btn:hover {
-  background: #092618;
+  background: linear-gradient(135deg, #6d28d9 0%, #581c87 100%);
 }
 
 /* QR Camera Scanner Box */

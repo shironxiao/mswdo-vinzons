@@ -121,8 +121,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background-color: #eafaf1;
-  color: #059669;
+  background-color: #f3e8ff;
+  color: #7c3aed;
   font-size: 0.75rem;
   font-weight: 700;
   padding: 4px 10px;
@@ -151,7 +151,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #059669;
+  background-color: #7c3aed;
 }
 
 /* Center Details */
@@ -229,16 +229,16 @@
 }
 
 .vin-view-btn:hover {
-  background-color: #f7faf8;
-  border-color: #0b3524;
-  color: #0b3524;
+  background-color: #f5f3ff;
+  border-color: #7c3aed;
+  color: #6b21a8;
 }
 
 /* Modal Styling */
 .vin-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(11, 53, 36, 0.4);
+  background-color: rgba(46, 16, 101, 0.45);
   backdrop-filter: blur(3px);
   z-index: 50;
   display: flex;
@@ -461,10 +461,10 @@
 }
 
 .vin-page-num-btn.active {
-  background: #17422d;
+  background: #6b21a8;
   color: #ffffff;
-  border-color: #17422d;
-  box-shadow: 0 2px 6px rgba(23, 66, 45, 0.25);
+  border-color: #6b21a8;
+  box-shadow: 0 2px 6px rgba(107, 33, 168, 0.25);
 }
 
 /* ==========================================================
@@ -499,7 +499,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #15803d;
+  color: #7c3aed;
   display: block;
   margin-bottom: 4px;
 }
@@ -553,8 +553,8 @@
 }
 
 .vin-center-tab-btn.active {
-  color: #17422d;
-  border-bottom-color: #17422d;
+  color: #6b21a8;
+  border-bottom-color: #7c3aed;
 }
 
 /* Modal Body Content */
@@ -599,8 +599,8 @@
 
 /* Progress / Occupancy Section */
 .vin-occupancy-card {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
   border-radius: 12px;
   padding: 16px 20px;
 }
@@ -615,26 +615,26 @@
 .vin-occupancy-title {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #166534;
+  color: #6b21a8;
 }
 
 .vin-occupancy-pct {
   font-size: 0.85rem;
   font-weight: 800;
-  color: #166534;
+  color: #6b21a8;
 }
 
 .vin-occupancy-track {
   width: 100%;
   height: 8px;
-  background: #dcfce7;
+  background: #ede9fe;
   border-radius: 999px;
   overflow: hidden;
 }
 
 .vin-occupancy-fill {
   height: 100%;
-  background: #16a34a;
+  background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
   border-radius: 999px;
   transition: width 0.3s ease;
 }
@@ -782,9 +782,9 @@
 }
 
 .vin-room-rename-input:focus {
-  border-color: #15803d;
+  border-color: #7c3aed;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
 .vin-room-occ-col {
@@ -811,7 +811,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #17422d;
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -819,7 +819,7 @@
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(23, 66, 45, 0.2);
+  box-shadow: 0 2px 6px rgba(107, 33, 168, 0.25);
   transition: all 0.15s ease;
 }
 

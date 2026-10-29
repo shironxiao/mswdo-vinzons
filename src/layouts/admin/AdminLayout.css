@@ -6,7 +6,7 @@
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background-color: #f7f9f8;
+  background-color: #fbfaff;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   color: #1e293b;
   box-sizing: border-box;
@@ -18,7 +18,7 @@
   flex-direction: column;
   min-width: 0; /* Prevents overflow inside flex child */
   min-height: 100vh;
-  background-color: #f7f9f8;
+  background-color: #fbfaff;
 }
 
 /* Topbar */
@@ -42,7 +42,7 @@
   display: none;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  color: #0b3524;
+  color: #6b21a8;
   padding: 8px;
   border-radius: 8px;
   cursor: pointer;
@@ -74,7 +74,7 @@
 .vin-search-input {
   width: 100%;
   background-color: #ffffff;
-  border: 1px solid #dbe2dd;
+  border: 1px solid #e9d5ff;
   border-radius: 9999px;
   padding: 8px 16px 8px 38px;
   font-size: 0.85rem;
@@ -90,8 +90,8 @@
 }
 
 .vin-search-input:focus {
-  border-color: #0b3524;
-  box-shadow: 0 0 0 3px rgba(11, 53, 36, 0.1);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
 /* Main Content Area */

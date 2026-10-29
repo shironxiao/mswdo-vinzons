@@ -248,7 +248,7 @@ export default function RoomPlacement() {
                     </span>
                   </td>
                   <td style={{ fontWeight: 600 }}>{item.name}</td>
-                  <td style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#15803d' }}>
+                  <td style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#7c3aed' }}>
                     {item.occupied} persons
                   </td>
                   <td>

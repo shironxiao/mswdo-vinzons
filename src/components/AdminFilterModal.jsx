@@ -38,7 +38,7 @@ export function CenterSelectModal({ selected, centersList = [], onSelect, onClos
         {/* Header */}
         <div className="vin-picker-modal-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Building size={18} color="#15803d" />
+            <Building size={18} color="#7c3aed" />
             <h3 className="vin-picker-modal-title">Select Evacuation Center</h3>
           </div>
           <button type="button" className="vin-picker-close-btn" onClick={onClose}>
@@ -162,7 +162,7 @@ export function RoomSelectModal({ selected, centerName, centersList = [], onSele
         {/* Header */}
         <div className="vin-picker-modal-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <DoorOpen size={18} color="#15803d" />
+            <DoorOpen size={18} color="#7c3aed" />
             <div>
               <h3 className="vin-picker-modal-title">Select Room</h3>
               <span style={{ fontSize: '0.78rem', color: '#64748b' }}>

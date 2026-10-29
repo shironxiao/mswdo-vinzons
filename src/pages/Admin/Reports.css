@@ -56,8 +56,8 @@
 }
 
 .vin-rep-metric-card.card-green {
-  background-color: #f1f8f4;
-  border-color: #dbebe2;
+  background-color: #f5f3ff;
+  border-color: #ddd6fe;
 }
 
 .vin-rep-metric-card.card-yellow {
@@ -73,7 +73,7 @@
 }
 
 .vin-rep-metric-card.card-green .vin-rep-metric-number {
-  color: #1e7046;
+  color: #7c3aed;
 }
 
 .vin-rep-metric-card.card-yellow .vin-rep-metric-number {
@@ -87,7 +87,7 @@
 }
 
 .vin-rep-metric-card.card-green .vin-rep-metric-label {
-  color: #2b5c40;
+  color: #6b21a8;
 }
 
 .vin-rep-metric-card.card-yellow .vin-rep-metric-label {
@@ -127,14 +127,14 @@
 }
 
 .vin-filter-pill-btn:hover {
-  border-color: #0d3824;
-  background-color: #f8faf9;
+  border-color: #7c3aed;
+  background-color: #f5f3ff;
 }
 
 .vin-filter-pill-btn.active {
   background-color: #ffffff;
-  border-color: #0d3824;
-  color: #0d3824;
+  border-color: #7c3aed;
+  color: #6b21a8;
   font-weight: 700;
 }
 
@@ -234,7 +234,7 @@
 /* Download Button */
 .vin-download-btn {
   background-color: #dfb235;
-  color: #0d3824;
+  color: #3b0764;
   border: none;
   border-radius: 8px;
   padding: 9px 24px;

@@ -467,7 +467,7 @@ export default function MobileMonitor() {
       {/* Legend */}
       <div className="vin-mon-legend" style={{ flexWrap: 'wrap', gap: 10 }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <CheckCircle2 size={14} color="#2d7a57" /> Present
+          <CheckCircle2 size={14} color="#7c3aed" /> Present
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <AlertTriangle size={14} color="#b45309" /> For Follow-up
@@ -731,7 +731,7 @@ export default function MobileMonitor() {
                     <span
                       style={{
                         fontWeight: 700,
-                        color: activeFamily.latestLog.householdStatus === 'Present' ? '#166534' : '#92400e',
+                        color: activeFamily.latestLog.householdStatus === 'Present' ? '#6b21a8' : '#92400e',
                       }}
                     >
                       {activeFamily.latestLog.householdStatus}

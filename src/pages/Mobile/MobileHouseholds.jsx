@@ -364,7 +364,7 @@ function printAllStubs(issuedList) {
           font-size: 13px;
           font-weight: 900;
           letter-spacing: 1.5px;
-          color: #166534;
+          color: #6b21a8;
           margin: 2px 0;
         }
         .stub-qr {
@@ -404,9 +404,9 @@ function printAllStubs(issuedList) {
           display: inline-block;
           font-size: 8px;
           font-weight: 700;
-          color: #166534;
-          background: #f0fdf4;
-          border: 1px solid #bbf7d0;
+          color: #6b21a8;
+          background: #f3e8ff;
+          border: 1px solid #ddd6fe;
           border-radius: 3px;
           padding: 1px 4px;
           margin-top: 2px;
@@ -465,13 +465,13 @@ function printStub(household) {
       .card{border:1.5px dashed #94a3b8;border-radius:12px;padding:18px 14px;display:flex;flex-direction:column;align-items:center}
       h2{font-size:1.15rem;font-weight:800;margin:0 0 2px;text-transform:uppercase}
       .sub{color:#64748b;font-size:.8rem;margin-bottom:10px}
-      .code{font-size:1.5rem;font-weight:900;letter-spacing:2px;color:#166534;margin:6px 0}
+      .code{font-size:1.5rem;font-weight:900;letter-spacing:2px;color:#6b21a8;margin:6px 0}
       .qr{margin:8px auto}
       .qr svg{width:120px!important;height:120px!important;display:block;margin:auto}
       .head-box{width:100%;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px}
       .head-label{font-size:.72rem;color:#64748b;text-transform:uppercase}
       .head-name{font-size:1.05rem;font-weight:800;color:#0f172a;margin-top:2px}
-      .head-room{margin-top:6px;font-size:.82rem;font-weight:700;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:3px 10px;display:inline-block}
+      .head-room{margin-top:6px;font-size:.82rem;font-weight:700;color:#6b21a8;background:#f3e8ff;border:1px solid #ddd6fe;border-radius:6px;padding:3px 10px;display:inline-block}
     </style></head><body>
     <div class="card">
       <h2>Relief Goods Stub</h2>
@@ -643,13 +643,13 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
                 size={140}
                 level="M"
                 bgColor="#ffffff"
-                fgColor="#166534"
+                fgColor="#6b21a8"
               />
             </div>
-            <div style={{ marginTop: 8, fontSize: '0.84rem', fontWeight: 700, color: '#166534' }}>
+            <div style={{ marginTop: 8, fontSize: '0.84rem', fontWeight: 700, color: '#6b21a8' }}>
               Room: {household.room && household.room !== 'Unassigned' ? household.room : 'Unassigned'}
             </div>
-            <div style={{ marginTop: 4, fontSize: '0.78rem', color: alreadyIssued ? '#166534' : '#64748b' }}>
+            <div style={{ marginTop: 4, fontSize: '0.78rem', color: alreadyIssued ? '#6b21a8' : '#64748b' }}>
               {alreadyIssued
                 ? '✓ Status: ISSUED'
                 : 'Scan this printed QR code using the Scan button to automatically label as Issued'}
@@ -666,9 +666,9 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
             style={{
               padding: 13,
               borderRadius: 12,
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              color: '#166534',
+              background: '#f3e8ff',
+              border: '1px solid #ddd6fe',
+              color: '#6b21a8',
               fontWeight: 700,
               textAlign: 'center',
               fontSize: '0.9rem',

@@ -256,7 +256,7 @@ function printAllStubs(issuedList) {
           font-size: 13px;
           font-weight: 900;
           letter-spacing: 1.5px;
-          color: #166534;
+          color: #6b21a8;
           margin: 2px 0;
         }
         .stub-qr {
@@ -296,9 +296,9 @@ function printAllStubs(issuedList) {
           display: inline-block;
           font-size: 8px;
           font-weight: 700;
-          color: #166534;
-          background: #f0fdf4;
-          border: 1px solid #bbf7d0;
+          color: #6b21a8;
+          background: #f3e8ff;
+          border: 1px solid #ddd6fe;
           border-radius: 3px;
           padding: 1px 4px;
           margin-top: 2px;
@@ -357,13 +357,13 @@ function printStub(household) {
       .card{border:1.5px dashed #94a3b8;border-radius:12px;padding:18px 14px;display:flex;flex-direction:column;align-items:center}
       h2{font-size:1.15rem;font-weight:800;margin:0 0 2px;text-transform:uppercase}
       .sub{color:#64748b;font-size:.8rem;margin-bottom:10px}
-      .code{font-size:1.5rem;font-weight:900;letter-spacing:2px;color:#166534;margin:6px 0}
+      .code{font-size:1.5rem;font-weight:900;letter-spacing:2px;color:#6b21a8;margin:6px 0}
       .qr{margin:8px auto}
       .qr svg{width:120px!important;height:120px!important;display:block;margin:auto}
       .head-box{width:100%;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px}
       .head-label{font-size:.72rem;color:#64748b;text-transform:uppercase}
       .head-name{font-size:1.05rem;font-weight:800;color:#0f172a;margin-top:2px}
-      .head-room{margin-top:6px;font-size:.82rem;font-weight:700;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:3px 10px;display:inline-block}
+      .head-room{margin-top:6px;font-size:.82rem;font-weight:700;color:#6b21a8;background:#f3e8ff;border:1px solid #ddd6fe;border-radius:6px;padding:3px 10px;display:inline-block}
     </style></head><body>
     <div class="card">
       <h2>Relief Goods Stub</h2>
@@ -398,7 +398,7 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
         {/* Header */}
         <div className="vin-admin-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Ticket size={22} color="#15803d" />
+            <Ticket size={22} color="#7c3aed" />
             <div>
               <h2 className="vin-admin-modal-title">Relief Stub Issuance & Verification</h2>
               <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Household ID: {household.id}</span>
@@ -496,10 +496,10 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
           {/* QR Code + Stub Code block — shown for ALL households (issued or not) */}
           <div className="vin-admin-issued-block">
             <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: alreadyIssued ? '#166534' : '#92400e', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: alreadyIssued ? '#6b21a8' : '#92400e', textTransform: 'uppercase' }}>
                 {alreadyIssued ? 'ACTIVE CLAIM STUB CODE' : 'HOUSEHOLD QR CODE (NOT YET ISSUED)'}
               </span>
-              <div className="vin-admin-issued-code" style={{ color: alreadyIssued ? '#166534' : '#b45309' }}>
+              <div className="vin-admin-issued-code" style={{ color: alreadyIssued ? '#6b21a8' : '#b45309' }}>
                 {household.stubCode}
               </div>
             </div>
@@ -508,14 +508,14 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
               background: '#ffffff',
               padding: 12,
               borderRadius: 12,
-              border: `1px solid ${alreadyIssued ? '#bbf7d0' : '#fde68a'}`,
+              border: `1px solid ${alreadyIssued ? '#ddd6fe' : '#fde68a'}`,
             }}>
               <QRCodeSVG
                 value={household.stubCode}
                 size={140}
                 level="M"
                 bgColor="#ffffff"
-                fgColor={alreadyIssued ? '#166534' : '#92400e'}
+                fgColor={alreadyIssued ? '#6b21a8' : '#92400e'}
               />
             </div>
 
@@ -781,7 +781,7 @@ export default function Household() {
         <div className="vin-admin-hh-stat-card">
           <div className="vin-admin-hh-stat-info">
             <span className="vin-admin-hh-stat-label">Stubs Issued</span>
-            <span className="vin-admin-hh-stat-value" style={{ color: '#166534' }}>{issuedCount}</span>
+            <span className="vin-admin-hh-stat-value" style={{ color: '#6b21a8' }}>{issuedCount}</span>
           </div>
           <div className="vin-admin-hh-stat-icon issued">
             <CheckCircle2 size={22} />
@@ -896,7 +896,7 @@ export default function Household() {
                   <td style={{ fontWeight: 700 }}>{item.name}</td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
-                      <Building size={14} color="#15803d" />
+                      <Building size={14} color="#7c3aed" />
                       {item.center}
                     </span>
                   </td>
@@ -904,7 +904,7 @@ export default function Household() {
                   <td>{item.familyCount} persons</td>
                   <td>
                     {item.stubCode ? (
-                      <strong style={{ color: '#166534', letterSpacing: 0.5 }}>{item.stubCode}</strong>
+                      <strong style={{ color: '#6b21a8', letterSpacing: 0.5 }}>{item.stubCode}</strong>
                     ) : (
                       <span style={{ color: '#94a3b8' }}>--</span>
                     )}

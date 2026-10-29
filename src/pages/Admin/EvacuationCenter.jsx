@@ -510,7 +510,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
           <div>
             <span className="vin-center-modal-eyebrow">FACILITY DETAILS &amp; ROOM MANAGEMENT</span>
             <h2 className="vin-center-modal-name">
-              <Building size={20} color="#15803d" />
+              <Building size={20} color="#7c3aed" />
               <span>{center.displayName || center.name}</span>
             </h2>
             <div className="vin-center-modal-location">
@@ -557,7 +557,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
                 <span className="vin-center-stat-lbl">Max Capacity</span>
               </div>
               <div className="vin-center-stat-box">
-                <span className="vin-center-stat-val" style={{ color: '#166534' }}>{totalOcc}</span>
+                <span className="vin-center-stat-val" style={{ color: '#6b21a8' }}>{totalOcc}</span>
                 <span className="vin-center-stat-lbl">Current Occupants</span>
               </div>
               <div className="vin-center-stat-box">
@@ -579,7 +579,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
                   className="vin-occupancy-fill"
                   style={{
                     width: `${occPct}%`,
-                    backgroundColor: occPct >= 100 ? '#dc2626' : occPct >= 75 ? '#eab308' : '#16a34a',
+                    backgroundColor: occPct >= 100 ? '#dc2626' : occPct >= 75 ? '#eab308' : '#7c3aed',
                   }}
                 />
               </div>
@@ -589,7 +589,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
             <div className="vin-rooms-list-card">
               <div className="vin-rooms-list-head">
                 <h3 className="vin-rooms-list-title">
-                  <DoorOpen size={18} color="#15803d" />
+                  <DoorOpen size={18} color="#7c3aed" />
                   <span>Designated Rooms &amp; Capacities ({currentRoomIds.length})</span>
                 </h3>
                 <button
@@ -597,7 +597,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#15803d',
+                    color: '#7c3aed',
                     fontWeight: 700,
                     fontSize: '0.82rem',
                     cursor: 'pointer',
@@ -649,7 +649,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
                 </div>
               )}
               {saveSuccess && (
-                <div style={{ padding: '10px 14px', background: '#dcfce7', color: '#166534', borderRadius: 8, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ padding: '10px 14px', background: '#f3e8ff', color: '#6b21a8', borderRadius: 8, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <CheckCircle2 size={16} />
                   <span>Center information and room names updated successfully!</span>
                 </div>
@@ -711,7 +711,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
               <div className="vin-renaming-box">
                 <div className="vin-renaming-header">
                   <h4 className="vin-renaming-title">
-                    <DoorOpen size={16} color="#15803d" />
+                    <DoorOpen size={16} color="#7c3aed" />
                     <span>Rename Rooms &amp; Assign Designations</span>
                   </h4>
                   <p className="vin-renaming-desc">

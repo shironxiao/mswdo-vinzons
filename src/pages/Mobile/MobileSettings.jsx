@@ -160,15 +160,15 @@ export default function MobileSettings() {
             gap: '10px',
             padding: '12px 14px',
             borderRadius: '14px',
-            backgroundColor: feedback.type === 'success' ? '#dcfce7' : '#e0f2fe',
-            border: `1.5px solid ${feedback.type === 'success' ? '#86efac' : '#7dd3fc'}`,
-            color: feedback.type === 'success' ? '#14532d' : '#0369a1',
+            backgroundColor: feedback.type === 'success' ? '#f3e8ff' : '#e0f2fe',
+            border: `1.5px solid ${feedback.type === 'success' ? '#ddd6fe' : '#7dd3fc'}`,
+            color: feedback.type === 'success' ? '#6b21a8' : '#0369a1',
             boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
             animation: 'fadeIn 0.2s ease',
           }}
         >
           {feedback.type === 'success' ? (
-            <CheckCircle2 size={20} color="#15803d" style={{ marginTop: '2px', flexShrink: 0 }} />
+            <CheckCircle2 size={20} color="#7c3aed" style={{ marginTop: '2px', flexShrink: 0 }} />
           ) : (
             <Info size={20} color="#0284c7" style={{ marginTop: '2px', flexShrink: 0 }} />
           )}
@@ -195,8 +195,8 @@ export default function MobileSettings() {
                 width: '40px',
                 height: '40px',
                 borderRadius: '12px',
-                backgroundColor: notifications ? '#dcfce7' : '#f1f5f9',
-                color: notifications ? '#15803d' : '#64748b',
+                backgroundColor: notifications ? '#f3e8ff' : '#f1f5f9',
+                color: notifications ? '#7c3aed' : '#64748b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -238,8 +238,8 @@ export default function MobileSettings() {
               style={{
                 fontSize: '0.76rem',
                 fontWeight: 750,
-                color: notifications ? '#15803d' : '#64748b',
-                backgroundColor: notifications ? '#dcfce7' : '#f1f5f9',
+                color: notifications ? '#7c3aed' : '#64748b',
+                backgroundColor: notifications ? '#f3e8ff' : '#f1f5f9',
                 padding: '2px 8px',
                 borderRadius: '6px',
               }}
@@ -255,10 +255,10 @@ export default function MobileSettings() {
             style={{
               padding: '9px 14px',
               borderRadius: '9px',
-              border: '1.5px solid #14532d',
+              border: '1.5px solid #7c3aed',
               background: '#ffffff',
-              color: notifications ? '#14532d' : '#94a3b8',
-              borderColor: notifications ? '#14532d' : '#cbd5e1',
+              color: notifications ? '#7c3aed' : '#94a3b8',
+              borderColor: notifications ? '#7c3aed' : '#cbd5e1',
               fontSize: '0.84rem',
               fontWeight: 700,
               display: 'flex',
@@ -334,14 +334,14 @@ export default function MobileSettings() {
             style={{
               padding: '12px',
               fontSize: '0.92rem',
-              backgroundColor: isSyncing ? '#236130' : '#17422d',
+              backgroundColor: isSyncing ? '#581c87' : '#7c3aed',
             }}
           >
             <RefreshCw size={17} className={isSyncing ? 'animate-spin' : ''} />
             <span>{isSyncing ? 'Syncing with Supabase...' : 'Sync Now'}</span>
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#15803d', fontSize: '0.78rem', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#7c3aed', fontSize: '0.78rem', fontWeight: 600 }}>
             <CheckCircle2 size={15} />
             <span>Offline changes automatically reconcile on sync.</span>
           </div>
@@ -362,8 +362,8 @@ export default function MobileSettings() {
             style={{
               padding: '4px 10px',
               borderRadius: '9999px',
-              backgroundColor: '#dcfce7',
-              color: '#15803d',
+              backgroundColor: '#f3e8ff',
+              color: '#7c3aed',
               fontSize: '0.74rem',
               fontWeight: 800,
               display: 'flex',

@@ -256,7 +256,7 @@ export default function ReliefGoodsStubs() {
                   </td>
                   <td style={{ fontWeight: 600, color: '#475569' }}>{item.room}</td>
                   <td>{item.allocated} stubs</td>
-                  <td style={{ fontWeight: 700, color: '#0d3824' }}>{item.distributed} claimed</td>
+                  <td style={{ fontWeight: 700, color: '#6b21a8' }}>{item.distributed} claimed</td>
                   <td>{item.date}</td>
                   <td>
                     <span className={`vin-status-tag ${item.status === 'Queued' ? 'pending' : 'active'}`}>

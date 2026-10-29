@@ -19,7 +19,7 @@
   margin-right: 4px;
   flex-shrink: 0;
 }
-.vin-ctr-dot.green { background: #2d7a57; }
+.vin-ctr-dot.green { background: #7c3aed; }
 .vin-ctr-dot.red   { background: #9c4444; }
 .vin-ctr-dot.gray  { background: #94a3b8; }
 
@@ -63,11 +63,11 @@
 }
 
 .vin-ctr-status-pill.active {
-  background: #17422d;
-  border-color: #17422d;
+  background: #6b21a8;
+  border-color: #6b21a8;
   color: #ffffff;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(23, 66, 45, 0.25);
+  box-shadow: 0 2px 8px rgba(107, 33, 168, 0.25);
 }
 
 .vin-ctr-pill-dot {
@@ -78,12 +78,12 @@
   flex-shrink: 0;
 }
 .vin-ctr-status-pill.active .vin-ctr-pill-dot { opacity: 0.9; }
-.vin-ctr-pill-dot.green { background: #22c55e; }
+.vin-ctr-pill-dot.green { background: #c4b5fd; }
 .vin-ctr-pill-dot.red   { background: #f87171; }
 .vin-ctr-pill-dot.gray  { background: #cbd5e1; }
 
 /* Non-active pill keeps its original dot color */
-.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.green { background: #2d7a57; }
+.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.green { background: #7c3aed; }
 .vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.red   { background: #9c4444; }
 .vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.gray  { background: #94a3b8; }
 
@@ -136,8 +136,8 @@
 
 /* Color variants - softened, less vibrant tones */
 .ctr-tile--available {
-  background: linear-gradient(135deg, #f6fbf8 0%, #ebf5f0 100%);
-  border-color: #bddad0;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #ddd6fe;
 }
 .ctr-tile--occupied {
   background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
@@ -165,7 +165,7 @@
   align-items: center;
   justify-content: center;
 }
-.ctr-tile--available .vin-ctr-tile-icon { color: #2d7a57; }
+.ctr-tile--available .vin-ctr-tile-icon { color: #7c3aed; }
 .ctr-tile--occupied  .vin-ctr-tile-icon { color: #9c4444; }
 .ctr-tile--full      .vin-ctr-tile-icon { color: #9c4444; }
 .ctr-tile--empty     .vin-ctr-tile-icon { color: #94a3b8; }
@@ -182,9 +182,9 @@
   letter-spacing: 0.02em;
 }
 .badge-available {
-  background: #eaf4ef;
-  color: #1b593f;
-  border-color: #bddad0;
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-color: #ddd6fe;
 }
 .badge-occupied {
   background: #f7eded;
@@ -277,7 +277,7 @@
 .vin-ctr-room-occ   { font-size: 0.78rem; font-weight: 600; }
 .vin-ctr-room-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
-.room-green { background: #f6fbf8; border: 1.5px solid #bddad0; color: #1b593f; }
+.room-green { background: #f5f3ff; border: 1.5px solid #ddd6fe; color: #6b21a8; }
 .room-red   { background: #fdf8f8; border: 1.5px solid #ebd3d3; color: #843232; }
 .room-gray  { background: #f1f5f9; border: 1.5px solid #cbd5e1; color: #64748b; }
 
@@ -310,8 +310,8 @@
   color: #64748b;
 }
 .vin-ctr-table-icon.ctr-tile--available {
-  background: #eaf4ef;
-  color: #2d7a57;
+  background: #f3e8ff;
+  color: #7c3aed;
 }
 .vin-ctr-table-icon.ctr-tile--occupied,
 .vin-ctr-table-icon.ctr-tile--full {

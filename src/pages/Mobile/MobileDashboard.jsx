@@ -53,7 +53,7 @@ const RECENT_ACTIVITIES = [
     badge: '4 Members',
     badgeVariant: 'green',
     icon: Home,
-    iconColor: '#15803d',
+    iconColor: '#7c3aed',
     iconBgClass: 'green',
   },
   {
