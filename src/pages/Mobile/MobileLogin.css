@@ -1,6 +1,6 @@
 /* ==========================================================
    Mobile Login Screen Styles — Modern & Fully Responsive
-   Mobile, Tablet & Desktop: Centered card with no awkward white space
+   Purple Theme with MSWDO Branding
    ========================================================== */
 
 .vin-mobile-login-wrapper {
@@ -10,7 +10,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #0b291a 0%, #17422d 38%, #f1f5f3 38%, #f1f5f3 100%);
+  background: linear-gradient(135deg, #2e1065 0%, #4c1d95 38%, #f5f3ff 38%, #f5f3ff 100%);
   padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   box-sizing: border-box;
@@ -22,8 +22,8 @@
   max-width: 420px;
   background-color: #ffffff;
   border-radius: 20px;
-  box-shadow: 0 20px 50px rgba(15, 44, 30, 0.15), 0 4px 16px rgba(0, 0, 0, 0.04);
-  border: 1px solid #d8e5de;
+  box-shadow: 0 20px 50px rgba(59, 7, 100, 0.16), 0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e9d5ff;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -31,11 +31,11 @@
   box-sizing: border-box;
 }
 
-/* Header with dark green brand background */
+/* Header with rich purple brand background */
 .vin-mobile-login-header {
-  background: linear-gradient(135deg, #0f2c1e 0%, #17422d 100%);
+  background: linear-gradient(135deg, #3b0764 0%, #581c87 50%, #6b21a8 100%);
   color: #ffffff;
-  padding: 34px 24px 28px 24px;
+  padding: 30px 24px 26px 24px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -43,11 +43,26 @@
   gap: 6px;
 }
 
+/* Logo container & image */
+.vin-mobile-login-logo-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.vin-mobile-login-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+}
+
 .vin-mobile-system-subtitle {
-  color: #a3c4b1;
+  color: #e9d5ff;
   font-size: 0.88rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   margin: 0;
   text-transform: uppercase;
 }
@@ -93,20 +108,20 @@
   display: flex;
   align-items: center;
   background-color: #ffffff;
-  border: 1.5px solid #d8e2dc;
+  border: 1.5px solid #e2e8f0;
   border-radius: 12px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .vin-mobile-input-wrapper:focus-within {
-  border-color: #17422d;
-  box-shadow: 0 0 0 3px rgba(23, 66, 45, 0.12);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
 .vin-mobile-field-icon {
   position: absolute;
   left: 14px;
-  color: #61796c;
+  color: #8b5cf6;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -135,7 +150,7 @@
   right: 12px;
   background: transparent;
   border: none;
-  color: #61796c;
+  color: #8b5cf6;
   cursor: pointer;
   padding: 6px;
   display: flex;
@@ -146,14 +161,14 @@
 }
 
 .vin-mobile-eye-btn:hover {
-  color: #17422d;
+  color: #581c87;
 }
 
 /* Sign In Button */
 .vin-mobile-submit-btn {
   margin-top: 8px;
   width: 100%;
-  background-color: #17422d;
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
   color: #ffffff;
   border: none;
   border-radius: 12px;
@@ -161,20 +176,20 @@
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 6px rgba(23, 66, 45, 0.25);
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 8px rgba(107, 33, 168, 0.3);
 }
 
 .vin-mobile-submit-btn:hover {
-  background-color: #0f2c1e;
-  box-shadow: 0 4px 12px rgba(23, 66, 45, 0.35);
+  background: linear-gradient(135deg, #6d28d9 0%, #581c87 100%);
+  box-shadow: 0 4px 14px rgba(88, 28, 135, 0.4);
 }
 
 .vin-mobile-submit-btn:active {
   transform: scale(0.98);
 }
 
-/* Switch to admin link (situated naturally below form) */
+/* Switch to admin link */
 .vin-mobile-switch-box {
   margin-top: 24px;
   padding-top: 16px;
@@ -188,7 +203,7 @@
   gap: 6px;
   background: none;
   border: none;
-  color: #17422d;
+  color: #6b21a8;
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -198,14 +213,18 @@
 }
 
 .vin-mobile-switch-link:hover {
-  background-color: #eaf4ef;
-  color: #0f2c1e;
+  background-color: #f3e8ff;
+  color: #581c87;
 }
 
 /* Responsive adjustments for smaller screens */
 @media (max-width: 360px) {
   .vin-mobile-login-header {
-    padding: 24px 16px 20px 16px;
+    padding: 22px 16px 18px 16px;
+  }
+  .vin-mobile-login-logo {
+    width: 64px;
+    height: 64px;
   }
   .vin-mobile-system-title {
     font-size: 1.45rem;
@@ -222,7 +241,7 @@
 /* Responsive adjustments for tablet / desktop */
 @media (min-width: 640px) {
   .vin-mobile-login-wrapper {
-    background: linear-gradient(135deg, #0b291a 0%, #17422d 42%, #e5ede8 42%, #e5ede8 100%);
+    background: linear-gradient(135deg, #2e1065 0%, #4c1d95 42%, #ede9fe 42%, #ede9fe 100%);
     padding: 40px 24px;
   }
   .vin-mobile-login-card {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import mswdoLogo from '../../assets/mswdo logo.png';
 import './AdminLogin.css';
 
 export default function AdminLogin() {
@@ -11,7 +12,7 @@ export default function AdminLogin() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Directly navigate to Admin Dashboard
+    // Navigate directly to Admin Dashboard
     navigate('/admin/dashboard');
   };
 
@@ -21,50 +22,64 @@ export default function AdminLogin() {
 
   return (
     <div className="vin-admin-login-wrapper">
-      <div className="vin-admin-login-container">
-        {/* Left Visual / Logo Placeholder */}
-        <div className="vin-admin-login-visual">
-          <div className="vin-image-placeholder-box">
-            <div className="vin-placeholder-circle" />
-            <div className="vin-placeholder-hill" />
+      <div className="vin-admin-login-card">
+        {/* Top Header */}
+        <header className="vin-admin-login-header">
+          <div className="vin-admin-login-logo-wrap">
+            <img
+              src={mswdoLogo}
+              alt="MSWDO Vinzons Logo"
+              className="vin-admin-login-logo"
+            />
           </div>
-        </div>
+          <p className="vin-admin-system-subtitle">Evacuee Management System</p>
+          <h1 className="vin-admin-system-title">MSWDO - Vinzons</h1>
+          <span className="vin-admin-badge">Admin Portal</span>
+        </header>
 
-        {/* Right Dark Green Admin Card */}
-        <div className="vin-admin-card-box">
-          <h1 className="vin-admin-card-title">MSWDO - Vinzons</h1>
-
-          <form className="vin-admin-form" onSubmit={handleSubmit}>
-            {/* Username */}
+        {/* Login Form */}
+        <div className="vin-admin-login-body">
+          <form className="vin-admin-login-form" onSubmit={handleSubmit}>
+            {/* Username Field */}
             <div className="vin-admin-field-group">
-              <label htmlFor="admin-username" className="vin-admin-label">
-                Username
+              <label htmlFor="admin-username" className="vin-admin-field-label">
+                ADMIN USERNAME / EMAIL
               </label>
               <div className="vin-admin-input-wrapper">
+                <span className="vin-admin-field-icon">
+                  <User size={19} />
+                </span>
                 <input
                   id="admin-username"
+                  name="username"
                   type="text"
-                  placeholder="Enter username"
+                  placeholder="Enter admin username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
                   className="vin-admin-input"
                   required
                 />
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password Field */}
             <div className="vin-admin-field-group">
-              <label htmlFor="admin-password" className="vin-admin-label">
-                Password
+              <label htmlFor="admin-password" className="vin-admin-field-label">
+                PASSWORD
               </label>
               <div className="vin-admin-input-wrapper">
+                <span className="vin-admin-field-icon">
+                  <Lock size={19} />
+                </span>
                 <input
                   id="admin-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter Password"
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   className="vin-admin-input"
                   required
                 />
@@ -80,25 +95,20 @@ export default function AdminLogin() {
             </div>
 
             {/* Submit Button */}
-            <div className="vin-admin-submit-wrapper">
-              <button
-                type="submit"
-                className="vin-admin-submit-btn"
-                onClick={handleSubmit}
-              >
-                Log in
-              </button>
-            </div>
+            <button type="submit" className="vin-admin-submit-btn">
+              Sign In as Admin
+            </button>
           </form>
 
           {/* Switch to Mobile link */}
           <div className="vin-admin-switch-box">
             <button
               type="button"
-              className="vin-admin-switch-btn"
+              className="vin-admin-switch-link"
               onClick={handleSwitchToMobile}
             >
-              Switch to Mobile Web Login
+              <Smartphone size={17} />
+              <span>Switch to Mobile Web Login</span>
             </button>
           </div>
         </div>

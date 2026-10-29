@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { User, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import mswdoLogo from '../../assets/mswdo logo.png';
 import './MobileLogin.css';
 
 export default function MobileLogin() {
@@ -31,6 +32,13 @@ export default function MobileLogin() {
       <div className="vin-mobile-login-card">
         {/* Top Header */}
         <header className="vin-mobile-login-header">
+          <div className="vin-mobile-login-logo-wrap">
+            <img
+              src={mswdoLogo}
+              alt="MSWDO Vinzons Logo"
+              className="vin-mobile-login-logo"
+            />
+          </div>
           <p className="vin-mobile-system-subtitle">Evacuee Management System</p>
           <h1 className="vin-mobile-system-title">MSWDO - Vinzons</h1>
         </header>
