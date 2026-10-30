@@ -36,14 +36,14 @@ const INITIAL_HOUSEHOLDS = [
     name: 'Antonio Magno',
     age: 45,
     sex: 'Male',
-    category: 'None',
+    vulnerabilities: [],
     center: 'Vinzons Central Elementary School',
     room: 'C-1',
     familyCount: 4,
     members: [
-      { name: 'Luz Magno', age: 58, sex: 'Female', category: 'Senior' },
-      { name: 'Pablo Magno', age: 20, sex: 'Male', category: 'None' },
-      { name: 'Sofia Magno', age: 17, sex: 'Female', category: 'None' },
+      { name: 'Luz Magno', age: 58, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
+      { name: 'Pablo Magno', age: 20, sex: 'Male', vulnerabilities: [] },
+      { name: 'Sofia Magno', age: 17, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-001001',
     stubIssued: false,
@@ -53,14 +53,14 @@ const INITIAL_HOUSEHOLDS = [
     name: 'Rosa Santos',
     age: 40,
     sex: 'Female',
-    category: 'None',
+    vulnerabilities: [],
     center: 'Vinzons Central Elementary School',
     room: 'A-2',
     familyCount: 4,
     members: [
-      { name: 'Pedro Santos', age: 42, sex: 'Male', category: 'None' },
-      { name: 'Maya Santos', age: 16, sex: 'Female', category: 'None' },
-      { name: 'Leo Santos', age: 12, sex: 'Male', category: 'None' },
+      { name: 'Pedro Santos', age: 42, sex: 'Male', vulnerabilities: [] },
+      { name: 'Maya Santos', age: 16, sex: 'Female', vulnerabilities: [] },
+      { name: 'Leo Santos', age: 12, sex: 'Male', vulnerabilities: [] },
     ],
     stubCode: 'STB-001002',
     stubIssued: true,
@@ -70,13 +70,13 @@ const INITIAL_HOUSEHOLDS = [
     name: 'Patricia Cruz',
     age: 35,
     sex: 'Female',
-    category: 'Pregnant/Lactating',
+    vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
     center: 'Vinzons Gymnasium',
     room: 'B-1',
     familyCount: 3,
     members: [
-      { name: 'Mark Cruz', age: 38, sex: 'Male', category: 'None' },
-      { name: 'Lina Cruz', age: 10, sex: 'Female', category: 'None' },
+      { name: 'Mark Cruz', age: 38, sex: 'Male', vulnerabilities: [] },
+      { name: 'Lina Cruz', age: 10, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-003014',
     stubIssued: false,
@@ -86,13 +86,13 @@ const INITIAL_HOUSEHOLDS = [
     name: 'Juan Dela Cruz',
     age: 50,
     sex: 'Male',
-    category: 'PWD',
+    vulnerabilities: ['PERSONS W/ DISABILITY'],
     center: 'Calaguas National High School',
     room: 'A-1',
     familyCount: 3,
     members: [
-      { name: 'Maria Dela Cruz', age: 48, sex: 'Female', category: 'None' },
-      { name: 'John Dela Cruz', age: 22, sex: 'Male', category: 'None' },
+      { name: 'Maria Dela Cruz', age: 48, sex: 'Female', vulnerabilities: [] },
+      { name: 'John Dela Cruz', age: 22, sex: 'Male', vulnerabilities: [] },
     ],
     stubCode: 'STB-004021',
     stubIssued: true,
@@ -102,13 +102,13 @@ const INITIAL_HOUSEHOLDS = [
     name: 'Elena Bautista',
     age: 42,
     sex: 'Female',
-    category: 'Solo Parent',
+    vulnerabilities: ['SOLO PARENT'],
     center: 'Vinzons Central Elementary School',
     room: 'Room 103',
     familyCount: 3,
     members: [
-      { name: 'Carlos Bautista', age: 14, sex: 'Male', category: 'None' },
-      { name: 'Jenny Bautista', age: 9, sex: 'Female', category: 'None' },
+      { name: 'Carlos Bautista', age: 14, sex: 'Male', vulnerabilities: [] },
+      { name: 'Jenny Bautista', age: 9, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-005018',
     stubIssued: false,
@@ -443,7 +443,11 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
               </div>
               <div className="vin-admin-stub-meta-item">
                 <span className="vin-admin-stub-meta-label">SPECIAL CATEGORY</span>
-                <span className="vin-admin-stub-meta-val">{household.category || 'None'}</span>
+                <span className="vin-admin-stub-meta-val">
+                  {Array.isArray(household.vulnerabilities) && household.vulnerabilities.length > 0
+                    ? household.vulnerabilities.join(', ')
+                    : (household.vulnerabilities || 'None')}
+                </span>
               </div>
               <div className="vin-admin-stub-meta-item">
                 <span className="vin-admin-stub-meta-label">AGE / SEX</span>
@@ -466,7 +470,10 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
                       {m.name}
                     </span>
                     <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                      {m.age} yrs • {m.sex} • {m.category}
+                      {m.age} yrs • {m.sex} •{' '}
+                      {Array.isArray(m.vulnerabilities) && m.vulnerabilities.length > 0
+                        ? m.vulnerabilities.join(', ')
+                        : 'None'}
                     </span>
                   </div>
                 ))
@@ -572,7 +579,7 @@ export default function Household() {
     sex: 'Male',
     center: 'LGU EC (Mangcaway)',
     room: 'Room 1',
-    category: 'None',
+    vulnerabilities: [],
     members: [],
   });
 
@@ -635,7 +642,7 @@ export default function Household() {
       sex: 'Male',
       center: defaultCenter,
       room: 'Room 1',
-      category: 'None',
+      vulnerabilities: [],
       members: [],
     });
     setModalMode('register');
@@ -650,7 +657,7 @@ export default function Household() {
       sex: item.sex || 'Male',
       center: item.center || 'LGU EC (Mangcaway)',
       room: item.room || 'Room 1',
-      category: item.category || 'None',
+      vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
       members: item.members || [],
     });
     setModalMode('edit');
@@ -671,7 +678,7 @@ export default function Household() {
         sex: activeForm.sex,
         center: activeForm.center,
         room: activeForm.room,
-        category: activeForm.category,
+        vulnerabilities: activeForm.vulnerabilities || [],
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
         stubCode: generatedCode,
@@ -709,7 +716,7 @@ export default function Household() {
                 sex: activeForm.sex,
                 center: activeForm.center,
                 room: activeForm.room,
-                category: activeForm.category,
+                vulnerabilities: activeForm.vulnerabilities || [],
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
               }
@@ -731,7 +738,7 @@ export default function Household() {
   const addMember = () => {
     setActiveForm((p) => ({
       ...p,
-      members: [...p.members, { name: '', age: '', sex: 'Female', category: 'None' }],
+      members: [...p.members, { name: '', age: '', sex: 'Female', vulnerabilities: [] }],
     }));
   };
 
@@ -1090,7 +1097,7 @@ export default function Household() {
               </div>
 
               <div className="vin-admin-form-group">
-                <label className="vin-admin-form-label">SPECIAL CATEGORY</label>
+                <label className="vin-admin-form-label">VULNERABILITY CATEGORIES</label>
                 <div
                   className="vin-hh-filter-tap-field"
                   onClick={() => setShowFormCategoryPicker({ target: 'head' })}
@@ -1098,7 +1105,11 @@ export default function Household() {
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && setShowFormCategoryPicker({ target: 'head' })}
                 >
-                  <div className="vin-hh-filter-select-display-txt">{activeForm.category || 'None'}</div>
+                  <div className="vin-hh-filter-select-display-txt">
+                    {Array.isArray(activeForm.vulnerabilities) && activeForm.vulnerabilities.length > 0
+                      ? activeForm.vulnerabilities.join(', ')
+                      : 'None — tap to select'}
+                  </div>
                   <ChevronDown size={16} className="vin-hh-filter-select-icon" />
                 </div>
               </div>
@@ -1192,7 +1203,9 @@ export default function Household() {
                           tabIndex={0}
                         >
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
-                            {m.category || 'None'}
+                            {Array.isArray(m.vulnerabilities) && m.vulnerabilities.length > 0
+                              ? m.vulnerabilities.join(', ')
+                              : 'None'}
                           </span>
                           <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
                         </div>
@@ -1270,21 +1283,21 @@ export default function Household() {
         <CategorySelectSheet
           selected={
             showFormCategoryPicker.target === 'member'
-              ? activeForm.members[showFormCategoryPicker.index]?.category || 'None'
-              : activeForm.category || 'None'
+              ? activeForm.members[showFormCategoryPicker.index]?.vulnerabilities || []
+              : activeForm.vulnerabilities || []
           }
           title={
             showFormCategoryPicker.target === 'member'
-              ? `Category for ${activeForm.members[showFormCategoryPicker.index]?.name || `Member #${showFormCategoryPicker.index + 1}`}`
-              : 'Household Head Category'
+              ? `Vulnerabilities for ${activeForm.members[showFormCategoryPicker.index]?.name || `Member #${showFormCategoryPicker.index + 1}`}`
+              : 'Household Head Vulnerabilities'
           }
-          onSelect={(cat) => {
+          onSelect={(cats) => {
             if (showFormCategoryPicker.target === 'member') {
               const u = [...activeForm.members];
-              u[showFormCategoryPicker.index].category = cat;
+              u[showFormCategoryPicker.index].vulnerabilities = cats;
               setActiveForm((prev) => ({ ...prev, members: u }));
             } else {
-              setActiveForm((prev) => ({ ...prev, category: cat }));
+              setActiveForm((prev) => ({ ...prev, vulnerabilities: cats }));
             }
             setShowFormCategoryPicker(null);
           }}

@@ -11,16 +11,16 @@ export const FALLBACK_HOUSEHOLDS = [
     name: 'Antonio Magno',
     age: 45,
     sex: 'Male',
-    category: 'None',
+    vulnerabilities: [],
     center: 'LGU EC (Mangcaway)',
     centerId: null,
     room: 'Room 1',
     roomId: null,
     familyCount: 4,
     members: [
-      { name: 'Luz Magno', age: 58, sex: 'Female', category: 'Senior Citizen' },
-      { name: 'Pablo Magno', age: 20, sex: 'Male', category: 'None' },
-      { name: 'Sofia Magno', age: 17, sex: 'Female', category: 'None' },
+      { name: 'Luz Magno', age: 58, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
+      { name: 'Pablo Magno', age: 20, sex: 'Male', vulnerabilities: [] },
+      { name: 'Sofia Magno', age: 17, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-001001',
     stubIssued: false,
@@ -31,16 +31,16 @@ export const FALLBACK_HOUSEHOLDS = [
     name: 'Rosa Santos',
     age: 40,
     sex: 'Female',
-    category: 'None',
+    vulnerabilities: [],
     center: 'LGU EC (Mangcaway)',
     centerId: null,
     room: 'Room 2',
     roomId: null,
     familyCount: 4,
     members: [
-      { name: 'Pedro Santos', age: 42, sex: 'Male', category: 'None' },
-      { name: 'Maya Santos', age: 16, sex: 'Female', category: 'None' },
-      { name: 'Leo Santos', age: 12, sex: 'Male', category: 'None' },
+      { name: 'Pedro Santos', age: 42, sex: 'Male', vulnerabilities: [] },
+      { name: 'Maya Santos', age: 16, sex: 'Female', vulnerabilities: [] },
+      { name: 'Leo Santos', age: 12, sex: 'Male', vulnerabilities: [] },
     ],
     stubCode: 'STB-001002',
     stubIssued: true,
@@ -51,15 +51,15 @@ export const FALLBACK_HOUSEHOLDS = [
     name: 'Patricia Cruz',
     age: 35,
     sex: 'Female',
-    category: 'Pregnant/Lactating',
+    vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
     center: 'LGU EC (Mangcaway)',
     centerId: null,
     room: 'Room 1',
     roomId: null,
     familyCount: 3,
     members: [
-      { name: 'Mark Cruz', age: 38, sex: 'Male', category: 'None' },
-      { name: 'Lina Cruz', age: 10, sex: 'Female', category: 'None' },
+      { name: 'Mark Cruz', age: 38, sex: 'Male', vulnerabilities: [] },
+      { name: 'Lina Cruz', age: 10, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-003014',
     stubIssued: false,
@@ -95,7 +95,7 @@ export function normalizeHousehold(row, centersList = []) {
         name: m.full_name,
         age: m.age,
         sex: m.sex,
-        category: m.category || 'None',
+        vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }))
     : [];
 
@@ -105,7 +105,7 @@ export function normalizeHousehold(row, centersList = []) {
     name: row.head_name,
     age: row.head_age,
     sex: row.head_sex,
-    category: row.head_category || 'None',
+    vulnerabilities: Array.isArray(row.vulnerabilities) ? row.vulnerabilities : [],
     center: centerName,
     centerId: row.center_id || row.center?.id || null,
     room: roomName,
@@ -150,7 +150,7 @@ export function useHouseholds(centersList = []) {
           head_name,
           head_age,
           head_sex,
-          head_category,
+          vulnerabilities,
           center_id,
           room_id,
           stub_code,
@@ -159,7 +159,7 @@ export function useHouseholds(centersList = []) {
           created_at,
           center:evacuation_centers ( id, name, location ),
           room:rooms ( id, room_name ),
-          members:household_members ( id, full_name, age, sex, category )
+          members:household_members ( id, full_name, age, sex, vulnerabilities )
         `)
         .order('created_at', { ascending: false });
 
@@ -264,7 +264,7 @@ export async function createHousehold(formData, centersList = []) {
       head_name: formData.head,
       head_age: Number(formData.age) || 35,
       head_sex: formData.sex || 'Male',
-      head_category: formData.category || 'None',
+      vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
       center_id: centerId,
       room_id: roomId,
       stub_code: stubCode,
@@ -285,7 +285,7 @@ export async function createHousehold(formData, centersList = []) {
         full_name: m.name.trim(),
         age: Number(m.age) || 0,
         sex: m.sex || 'Female',
-        category: m.category || 'None',
+        vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }));
 
     if (memberRows.length > 0) {
@@ -337,7 +337,7 @@ export async function updateHousehold(id, formData, centersList = []) {
     head_name: formData.head,
     head_age: Number(formData.age) || 35,
     head_sex: formData.sex || 'Male',
-    head_category: formData.category || 'None',
+    vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
     updated_at: new Date().toISOString(),
   };
   if (centerId) payload.center_id = centerId;
@@ -356,7 +356,7 @@ export async function updateHousehold(id, formData, centersList = []) {
         full_name: m.name.trim(),
         age: Number(m.age) || 0,
         sex: m.sex || 'Female',
-        category: m.category || 'None',
+        vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }));
 
     if (memberRows.length > 0) {

@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { getRoomsForCenter } from '../lib/evacuationCenters.js';
 
-/* ── Shared category list ── */
+/* ── Shared category list (7 official DSWD/MSWDO vulnerability categories) ── */
 export const HOUSEHOLD_CATEGORIES = [
-  { value: 'None',               label: 'None',                        sub: 'No special classification' },
-  { value: 'Senior Citizen',     label: 'Senior Citizen',              sub: '60 years old and above' },
-  { value: 'PWD',                label: 'PWD (Person with Disability)', sub: 'Person with physical or mental disability' },
-  { value: 'Pregnant/Lactating', label: 'Pregnant / Lactating',        sub: 'Currently pregnant or breastfeeding' },
-  { value: 'Solo Parent',        label: 'Solo Parent',                  sub: 'Raising child/children alone' },
-  { value: 'Infant/Child',       label: 'Infant / Child',              sub: 'Age 0–12 years old' },
-  { value: 'Lactating Mother',   label: 'Lactating Mother',            sub: 'Breastfeeding mother' },
-  { value: 'Indigenous People',  label: 'Indigenous People (IP)',       sub: 'Indigenous cultural community member' },
+  { value: 'PREGNANT',                label: 'Pregnant',                  sub: 'Currently pregnant' },
+  { value: 'LACTATING MOTHERS',       label: 'Lactating Mothers',         sub: 'Currently breastfeeding' },
+  { value: 'CHILD HEADED FAMILY',     label: 'Child Headed Family',       sub: 'Family headed by a minor' },
+  { value: 'SOLO PARENT',             label: 'Solo Parent',               sub: 'Raising children alone' },
+  { value: 'PERSONS W/ DISABILITY',   label: 'Persons w/ Disability',     sub: 'Physical or mental disability' },
+  { value: 'SENIOR CITIZEN',          label: 'Senior Citizen',            sub: '60 years old and above' },
+  { value: 'INDIGENOUS PEOPLE (IPs)', label: 'Indigenous People (IPs)',   sub: 'Indigenous cultural community member' },
 ];
 
 /* ──────────────────────────────────────────────
@@ -289,15 +288,21 @@ export function RoomSelectSheet({
 }
 
 /* ──────────────────────────────────────────────
-   Category Selection Bottom Sheet
+   Category Selection Bottom Sheet (Multi-select)
    ────────────────────────────────────────────── */
 export function CategorySelectSheet({
   selected,
   onSelect,
   onClose,
-  title = 'Special Category',
+  title = 'Vulnerability Categories',
 }) {
-  const [tempSelected, setTempSelected] = useState(selected || 'None');
+  const normalizeSelected = (val) => {
+    if (Array.isArray(val)) return val;
+    if (!val || val === 'None' || val === '') return [];
+    return [val];
+  };
+
+  const [tempSelected, setTempSelected] = useState(() => normalizeSelected(selected));
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredCategories = HOUSEHOLD_CATEGORIES.filter((cat) => {
@@ -310,10 +315,18 @@ export function CategorySelectSheet({
     );
   });
 
+  const toggleCategory = (value) => {
+    setTempSelected((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+
   const handleConfirm = () => {
     onSelect(tempSelected);
     onClose();
   };
+
+  const handleClearAll = () => setTempSelected([]);
 
   return (
     <div className="vin-center-picker-overlay" onClick={onClose}>
@@ -321,9 +334,20 @@ export function CategorySelectSheet({
         {/* Drag handle */}
         <div className="vin-center-picker-handle" />
 
-        {/* Header subtitle */}
-        <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, padding: '0 4px', marginBottom: 2 }}>
-          {title}
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', marginBottom: 6 }}>
+          <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
+            {title}
+          </div>
+          {tempSelected.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              style={{ fontSize: '0.75rem', color: '#7c3aed', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: '2px 6px' }}
+            >
+              Clear all
+            </button>
+          )}
         </div>
 
         {/* Search Bar */}
@@ -349,18 +373,36 @@ export function CategorySelectSheet({
           )}
         </div>
 
-        {/* Category List */}
+        {/* Category List — multi-select checkboxes */}
         <div className="vin-center-picker-list">
           {filteredCategories.map((cat) => {
-            const isSelected = tempSelected === cat.value;
+            const isSelected = tempSelected.includes(cat.value);
             return (
               <div
                 key={cat.value}
                 className={`vin-center-picker-item ${isSelected ? 'selected' : ''}`}
-                onClick={() => setTempSelected(cat.value)}
+                onClick={() => toggleCategory(cat.value)}
               >
-                <div className="vin-center-picker-radio">
-                  <div className="vin-center-picker-radio-dot" />
+                {/* Checkbox visual */}
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 5,
+                    border: isSelected ? '2px solid #7c3aed' : '2px solid #cbd5e1',
+                    background: isSelected ? '#7c3aed' : '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'background 0.15s, border-color 0.15s',
+                  }}
+                >
+                  {isSelected && (
+                    <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                      <path d="M1 4L4.5 7.5L11 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
                 </div>
                 <div className="vin-center-picker-info">
                   <span className="vin-center-picker-name">{cat.label}</span>
@@ -377,13 +419,15 @@ export function CategorySelectSheet({
           )}
         </div>
 
-        {/* Select Button */}
+        {/* Apply Button */}
         <button
           type="button"
           className="vin-center-picker-submit"
           onClick={handleConfirm}
         >
-          Select category
+          {tempSelected.length > 0
+            ? `Apply (${tempSelected.length} selected)`
+            : 'Apply — None Selected'}
         </button>
       </div>
     </div>

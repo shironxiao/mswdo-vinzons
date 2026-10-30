@@ -30,13 +30,13 @@ const SEED = [
   {
     id: 1,
     name: 'Antonio Magno',
-    age: 45, sex: 'Male', category: 'None',
+    age: 45, sex: 'Male', vulnerabilities: [],
     center: 'LGU EC (Mangcaway)',
     room: 'Room 1', familyCount: 4,
     members: [
-      { name: 'Luz Magno',   age: 58, sex: 'Female', category: 'Senior' },
-      { name: 'Pablo Magno', age: 20, sex: 'Male',   category: 'None'   },
-      { name: 'Sofia Magno', age: 17, sex: 'Female', category: 'None'   },
+      { name: 'Luz Magno',   age: 58, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
+      { name: 'Pablo Magno', age: 20, sex: 'Male',   vulnerabilities: []   },
+      { name: 'Sofia Magno', age: 17, sex: 'Female', vulnerabilities: []   },
     ],
     stubCode: 'STB-001001',
     stubIssued: false,
@@ -44,13 +44,13 @@ const SEED = [
   {
     id: 2,
     name: 'Rosa Santos',
-    age: 40, sex: 'Female', category: 'None',
+    age: 40, sex: 'Female', vulnerabilities: [],
     center: 'LGU EC (Mangcaway)',
     room: 'Room 2', familyCount: 4,
     members: [
-      { name: 'Pedro Santos', age: 42, sex: 'Male',   category: 'None' },
-      { name: 'Maya Santos',  age: 16, sex: 'Female', category: 'None' },
-      { name: 'Leo Santos',   age: 12, sex: 'Male',   category: 'None' },
+      { name: 'Pedro Santos', age: 42, sex: 'Male',   vulnerabilities: [] },
+      { name: 'Maya Santos',  age: 16, sex: 'Female', vulnerabilities: [] },
+      { name: 'Leo Santos',   age: 12, sex: 'Male',   vulnerabilities: [] },
     ],
     stubCode: 'STB-001002',
     stubIssued: true,
@@ -58,12 +58,12 @@ const SEED = [
   {
     id: 3,
     name: 'Patricia Cruz',
-    age: 35, sex: 'Female', category: 'Pregnant/Lactating',
+    age: 35, sex: 'Female', vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
     center: 'LGU EC (Bliss)',
     room: 'Room 1', familyCount: 3,
     members: [
-      { name: 'Mark Cruz', age: 38, sex: 'Male',   category: 'None' },
-      { name: 'Lina Cruz', age: 10, sex: 'Female', category: 'None' },
+      { name: 'Mark Cruz', age: 38, sex: 'Male',   vulnerabilities: [] },
+      { name: 'Lina Cruz', age: 10, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-003014',
     stubIssued: false,
@@ -71,12 +71,12 @@ const SEED = [
   {
     id: 4,
     name: 'Juan Dela Cruz',
-    age: 50, sex: 'Male', category: 'PWD',
+    age: 50, sex: 'Male', vulnerabilities: ['PERSONS W/ DISABILITY'],
     center: 'PLGU EC (Mat-I)',
     room: 'Room 3', familyCount: 3,
     members: [
-      { name: 'Maria Dela Cruz', age: 48, sex: 'Female', category: 'None' },
-      { name: 'John Dela Cruz',  age: 22, sex: 'Male',   category: 'None' },
+      { name: 'Maria Dela Cruz', age: 48, sex: 'Female', vulnerabilities: [] },
+      { name: 'John Dela Cruz',  age: 22, sex: 'Male',   vulnerabilities: [] },
     ],
     stubCode: 'STB-004021',
     stubIssued: true,
@@ -84,12 +84,12 @@ const SEED = [
   {
     id: 5,
     name: 'Elena Bautista',
-    age: 42, sex: 'Female', category: 'Solo Parent',
+    age: 42, sex: 'Female', vulnerabilities: ['SOLO PARENT'],
     center: 'Pinagtigasan EC',
     room: 'Unassigned', familyCount: 3,
     members: [
-      { name: 'Carlos Bautista', age: 14, sex: 'Male',   category: 'None' },
-      { name: 'Jenny Bautista',  age: 9,  sex: 'Female', category: 'None' },
+      { name: 'Carlos Bautista', age: 14, sex: 'Male',   vulnerabilities: [] },
+      { name: 'Jenny Bautista',  age: 9,  sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-005018',
     stubIssued: false,
@@ -97,11 +97,11 @@ const SEED = [
   {
     id: 6,
     name: 'Roberto Diaz',
-    age: 55, sex: 'Male', category: 'Senior',
+    age: 55, sex: 'Male', vulnerabilities: ['SENIOR CITIZEN'],
     center: 'St. Peter Parish AVR',
     room: 'Room 1', familyCount: 2,
     members: [
-      { name: 'Clara Diaz', age: 52, sex: 'Female', category: 'None' },
+      { name: 'Clara Diaz', age: 52, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-006033',
     stubIssued: true,
@@ -109,13 +109,13 @@ const SEED = [
   {
     id: 7,
     name: 'Carmen Ramos',
-    age: 29, sex: 'Female', category: 'Pregnant/Lactating',
+    age: 29, sex: 'Female', vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
     center: 'Biday EC',
     room: 'Room 2', familyCount: 4,
     members: [
-      { name: 'Danilo Ramos', age: 31, sex: 'Male',   category: 'None' },
-      { name: 'Mia Ramos',    age: 5,  sex: 'Female', category: 'None' },
-      { name: 'Leo Ramos',    age: 2,  sex: 'Male',   category: 'None' },
+      { name: 'Danilo Ramos', age: 31, sex: 'Male',   vulnerabilities: [] },
+      { name: 'Mia Ramos',    age: 5,  sex: 'Female', vulnerabilities: [] },
+      { name: 'Leo Ramos',    age: 2,  sex: 'Male',   vulnerabilities: [] },
     ],
     stubCode: 'STB-007015',
     stubIssued: false,
@@ -123,12 +123,12 @@ const SEED = [
   {
     id: 8,
     name: 'Fernando Lopez',
-    age: 48, sex: 'Male', category: 'PWD',
+    age: 48, sex: 'Male', vulnerabilities: ['PERSONS W/ DISABILITY'],
     center: 'Sugod EC',
     room: 'Room 4', familyCount: 3,
     members: [
-      { name: 'Grace Lopez', age: 44, sex: 'Female', category: 'None' },
-      { name: 'Joy Lopez',   age: 18, sex: 'Female', category: 'None' },
+      { name: 'Grace Lopez', age: 44, sex: 'Female', vulnerabilities: [] },
+      { name: 'Joy Lopez',   age: 18, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-008012',
     stubIssued: true,
@@ -136,12 +136,12 @@ const SEED = [
   {
     id: 9,
     name: 'Teresa Morales',
-    age: 38, sex: 'Female', category: 'None',
+    age: 38, sex: 'Female', vulnerabilities: [],
     center: 'Mormons',
     room: 'Room 1', familyCount: 3,
     members: [
-      { name: 'Ramon Morales', age: 40, sex: 'Male', category: 'None' },
-      { name: 'Ella Morales',  age: 8,  sex: 'Female', category: 'None' },
+      { name: 'Ramon Morales', age: 40, sex: 'Male', vulnerabilities: [] },
+      { name: 'Ella Morales',  age: 8,  sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-009045',
     stubIssued: true,
@@ -149,11 +149,11 @@ const SEED = [
   {
     id: 10,
     name: 'Danilo Soriano',
-    age: 51, sex: 'Male', category: 'None',
+    age: 51, sex: 'Male', vulnerabilities: [],
     center: 'Marabe Church',
     room: 'Unassigned', familyCount: 2,
     members: [
-      { name: 'Beth Soriano', age: 49, sex: 'Female', category: 'None' },
+      { name: 'Beth Soriano', age: 49, sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-010028',
     stubIssued: false,
@@ -161,12 +161,12 @@ const SEED = [
   {
     id: 11,
     name: 'Marites Villanueva',
-    age: 34, sex: 'Female', category: 'Solo Parent',
+    age: 34, sex: 'Female', vulnerabilities: ['SOLO PARENT'],
     center: 'Adorno Fathers',
     room: 'Room 5', familyCount: 3,
     members: [
-      { name: 'Joshua Villanueva', age: 11, sex: 'Male', category: 'None' },
-      { name: 'Hannah Villanueva', age: 6,  sex: 'Female', category: 'None' },
+      { name: 'Joshua Villanueva', age: 11, sex: 'Male', vulnerabilities: [] },
+      { name: 'Hannah Villanueva', age: 6,  sex: 'Female', vulnerabilities: [] },
     ],
     stubCode: 'STB-011089',
     stubIssued: true,
@@ -174,11 +174,11 @@ const SEED = [
   {
     id: 12,
     name: 'Gregorio Santos',
-    age: 62, sex: 'Male', category: 'Senior',
+    age: 62, sex: 'Male', vulnerabilities: ['SENIOR CITIZEN'],
     center: 'Mangcawayan EC',
     room: 'Room 3', familyCount: 2,
     members: [
-      { name: 'Amparo Santos', age: 60, sex: 'Female', category: 'Senior' },
+      { name: 'Amparo Santos', age: 60, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
     ],
     stubCode: 'STB-012007',
     stubIssued: false,
@@ -600,7 +600,11 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
             <div><span className="vin-mob-field-label">ROOM</span><div>{household.room}</div></div>
             <div><span className="vin-mob-field-label">MEMBERS</span><div>{household.familyCount}</div></div>
             <div><span className="vin-mob-field-label">CENTER</span><div style={{ fontSize: '.8rem' }}>{household.center}</div></div>
-            <div><span className="vin-mob-field-label">CATEGORY</span><div>{household.category}</div></div>
+            <div><span className="vin-mob-field-label">CATEGORY</span><div>
+              {Array.isArray(household.vulnerabilities) && household.vulnerabilities.length > 0
+                ? household.vulnerabilities.join(', ')
+                : 'None'}
+            </div></div>
           </div>
         </div>
 
@@ -611,7 +615,11 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
             <div key={i} className="vin-hh-member-row">
               <User size={14} className="vin-hh-member-icon" />
               <span>{m.name}</span>
-              <span className="vin-hh-member-meta">{m.age} • {m.sex} • {m.category}</span>
+              <span className="vin-hh-member-meta">{m.age} • {m.sex} •{' '}
+                {Array.isArray(m.vulnerabilities) && m.vulnerabilities.length > 0
+                  ? m.vulnerabilities.join(', ')
+                  : 'None'}
+              </span>
             </div>
           ))}
         </div>
@@ -1125,7 +1133,7 @@ export default function MobileHouseholds() {
   const [activeForm, setActiveForm] = useState({
     head: '', age: '', sex: 'Male',
     center: 'LGU EC (Mangcaway)',
-    room: 'Room 1', category: 'None', members: [],
+    room: 'Room 1', vulnerabilities: [], members: [],
   });
 
   /* ── Filter + search ── */
@@ -1262,12 +1270,12 @@ export default function MobileHouseholds() {
   /* ── Register / Edit ── */
   const openRegister = () => {
     const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
-    setActiveForm({ head: '', age: '', sex: 'Male', center: defaultCenter, room: 'Room 1', category: 'None', members: [] });
+    setActiveForm({ head: '', age: '', sex: 'Male', center: defaultCenter, room: 'Room 1', vulnerabilities: [], members: [] });
     setModalMode('register');
   };
   const openEdit = (item, e) => {
     e.stopPropagation();
-    setActiveForm({ id: item.id, head: item.name, age: item.age, sex: item.sex, center: item.center, room: item.room, category: item.category, members: item.members || [] });
+    setActiveForm({ id: item.id, head: item.name, age: item.age, sex: item.sex, center: item.center, room: item.room, vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [], members: item.members || [] });
     setModalMode('edit');
   };
   const handleSaveHousehold = async (e) => {
@@ -1284,7 +1292,7 @@ export default function MobileHouseholds() {
         sex: activeForm.sex,
         center: activeForm.center,
         room: activeForm.room,
-        category: activeForm.category,
+        vulnerabilities: activeForm.vulnerabilities || [],
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
         stubCode: generatedCode,
@@ -1323,7 +1331,7 @@ export default function MobileHouseholds() {
                 sex: activeForm.sex,
                 center: activeForm.center,
                 room: activeForm.room,
-                category: activeForm.category,
+                vulnerabilities: activeForm.vulnerabilities || [],
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
               }
@@ -1345,7 +1353,7 @@ export default function MobileHouseholds() {
   };
 
   const addMember = () =>
-    setActiveForm((p) => ({ ...p, members: [...p.members, { name: '', age: '', sex: 'Female', category: 'None' }] }));
+    setActiveForm((p) => ({ ...p, members: [...p.members, { name: '', age: '', sex: 'Female', vulnerabilities: [] }] }));
   const removeMember = (idx) =>
     setActiveForm((p) => ({ ...p, members: p.members.filter((_, i) => i !== idx) }));
 
@@ -1689,7 +1697,7 @@ export default function MobileHouseholds() {
                 </div>
               </div>
               <div className="vin-mob-input-group">
-                <label className="vin-mob-input-label">CATEGORY</label>
+                <label className="vin-mob-input-label">VULNERABILITY CATEGORIES</label>
                 <div
                   className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
                   onClick={() => setShowFormCategoryPicker({ target: 'head' })}
@@ -1697,7 +1705,11 @@ export default function MobileHouseholds() {
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && setShowFormCategoryPicker({ target: 'head' })}
                 >
-                  <div className="vin-hh-filter-select-display-txt">{activeForm.category || 'None'}</div>
+                  <div className="vin-hh-filter-select-display-txt">
+                    {Array.isArray(activeForm.vulnerabilities) && activeForm.vulnerabilities.length > 0
+                      ? activeForm.vulnerabilities.join(', ')
+                      : 'None — tap to select'}
+                  </div>
                   <ChevronDown size={16} className="vin-hh-filter-select-icon" />
                 </div>
               </div>
@@ -1744,7 +1756,9 @@ export default function MobileHouseholds() {
                       tabIndex={0}
                     >
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
-                        {m.category || 'None'}
+                        {Array.isArray(m.vulnerabilities) && m.vulnerabilities.length > 0
+                          ? m.vulnerabilities.join(', ')
+                          : 'None'}
                       </span>
                       <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
                     </div>
@@ -1794,21 +1808,21 @@ export default function MobileHouseholds() {
         <CategorySelectSheet
           selected={
             showFormCategoryPicker.target === 'member'
-              ? activeForm.members[showFormCategoryPicker.index]?.category || 'None'
-              : activeForm.category || 'None'
+              ? activeForm.members[showFormCategoryPicker.index]?.vulnerabilities || []
+              : activeForm.vulnerabilities || []
           }
           title={
             showFormCategoryPicker.target === 'member'
-              ? `Category for ${activeForm.members[showFormCategoryPicker.index]?.name || `Member #${showFormCategoryPicker.index + 1}`}`
-              : 'Household Head Category'
+              ? `Vulnerabilities for ${activeForm.members[showFormCategoryPicker.index]?.name || `Member #${showFormCategoryPicker.index + 1}`}`
+              : 'Household Head Vulnerabilities'
           }
-          onSelect={(cat) => {
+          onSelect={(cats) => {
             if (showFormCategoryPicker.target === 'member') {
               const u = [...activeForm.members];
-              u[showFormCategoryPicker.index].category = cat;
+              u[showFormCategoryPicker.index].vulnerabilities = cats;
               setActiveForm((prev) => ({ ...prev, members: u }));
             } else {
-              setActiveForm((prev) => ({ ...prev, category: cat }));
+              setActiveForm((prev) => ({ ...prev, vulnerabilities: cats }));
             }
             setShowFormCategoryPicker(null);
           }}
