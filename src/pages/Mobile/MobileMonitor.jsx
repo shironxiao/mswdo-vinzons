@@ -8,6 +8,8 @@ import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileHouseholds.css';
 import './MobileMonitor.css';
+import checkIcon from '../../assets/check.png';
+import removeIcon from '../../assets/remove.png';
 import {
   useEvacuationCenters,
   isCenterMatch,
@@ -190,6 +192,7 @@ export default function MobileMonitor() {
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Present' | 'For Follow-up' | 'Absent' | 'Transferred'
+  const [filterRelief, setFilterRelief] = useState('All');     // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -242,6 +245,10 @@ export default function MobileMonitor() {
         });
       }
 
+      if (h.evacueeStatus === 'Decamped') {
+        status = 'Decamped';
+      }
+
       // Check for local optimistic override
       const override = attendanceOverrides[h.id];
       if (override) {
@@ -263,11 +270,18 @@ export default function MobileMonitor() {
         status,
         members: allNames,
         latestLog,
+        stubCode: h.stubCode,
+        stubIssued: !!h.stubIssued,
+        stubIssuedAt: h.stubIssuedAt,
+        vulnerabilities: h.vulnerabilities || [],
+        evacueeStatus: h.evacueeStatus || 'Active',
       };
     });
   }, [households, logs, attendanceOverrides]);
 
-  const activeFilters = (filterStatus !== 'All' ? 1 : 0) +
+  const activeFilters =
+    (filterStatus !== 'All' ? 1 : 0) +
+    (filterRelief !== 'All' ? 1 : 0) +
     (filterCenter !== 'All Centers' ? 1 : 0) +
     (filterRoom !== 'All Rooms' ? 1 : 0);
 
@@ -282,12 +296,16 @@ export default function MobileMonitor() {
       (filterStatus === 'For Follow-up' && r.status === 'For Follow-up') ||
       (filterStatus === 'Absent' && r.status === 'Absent') ||
       (filterStatus === 'Transferred' && r.status === 'Transferred');
+    const matchRelief =
+      filterRelief === 'All' ||
+      (filterRelief === 'Issued' && r.stubIssued) ||
+      (filterRelief === 'Not Issued' && !r.stubIssued);
     const matchCenter = isCenterMatch(r.center, filterCenter, centers);
     const matchRoom =
       filterRoom === 'All Rooms' ||
       r.room === filterRoom ||
       `Room ${r.room}` === filterRoom;
-    return matchSearch && matchStatus && matchCenter && matchRoom;
+    return matchSearch && matchStatus && matchRelief && matchCenter && matchRoom;
   });
 
   /* ── Pagination ── */
@@ -296,7 +314,7 @@ export default function MobileMonitor() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterStatus, filterCenter, filterRoom]);
+  }, [search, filterStatus, filterRelief, filterCenter, filterRoom]);
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRecords = filtered.slice(startIndex, startIndex + pageSize);
@@ -443,12 +461,33 @@ export default function MobileMonitor() {
     });
   }, [households]);
 
+  /* ── Mark All Members Accounted For (Quick floor round helper) ── */
+  const handleMarkAllAccounted = () => {
+    if (!activeFamily) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const updatedAtt = {};
+    const updatedTimes = {};
+    activeFamily.members.forEach((m) => {
+      updatedAtt[m] = 'Accounted For';
+      updatedTimes[m] = timeStr;
+    });
+    setAttendance(updatedAtt);
+    setCheckInTimes(updatedTimes);
+    setMonitorForm((prev) => ({ ...prev, householdStatus: 'Present' }));
+  };
+
   /* ── Confirm Relief Pack Distribution ── */
   const handleConfirmIssueRelief = async (hhId) => {
     try {
       await issueHouseholdStub(hhId);
       if (refreshHouseholds) refreshHouseholds();
       
+      // Also update activeFamily if currently open
+      if (activeFamily && (activeFamily.householdId === hhId || activeFamily.id === hhId)) {
+        setActiveFamily((prev) => prev ? { ...prev, stubIssued: true } : null);
+      }
+
       setReliefScanModal((prev) => prev ? { ...prev, status: 'issued-success' } : null);
       setToastMsg(`✓ Relief pack marked as ISSUED successfully!`);
       setTimeout(() => setToastMsg(''), 4000);
@@ -473,7 +512,10 @@ export default function MobileMonitor() {
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Evacuee Monitoring</h1>
-          <p className="vin-mob-subtitle">Headcount &amp; Relief Pack Distribution</p>
+          <p className="vin-mob-subtitle">
+            {records.filter((r) => r.status === 'Present' || r.status === 'Recorded').length} Present •{' '}
+            {records.filter((r) => r.stubIssued).length}/{records.length} Relief Distributed
+          </p>
         </div>
       </header>
 
@@ -525,6 +567,16 @@ export default function MobileMonitor() {
             <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
+        {filterRelief !== 'All' && (
+          <button
+            type="button"
+            className="vin-hh-active-chip"
+            onClick={() => setFilterRelief('All')}
+          >
+            <span>Relief: {filterRelief}</span>
+            <X size={13} className="vin-hh-chip-close" />
+          </button>
+        )}
         {filterCenter !== 'All Centers' && (
           <button
             type="button"
@@ -562,6 +614,12 @@ export default function MobileMonitor() {
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <XCircle size={14} color="#9c4444" /> Absent
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
+          <img src={checkIcon} alt="" style={{ width: 14, height: 14 }} /> Relief Issued
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <img src={removeIcon} alt="" style={{ width: 14, height: 14 }} /> Not Issued
         </span>
       </div>
 
@@ -625,9 +683,17 @@ export default function MobileMonitor() {
                               <span className="vin-mob-sub-dot">•</span>
                               <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
                             </div>
-                            <div className="vin-mob-head-badges">
+                            <div className="vin-mob-head-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                               <span className={`vin-mon-tile-badge ${badgeCls}`}>
                                 {statusKey} ({item.ratio})
+                              </span>
+                              <span className={item.stubIssued ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
+                                <img
+                                  src={item.stubIssued ? checkIcon : removeIcon}
+                                  alt=""
+                                  className="vin-badge-img-icon"
+                                />
+                                <span>{item.stubIssued ? 'Relief Issued' : 'No Relief'}</span>
                               </span>
                               <span className="vin-mon-table-time">{item.timestamp}</span>
                             </div>
@@ -700,9 +766,58 @@ export default function MobileMonitor() {
               </button>
             </div>
 
-            <h3 style={{ margin: '4px 0 12px', fontSize: '1.05rem', fontWeight: 800 }}>
+            <h3 style={{ margin: '4px 0 10px', fontSize: '1.05rem', fontWeight: 800 }}>
               {activeFamily.name}
             </h3>
+
+            {/* Quick Relief pack issuance banner */}
+            <div style={{
+              margin: '0 0 14px',
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: activeFamily.stubIssued ? '#f0fdf4' : '#fefce8',
+              border: `1px solid ${activeFamily.stubIssued ? '#bbf7d0' : '#fef08a'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10
+            }}>
+              <div>
+                <div style={{
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  color: activeFamily.stubIssued ? '#15803d' : '#854d0e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  {activeFamily.stubIssued ? <CheckCircle2 size={15} /> : <Ticket size={15} />}
+                  <span>Relief Pack: {activeFamily.stubIssued ? 'Issued' : 'Not Issued'}</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                  Stub: <strong>{activeFamily.stubCode || 'N/A'}</strong>
+                </div>
+              </div>
+              {!activeFamily.stubIssued && (
+                <button
+                  type="button"
+                  onClick={() => handleConfirmIssueRelief(activeFamily.householdId || activeFamily.id)}
+                  style={{
+                    background: '#7c3aed',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Mark Issued
+                </button>
+              )}
+            </div>
 
             <div className="vin-mob-input-group">
               <label className="vin-mob-input-label">MONITORING INTERVAL</label>
@@ -723,9 +838,31 @@ export default function MobileMonitor() {
               />
             </div>
 
-            <h4 style={{ margin: '16px 0 8px', fontSize: '.92rem', fontWeight: 800 }}>
-              Members Attendance
-            </h4>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px' }}>
+              <h4 style={{ margin: 0, fontSize: '.92rem', fontWeight: 800 }}>
+                Members Attendance
+              </h4>
+              <button
+                type="button"
+                onClick={handleMarkAllAccounted}
+                style={{
+                  background: '#f3e8ff',
+                  border: '1px solid #ddd6fe',
+                  color: '#6b21a8',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <CheckCircle2 size={13} />
+                All Present
+              </button>
+            </div>
 
             {activeFamily.members.map((member) => (
               <div key={member} className="vin-mob-profile-card" style={{ padding: 14, gap: 10 }}>
@@ -846,13 +983,15 @@ export default function MobileMonitor() {
       {showFilterSheet && (
         <MonFilterSheet
           filterStatus={filterStatus}
+          filterRelief={filterRelief}
           filterCenter={filterCenter}
           filterRoom={filterRoom}
           records={records}
           search={search}
           centersList={centers}
-          onApply={(status, center, room) => {
+          onApply={(status, relief, center, room) => {
             setFilterStatus(status);
+            setFilterRelief(relief);
             setFilterCenter(center);
             setFilterRoom(room);
           }}
@@ -1089,8 +1228,9 @@ export default function MobileMonitor() {
 /* ──────────────────────────────────────────────
    Monitor Filter Sheet (bottom sheet panel)
    ────────────────────────────────────────────── */
-function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, search, centersList = [], onApply, onClose }) {
+function MonFilterSheet({ filterStatus, filterRelief, filterCenter, filterRoom, records, search, centersList = [], onApply, onClose }) {
   const [draftStatus, setDraftStatus] = useState(filterStatus);
+  const [draftRelief, setDraftRelief] = useState(filterRelief);
   const [draftCenter, setDraftCenter] = useState(filterCenter);
   const [draftRoom, setDraftRoom] = useState(filterRoom);
   const [showCenterPicker, setShowCenterPicker] = useState(false);
@@ -1098,12 +1238,13 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
 
   const handleReset = () => {
     setDraftStatus('All');
+    setDraftRelief('All');
     setDraftCenter('All Centers');
     setDraftRoom('All Rooms');
   };
 
   const handleApply = () => {
-    onApply(draftStatus, draftCenter, draftRoom);
+    onApply(draftStatus, draftRelief, draftCenter, draftRoom);
     onClose();
   };
 
@@ -1118,9 +1259,13 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
       (draftStatus === 'For Follow-up' && r.status === 'For Follow-up') ||
       (draftStatus === 'Absent' && r.status === 'Absent') ||
       (draftStatus === 'Transferred' && r.status === 'Transferred');
+    const matchRelief =
+      draftRelief === 'All' ||
+      (draftRelief === 'Issued' && r.stubIssued) ||
+      (draftRelief === 'Not Issued' && !r.stubIssued);
     const matchCenter = isCenterMatch(r.center, draftCenter, centersList);
     const matchRoom = draftRoom === 'All Rooms' || r.room === draftRoom;
-    return matchSearch && matchStatus && matchCenter && matchRoom;
+    return matchSearch && matchStatus && matchRelief && matchCenter && matchRoom;
   }).length;
 
   return (
@@ -1139,7 +1284,7 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
 
         {/* Status Pills */}
         <div className="vin-hh-filter-section">
-          <div className="vin-hh-filter-section-label">Status</div>
+          <div className="vin-hh-filter-section-label">Attendance Status</div>
           <div className="vin-hh-filter-pills-row">
             {[
               { id: 'All', label: 'All' },
@@ -1153,6 +1298,27 @@ function MonFilterSheet({ filterStatus, filterCenter, filterRoom, records, searc
                 type="button"
                 className={`vin-hh-filter-pill ${draftStatus === opt.id ? 'active' : ''}`}
                 onClick={() => setDraftStatus(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Relief Status Pills */}
+        <div className="vin-hh-filter-section">
+          <div className="vin-hh-filter-section-label">Relief Goods Status</div>
+          <div className="vin-hh-filter-pills-row">
+            {[
+              { id: 'All', label: 'All' },
+              { id: 'Issued', label: 'Relief Issued' },
+              { id: 'Not Issued', label: 'Not Issued' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`vin-hh-filter-pill ${draftRelief === opt.id ? 'active' : ''}`}
+                onClick={() => setDraftRelief(opt.id)}
               >
                 {opt.label}
               </button>

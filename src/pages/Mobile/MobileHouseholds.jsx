@@ -270,14 +270,19 @@ function StubIssuancePanel({ household, households, onDecamp, onClose }) {
               <div style={{ fontWeight: 800, fontSize: '1rem' }}>{household.name}</div>
               <div style={{ fontSize: '.78rem', color: '#64748b' }}>Household Head</div>
             </div>
-            <span className={alreadyIssued ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'} style={{ marginLeft: 'auto' }}>
-              <img
-                src={alreadyIssued ? checkIcon : removeIcon}
-                alt=""
-                className="vin-badge-img-icon"
-              />
-              <span>{alreadyIssued ? 'Relief Issued' : 'Relief Not Issued'}</span>
-            </span>
+            {(() => {
+              const isActive = household.evacueeStatus === 'Active' || (!household.evacueeStatus && household.room && household.room !== 'Unassigned');
+              return (
+                <span className={isActive ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'} style={{ marginLeft: 'auto' }}>
+                  <img
+                    src={isActive ? checkIcon : removeIcon}
+                    alt=""
+                    className="vin-badge-img-icon"
+                  />
+                  <span>{isActive ? 'Active' : 'Not Active'}</span>
+                </span>
+              );
+            })()}
           </div>
           <div className="vin-hh-stub-meta">
             <div><span className="vin-mob-field-label">ROOM</span><div>{household.room}</div></div>
@@ -446,9 +451,9 @@ OFFICIAL_EVAC_CENTERS.forEach((c) => {
 /* ──────────────────────────────────────────────
    Household Filter Sheet (bottom-sheet panel)
    ────────────────────────────────────────────── */
-function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, search, centersList = [], onApply, onClose }) {
+function HHFilterSheet({ filterStatus, filterCenter, filterRoom, households, search, centersList = [], onApply, onClose }) {
   /* Local draft state — only committed when user taps "Show results" */
-  const [draftStub, setDraftStub] = useState(filterStub);
+  const [draftStatus, setDraftStatus] = useState(filterStatus);
   const [draftCenter, setDraftCenter] = useState(filterCenter);
   const [draftRoom, setDraftRoom] = useState(filterRoom);
   const [showCenterPicker, setShowCenterPicker] = useState(false);
@@ -460,13 +465,13 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
   };
 
   const handleReset = () => {
-    setDraftStub('All');
+    setDraftStatus('All');
     setDraftCenter('All Centers');
     setDraftRoom('All Rooms');
   };
 
   const handleApply = () => {
-    onApply(draftStub, draftCenter, draftRoom);
+    onApply(draftStatus, draftCenter, draftRoom);
     onClose();
   };
 
@@ -476,16 +481,17 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
       h.name.toLowerCase().includes(search.toLowerCase()) ||
       h.room.toLowerCase().includes(search.toLowerCase()) ||
       (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
-    const matchStub =
-      draftStub === 'All' ||
-      (draftStub === 'Issued' && h.stubIssued) ||
-      (draftStub === 'Not Issued' && !h.stubIssued);
+    const isActive = h.evacueeStatus === 'Active' || (!h.evacueeStatus && h.room && h.room !== 'Unassigned');
+    const matchStatus =
+      draftStatus === 'All' ||
+      (draftStatus === 'Active' && isActive) ||
+      (draftStatus === 'Not Active' && !isActive);
     const matchCenter = isCenterMatch(h.center, draftCenter, centersList);
     const matchRoom =
       draftRoom === 'All Rooms' ||
       h.room === draftRoom ||
       `Room ${h.room}` === draftRoom;
-    return matchSearch && matchStub && matchCenter && matchRoom;
+    return matchSearch && matchStatus && matchCenter && matchRoom;
   }).length;
 
   return (
@@ -504,18 +510,18 @@ function HHFilterSheet({ filterStub, filterCenter, filterRoom, households, searc
 
         {/* Status Pills */}
         <div className="vin-hh-filter-section">
-          <div className="vin-hh-filter-section-label">Status</div>
+          <div className="vin-hh-filter-section-label">Evacuee Status</div>
           <div className="vin-hh-filter-pills-row">
             {[
               { id: 'All', label: 'All' },
-              { id: 'Issued', label: 'Issued' },
-              { id: 'Not Issued', label: 'Not issued' },
+              { id: 'Active', label: 'Active' },
+              { id: 'Not Active', label: 'Not Active' },
             ].map((opt) => (
               <button
                 key={opt.id}
                 type="button"
-                className={`vin-hh-filter-pill ${draftStub === opt.id ? 'active' : ''}`}
-                onClick={() => setDraftStub(opt.id)}
+                className={`vin-hh-filter-pill ${draftStatus === opt.id ? 'active' : ''}`}
+                onClick={() => setDraftStatus(opt.id)}
               >
                 {opt.label}
               </button>
@@ -842,7 +848,7 @@ export default function MobileHouseholds() {
   const { activeEvent } = useActiveEvent();
 
   const [search, setSearch] = useState('');
-  const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
+  const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Active' | 'Not Active'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -870,22 +876,21 @@ export default function MobileHouseholds() {
       h.name.toLowerCase().includes(search.toLowerCase()) ||
       h.room.toLowerCase().includes(search.toLowerCase()) ||
       (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
-    const matchStub =
-      filterStub === 'All' ||
-      (filterStub === 'Issued' && h.stubIssued) ||
-      (filterStub === 'Not Issued' && !h.stubIssued);
+    const isActive = h.evacueeStatus === 'Active' || (!h.evacueeStatus && h.room && h.room !== 'Unassigned');
+    const matchStatus =
+      filterStatus === 'All' ||
+      (filterStatus === 'Active' && isActive) ||
+      (filterStatus === 'Not Active' && !isActive);
     const matchCenter = isCenterMatch(h.center, filterCenter, centers);
     const matchRoom =
       filterRoom === 'All Rooms' ||
       h.room === filterRoom ||
       `Room ${h.room}` === filterRoom;
-    return matchSearch && matchStub && matchCenter && matchRoom;
+    return matchSearch && matchStatus && matchCenter && matchRoom;
   });
 
-  const issuedCount = households.filter((h) => h.stubIssued).length;
-  const filteredIssued = filtered.filter((h) => h.stubIssued);
   const activeFilters =
-    (filterStub !== 'All' ? 1 : 0) +
+    (filterStatus !== 'All' ? 1 : 0) +
     (filterCenter !== 'All Centers' ? 1 : 0) +
     (filterRoom !== 'All Rooms' ? 1 : 0);
 
@@ -895,7 +900,7 @@ export default function MobileHouseholds() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterStub, filterCenter, filterRoom]);
+  }, [search, filterStatus, filterCenter, filterRoom]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -1133,14 +1138,14 @@ export default function MobileHouseholds() {
           </button>
         )}
 
-        {filterStub !== 'All' && (
+        {filterStatus !== 'All' && (
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterStub('All')}
+            onClick={() => setFilterStatus('All')}
             title="Remove status filter"
           >
-            <span>{filterStub}</span>
+            <span>{filterStatus}</span>
             <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
@@ -1148,8 +1153,8 @@ export default function MobileHouseholds() {
 
       {/* Legend */}
       <div className="vin-hh-legend">
-        <span className="vin-hh-legend-dot issued" /> Issued
-        <span className="vin-hh-legend-dot notissued" /> Not Issued
+        <span className="vin-hh-legend-dot issued" /> Active
+        <span className="vin-hh-legend-dot notissued" /> Not Active
         <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
           {filtered.length} result{filtered.length !== 1 ? 's' : ''}
         </span>
@@ -1198,14 +1203,19 @@ export default function MobileHouseholds() {
                             <span>{item.familyCount} pers.</span>
                           </div>
                           <div className="vin-mob-head-badges">
-                            <span className={item.stubIssued ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
-                              <img
-                                src={item.stubIssued ? checkIcon : removeIcon}
-                                alt=""
-                                className="vin-badge-img-icon"
-                              />
-                              <span>{item.stubIssued ? 'Issued' : 'Not Issued'}</span>
-                            </span>
+                            {(() => {
+                              const isActive = item.evacueeStatus === 'Active' || (!item.evacueeStatus && item.room && item.room !== 'Unassigned');
+                              return (
+                                <span className={isActive ? 'vin-hh-badge-issued' : 'vin-hh-badge-notissued'}>
+                                  <img
+                                    src={isActive ? checkIcon : removeIcon}
+                                    alt=""
+                                    className="vin-badge-img-icon"
+                                  />
+                                  <span>{isActive ? 'Active' : 'Not Active'}</span>
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -1283,14 +1293,14 @@ export default function MobileHouseholds() {
       {/* ── FILTER SHEET MODAL (matching user image 2) ── */}
       {showFilterSheet && (
         <HHFilterSheet
-          filterStub={filterStub}
+          filterStatus={filterStatus}
           filterCenter={filterCenter}
           filterRoom={filterRoom}
           households={households}
           search={search}
           centersList={centers}
-          onApply={(newStub, newCenter, newRoom) => {
-            setFilterStub(newStub);
+          onApply={(newStatus, newCenter, newRoom) => {
+            setFilterStatus(newStatus);
             setFilterCenter(newCenter);
             setFilterRoom(newRoom);
           }}
