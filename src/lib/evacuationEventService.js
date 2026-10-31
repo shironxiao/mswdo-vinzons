@@ -65,6 +65,16 @@ export async function getAllEvents() {
  * Declares/creates a new active disaster operation
  */
 export async function createEvent({ event_name, event_type = 'Typhoon' }) {
+  const { data: activeEvent, error: activeEventError } = await supabase
+    .from('evacuation_events')
+    .select('id')
+    .eq('status', 'Active')
+    .limit(1)
+    .maybeSingle();
+
+  if (activeEventError) throw activeEventError;
+  if (activeEvent) throw new Error('Conclude the current operation before starting another.');
+
   const { data, error } = await supabase
     .from('evacuation_events')
     .insert({

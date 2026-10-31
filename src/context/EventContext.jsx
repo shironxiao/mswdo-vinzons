@@ -2,17 +2,9 @@
 // Provides React context for the selected evacuation event across Admin pages.
 // Utilizes evacuationEventService to fetch active event and list of all events.
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getActiveEvent, getAllEvents, createEvent, concludeEvent } from '../lib/evacuationEventService';
-
-export const EventContext = createContext({
-  selectedEvent: null,
-  setSelectedEvent: () => {},
-  allEvents: [],
-  refreshEvents: () => {},
-  startNewEvent: async () => {},
-  concludeCurrentEvent: async () => {},
-});
+import { EventContext } from './eventContext.js';
 
 export const EventProvider = ({ children }) => {
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -21,10 +13,9 @@ export const EventProvider = ({ children }) => {
   const fetchEvents = useCallback(async () => {
     const active = await getActiveEvent();
     const past = await getAllEvents();
-    // Ensure active event is first in list
-    const sorted = [active, ...past.filter(e => e.id !== active.id)];
+    const sorted = [active, ...past.filter((event) => event.id !== active.id)];
     setAllEvents(sorted);
-    setSelectedEvent(active);
+    setSelectedEvent((selected) => sorted.find((event) => event.id === selected?.id) || active);
   }, []);
 
   useEffect(() => {
@@ -48,11 +39,14 @@ export const EventProvider = ({ children }) => {
     await fetchEvents();
   };
 
+  const isReadOnly = selectedEvent?.status !== 'Active';
+
   return (
     <EventContext.Provider
       value={{
         selectedEvent,
         setSelectedEvent,
+        isReadOnly,
         allEvents,
         refreshEvents,
         startNewEvent,

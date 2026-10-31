@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layouts/admin/AdminLayout';
-import { EventProvider } from './context/EventContext';
+import { EventProvider } from './context/EventContext.jsx';
 import MobileLayout from './layouts/mobile/MobileLayout';
 
 // Admin Pages

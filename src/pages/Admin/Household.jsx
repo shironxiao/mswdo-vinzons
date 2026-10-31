@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
   CheckCircle2, Clock, Users, ChevronLeft, ChevronRight,
-  ChevronDown, LogOut,
+  ChevronDown, LogOut, FileSpreadsheet,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import checkIcon from '../../assets/check.png';
@@ -13,21 +13,24 @@ import './AdminHousehold.css';
 import {
   useEvacuationCenters,
   isCenterMatch,
+  getRoomsForCenter,
 } from '../../lib/evacuationCenters.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import {
-  CenterSelectSheet,
-  RoomSelectSheet,
   CategorySelectSheet,
 } from '../../components/CenterSelectSheet.jsx';
 import {
   useHouseholds,
+  useEventRoomPlacements,
   createHousehold,
   updateHousehold,
   issueHouseholdStub,
   decampHousehold,
+  checkInHousehold,
 } from '../../lib/householdService.js';
-import { useActiveEvent } from '../../lib/evacuationEventService.js';
+import { useRooms } from '../../lib/roomService.js';
+import { EventContext } from '../../context/eventContext.js';
+import { importMasterlist, downloadMasterlistTemplate } from '../../lib/masterlistImport.js';
 
 /* ──────────────────────────────────────────────
    Seed Data (synced with mobile structure)
@@ -387,7 +390,7 @@ function printStub(household) {
 /* ──────────────────────────────────────────────
    Stub Issuance Modal
    ────────────────────────────────────────────── */
-function StubIssuanceModal({ household, households, onIssue, onDecamp, onClose }) {
+function StubIssuanceModal({ household, households, onIssue, onDecamp, readOnly = false, onClose }) {
   const duplicates = household.members
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
@@ -542,15 +545,19 @@ function StubIssuanceModal({ household, households, onIssue, onDecamp, onClose }
           <button
             type="button"
             className="vin-admin-big-issue-btn"
-            disabled={alreadyIssued}
-            onClick={() => !alreadyIssued && onIssue(household.id)}
+            disabled={alreadyIssued || readOnly}
+            onClick={() => !alreadyIssued && !readOnly && onIssue(household.id)}
           >
             <Ticket size={20} />
-            {alreadyIssued ? 'Relief Stub Already Issued' : 'Issue Relief Stub Now'}
+            {readOnly
+              ? 'Historical Event — Read Only'
+              : alreadyIssued
+              ? 'Relief Stub Already Issued'
+              : 'Issue Relief Stub Now'}
           </button>
 
           {/* Decamp action */}
-          {!isDecamped && onDecamp && (
+          {!readOnly && !isDecamped && onDecamp && (
             <button
               type="button"
               style={{
@@ -610,7 +617,9 @@ function StubIssuanceModal({ household, households, onIssue, onDecamp, onClose }
 export default function Household() {
   const { centers } = useEvacuationCenters();
   const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
-  const { activeEvent } = useActiveEvent();
+  const { rooms: databaseRooms } = useRooms(centers);
+  const { selectedEvent, isReadOnly } = useContext(EventContext);
+  const { placements, refresh: refreshPlacements } = useEventRoomPlacements(selectedEvent?.id);
 
   const [activeTab, setActiveTab] = useState('active');        // 'active' | 'masterlist'
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
@@ -621,11 +630,18 @@ export default function Household() {
   const pageSize = 8;
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
+  const [checkInTarget, setCheckInTarget] = useState(null);
+  const [checkInCenterId, setCheckInCenterId] = useState('');
+  const [checkInRoom, setCheckInRoom] = useState('');
+  const [checkInError, setCheckInError] = useState('');
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState('');
+  const [importError, setImportError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
 
-  /* ── Form pickers for register/edit ── */
-  const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
-  const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
+  /* ── Form picker for vulnerabilities ── */
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
 
   const [activeForm, setActiveForm] = useState({
@@ -633,18 +649,51 @@ export default function Household() {
     head: '',
     age: '',
     sex: 'Male',
-    center: 'LGU EC (Mangcaway)',
-    room: 'Room 1',
+    barangay: '',
+    purok: '',
+    center: 'Unassigned Center',
+    room: 'Unassigned',
     vulnerabilities: [],
     members: [],
   });
 
+  const currentEventPlacements = useMemo(
+    () => placements.filter((placement) => placement.event_id === selectedEvent?.id),
+    [placements, selectedEvent?.id]
+  );
+  const eventHouseholds = useMemo(() => currentEventPlacements
+    .map((placement) => {
+      const household = households.find((item) => item.id === placement.household_id);
+      if (!household) return null;
+      const center = centers.find((item) => item.id === placement.center_id);
+      const room = databaseRooms.find((item) => item.id === placement.room_id);
+      return {
+        ...household,
+        center: center?.displayName || center?.name || household.center,
+        room: room?.roomName || household.room,
+        evacueeStatus: placement.status === 'Evacuated' ? 'Active' : 'Decamped',
+        placementId: placement.id,
+        eventId: placement.event_id,
+      };
+    })
+    .filter(Boolean), [currentEventPlacements, households, centers, databaseRooms]);
+
+  const activeEventHouseholds = useMemo(
+    () => eventHouseholds.filter((household) => household.evacueeStatus === 'Active'),
+    [eventHouseholds]
+  );
+  const householdAlreadyPlaced = useMemo(
+    () => new Set(currentEventPlacements
+      .filter((placement) => placement.status === 'Evacuated')
+      .map((placement) => placement.household_id)),
+    [currentEventPlacements]
+  );
+
   /* ── Filter logic ── */
-  const filtered = households.filter((h) => {
-    // If on active evacuees tab, filter out decamped
-    if (activeTab === 'active' && h.evacueeStatus === 'Decamped') {
-      return false;
-    }
+  const sourceHouseholds = activeTab === 'active'
+    ? (isReadOnly ? eventHouseholds : activeEventHouseholds)
+    : households;
+  const filtered = sourceHouseholds.filter((h) => {
     const matchStub =
       filterStub === 'All' ||
       (filterStub === 'Issued' && h.stubIssued) ||
@@ -662,10 +711,10 @@ export default function Household() {
   });
 
   const totalCount = households.length;
-  const activeEvacueesCount = households.filter((h) => h.evacueeStatus !== 'Decamped').length;
-  const issuedCount = households.filter((h) => h.stubIssued).length;
-  const pendingCount = activeEvacueesCount - households.filter((h) => h.stubIssued && h.evacueeStatus !== 'Decamped').length;
-  const filteredIssued = filtered.filter((h) => h.stubIssued);
+  const activeEvacueesCount = activeEventHouseholds.length;
+  const issuedCount = activeEventHouseholds.filter((h) => h.stubIssued).length;
+  const pendingCount = Math.max(0, activeEvacueesCount - issuedCount);
+  const filteredIssued = filtered.filter((h) => h.stubIssued && h.evacueeStatus !== 'Decamped');
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -673,33 +722,79 @@ export default function Household() {
 
   /* ── Issue stub ── */
   const issueStub = async (hhId) => {
-    // Optimistic UI update
-    setHouseholds((prev) =>
-      prev.map((h) => (h.id === hhId ? { ...h, stubIssued: true } : h))
-    );
+    if (isReadOnly) return;
     try {
       await issueHouseholdStub(hhId);
-      refreshHouseholds();
+      await refreshHouseholds();
     } catch (err) {
-      console.warn('Could not sync stub issuance to Supabase:', err);
+      setActionError(`Could not issue relief stub: ${err.message || 'Unknown error'}`);
     }
   };
 
   /* ── Decamp household ── */
   const handleDecamp = async (hhId) => {
-    setHouseholds((prev) =>
-      prev.map((h) => (h.id === hhId ? { ...h, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : h))
-    );
-    if (selectedHousehold && selectedHousehold.id === hhId) {
-      setSelectedHousehold((prev) =>
-        prev ? { ...prev, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : null
-      );
-    }
+    if (isReadOnly || !selectedEvent?.id) return;
+    if (!window.confirm('Decamp this family from the selected evacuation operation?')) return;
     try {
-      await decampHousehold(hhId);
-      refreshHouseholds();
+      await decampHousehold(hhId, selectedEvent.id);
+      setSelectedHousehold(null);
+      await Promise.all([refreshHouseholds(), refreshPlacements()]);
     } catch (err) {
-      console.warn('Could not sync decamp to Supabase:', err);
+      setActionError(`Could not decamp household: ${err.message || 'Unknown error'}`);
+    }
+  };
+
+  const openCheckIn = (household, event) => {
+    event.stopPropagation();
+    const firstCenter = centers[0];
+    setCheckInTarget(household);
+    setCheckInCenterId(firstCenter?.id || '');
+    setCheckInRoom(getRoomsForCenter(firstCenter?.id, centers).find((room) => room !== 'All Rooms') || '');
+    setCheckInError('');
+  };
+
+  const handleCheckIn = async (event) => {
+    event.preventDefault();
+    if (isReadOnly || !selectedEvent?.id) {
+      setCheckInError('Select the active evacuation operation before checking in a household.');
+      return;
+    }
+
+    setIsCheckingIn(true);
+    setCheckInError('');
+    try {
+      await checkInHousehold({
+        householdId: checkInTarget.id,
+        centerId: checkInCenterId,
+        roomName: checkInRoom,
+        eventId: selectedEvent.id,
+      });
+      setCheckInTarget(null);
+      await Promise.all([refreshHouseholds(), refreshPlacements()]);
+    } catch (err) {
+      setCheckInError(err.message || 'Could not check in this household.');
+    } finally {
+      setIsCheckingIn(false);
+    }
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setIsImporting(true);
+    setImportMessage('');
+    setImportError('');
+    try {
+      const importedCount = await importMasterlist(file);
+      await refreshHouseholds();
+      setActiveTab('masterlist');
+      setImportMessage(`${importedCount} household${importedCount === 1 ? '' : 's'} imported successfully.`);
+    } catch (err) {
+      setImportError(err.message || 'Could not import the Excel masterlist.');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -713,14 +808,15 @@ export default function Household() {
 
   /* ── Register / Edit Form Handlers ── */
   const openRegister = () => {
-    const defaultCenter = centers[0]?.displayName || centers[0]?.name || 'LGU EC (Mangcaway)';
     setActiveForm({
       id: `HH-00${households.length + 1}`,
       head: '',
       age: '',
       sex: 'Male',
-      center: defaultCenter,
-      room: 'Room 1',
+      barangay: '',
+      purok: '',
+      center: 'Unassigned Center',
+      room: 'Unassigned',
       vulnerabilities: [],
       members: [],
     });
@@ -734,8 +830,10 @@ export default function Household() {
       head: item.name,
       age: item.age || 40,
       sex: item.sex || 'Male',
-      center: item.center || 'LGU EC (Mangcaway)',
-      room: item.room || 'Room 1',
+      barangay: item.barangay === 'Unassigned' ? '' : item.barangay,
+      purok: item.purok === 'Unassigned' ? '' : item.purok,
+      center: 'Unassigned Center',
+      room: 'Unassigned',
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
       members: item.members || [],
     });
@@ -755,8 +853,10 @@ export default function Household() {
         name: activeForm.head,
         age: Number(activeForm.age) || 35,
         sex: activeForm.sex,
-        center: activeForm.center,
-        room: activeForm.room,
+        barangay: activeForm.barangay || 'Unassigned',
+        purok: activeForm.purok || 'Unassigned',
+        center: 'Unassigned Center',
+        room: 'Unassigned',
         vulnerabilities: activeForm.vulnerabilities || [],
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
@@ -793,8 +893,8 @@ export default function Household() {
                 name: activeForm.head,
                 age: Number(activeForm.age) || h.age,
                 sex: activeForm.sex,
-                center: activeForm.center,
-                room: activeForm.room,
+                barangay: activeForm.barangay || 'Unassigned',
+                purok: activeForm.purok || 'Unassigned',
                 vulnerabilities: activeForm.vulnerabilities || [],
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
@@ -806,7 +906,7 @@ export default function Household() {
 
       // Async update in Supabase
       try {
-        await updateHousehold(activeForm.id, activeForm, centers);
+        await updateHousehold(activeForm.id, activeForm, centers, { preservePlacement: true });
         refreshHouseholds();
       } catch (err) {
         console.warn('Could not update household in Supabase:', err);
@@ -841,6 +941,26 @@ export default function Household() {
         </div>
 
         <div className="vin-admin-hh-header-actions">
+          <label className="vin-admin-btn-register" style={{ cursor: isImporting ? 'wait' : 'pointer' }}>
+            <FileSpreadsheet size={18} />
+            <span>{isImporting ? 'Importing…' : 'Import Excel Masterlist'}</span>
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleImportFile}
+              disabled={isImporting}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <button
+            type="button"
+            className="vin-admin-tile-edit-btn"
+            onClick={downloadMasterlistTemplate}
+            title="Download the Excel import template"
+            aria-label="Download masterlist import template"
+          >
+            <FileSpreadsheet size={16} />
+          </button>
           <button
             type="button"
             className="vin-admin-btn-register"
@@ -855,11 +975,20 @@ export default function Household() {
       {/* ── Active Operation & View Tabs ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#f5f3ff', border: '1px solid #ddd6fe', padding: '6px 14px', borderRadius: 20 }}>
-          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#16a34a' }} />
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: isReadOnly ? '#94a3b8' : '#16a34a' }} />
           <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#6b21a8' }}>
-            Operation: {activeEvent?.event_name || 'Active Evacuation Operation'}
+            {isReadOnly ? 'Historical Operation: ' : 'Active Operation: '}
+            {selectedEvent?.event_name || 'No operation selected'}
           </span>
         </div>
+        {isReadOnly && (
+          <span role="status" style={{ color: '#92400e', fontSize: '.82rem', fontWeight: 700 }}>
+            Event data is read-only. Masterlist profiles remain editable.
+          </span>
+        )}
+        {importMessage && <span role="status" style={{ color: '#15803d', fontSize: '.82rem', fontWeight: 700 }}>{importMessage}</span>}
+        {importError && <span role="alert" style={{ color: '#b91c1c', fontSize: '.82rem', fontWeight: 700 }}>{importError}</span>}
+        {actionError && <span role="alert" style={{ color: '#b91c1c', fontSize: '.82rem', fontWeight: 700 }}>{actionError}</span>}
 
         <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: 4, borderRadius: 10, gap: 4 }}>
           <button
@@ -878,7 +1007,7 @@ export default function Household() {
               transition: 'all 0.15s ease',
             }}
           >
-            Active Evacuees ({activeEvacueesCount})
+            {isReadOnly ? 'Event Evacuees' : 'Active Evacuees'} ({isReadOnly ? eventHouseholds.length : activeEvacueesCount})
           </button>
           <button
             type="button"
@@ -896,7 +1025,7 @@ export default function Household() {
               transition: 'all 0.15s ease',
             }}
           >
-            Resident Masterlist ({totalCount})
+            Masterlist Registry ({totalCount})
           </button>
         </div>
       </div>
@@ -1006,74 +1135,120 @@ export default function Household() {
           <thead>
             <tr>
               <th>HEAD OF FAMILY</th>
-              <th>CENTER</th>
-              <th>ROOM</th>
-              <th>MEMBERS</th>
-              <th>STUB CODE</th>
-              <th>STUB STATUS</th>
+              {activeTab === 'active' ? (
+                <>
+                  <th>CENTER</th>
+                  <th>ROOM</th>
+                  <th>MEMBERS</th>
+                  <th>STUB CODE</th>
+                  <th>STUB STATUS</th>
+                </>
+              ) : (
+                <>
+                  <th>BARANGAY</th>
+                  <th>PUROK / SITIO</th>
+                  <th>MEMBERS</th>
+                  <th>VULNERABILITIES</th>
+                </>
+              )}
               <th style={{ textAlign: 'right' }}>ACTION</th>
             </tr>
           </thead>
           <tbody>
             {paginatedHouseholds.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  No households match the current search &amp; filter criteria.
+                <td colSpan={activeTab === 'active' ? 7 : 6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  {activeTab === 'active' && !isReadOnly && eventHouseholds.length === 0
+                    ? 'No households are checked in to this operation yet. Use the Masterlist Registry to check in a family.'
+                    : 'No households match the current search &amp; filter criteria.'}
                 </td>
               </tr>
             ) : (
               paginatedHouseholds.map((item) => (
                 <tr
                   key={item.id}
-                  onClick={() => setSelectedHousehold(item)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={activeTab === 'active' ? () => setSelectedHousehold(item) : undefined}
+                  style={{ cursor: activeTab === 'active' ? 'pointer' : 'default' }}
                 >
                   <td style={{ fontWeight: 700 }}>{item.name}</td>
-                  <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
-                      <Building size={14} color="#7c3aed" />
-                      {item.center}
-                    </span>
-                  </td>
-                  <td>{item.room}</td>
-                  <td>{item.familyCount} persons</td>
-                  <td>
-                    {item.stubCode ? (
-                      <strong style={{ color: '#6b21a8', letterSpacing: 0.5 }}>{item.stubCode}</strong>
-                    ) : (
-                      <span style={{ color: '#94a3b8' }}>--</span>
-                    )}
-                  </td>
-                  <td>
-                    {item.evacueeStatus === 'Decamped' ? (
-                      <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <LogOut size={12} /> Decamped
-                      </span>
-                    ) : (
-                      <span className={item.stubIssued ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                        <img
-                          src={item.stubIssued ? checkIcon : removeIcon}
-                          alt=""
-                          className="vin-badge-img-icon"
-                        />
-                        <span>{item.stubIssued ? 'Issued' : 'Not Issued'}</span>
-                      </span>
-                    )}
-                  </td>
+                  {activeTab === 'active' ? (
+                    <>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+                          <Building size={14} color="#7c3aed" />
+                          {item.center}
+                        </span>
+                      </td>
+                      <td>{item.room}</td>
+                      <td>{item.familyCount} persons</td>
+                      <td>
+                        {item.stubCode
+                          ? <strong style={{ color: '#6b21a8', letterSpacing: 0.5 }}>{item.stubCode}</strong>
+                          : <span style={{ color: '#94a3b8' }}>--</span>}
+                      </td>
+                      <td>
+                        {item.evacueeStatus === 'Decamped' ? (
+                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <LogOut size={12} /> Decamped
+                          </span>
+                        ) : (
+                          <span className={item.stubIssued ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
+                            <img src={item.stubIssued ? checkIcon : removeIcon} alt="" className="vin-badge-img-icon" />
+                            <span>{item.stubIssued ? 'Issued' : 'Not Issued'}</span>
+                          </span>
+                        )}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{item.barangay || 'Unassigned'}</td>
+                      <td>{item.purok || 'Unassigned'}</td>
+                      <td>{item.familyCount} persons</td>
+                      <td>{item.vulnerabilities?.length ? item.vulnerabilities.join(', ') : 'None recorded'}</td>
+                    </>
+                  )}
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        className={`vin-admin-tile-action-btn ${
-                          item.stubIssued ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedHousehold(item);
-                        }}
-                      >
-                        {item.stubIssued ? 'View QR' : 'Issue Stub'} →
-                      </button>
+                      {activeTab === 'active' ? (
+                        <>
+                          <button
+                            type="button"
+                            className={`vin-admin-tile-action-btn ${
+                              item.stubIssued ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedHousehold(item);
+                            }}
+                          >
+                            {item.stubIssued ? 'View QR' : 'Issue Stub'} →
+                          </button>
+                          {!isReadOnly && item.evacueeStatus !== 'Decamped' && (
+                            <button
+                              type="button"
+                              className="vin-btn-cancel"
+                              style={{ padding: '7px 10px', fontSize: '.76rem' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDecamp(item.id);
+                              }}
+                            >
+                              Decamp
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        !isReadOnly && (
+                          <button
+                            type="button"
+                            className="vin-admin-tile-action-btn vin-admin-tile-action-btn--issue"
+                            disabled={householdAlreadyPlaced.has(item.id)}
+                            onClick={(e) => openCheckIn(item, e)}
+                          >
+                            {householdAlreadyPlaced.has(item.id) ? 'Checked In' : 'Check-In / Assign Room'} →
+                          </button>
+                        )
+                      )}
                       <button
                         type="button"
                         className="vin-admin-tile-edit-btn"
@@ -1144,8 +1319,67 @@ export default function Household() {
           households={households}
           onIssue={issueStub}
           onDecamp={handleDecamp}
+          readOnly={isReadOnly}
           onClose={() => setSelectedHousehold(null)}
         />
+      )}
+
+      {checkInTarget && (
+        <div className="vin-admin-modal-overlay" onClick={() => setCheckInTarget(null)}>
+          <div className="vin-admin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-admin-modal-header">
+              <div>
+                <h2 className="vin-admin-modal-title">Check-In / Assign Room</h2>
+                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '.84rem' }}>
+                  {checkInTarget.name} • {selectedEvent?.event_name || 'No active operation'}
+                </p>
+              </div>
+              <button type="button" className="vin-admin-modal-close-btn" onClick={() => setCheckInTarget(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCheckIn} className="vin-admin-modal-body">
+              <div className="vin-admin-form-group">
+                <label className="vin-admin-form-label" htmlFor="check-in-center">EVACUATION CENTER</label>
+                <select
+                  id="check-in-center"
+                  className="vin-admin-form-select"
+                  value={checkInCenterId}
+                  onChange={(e) => {
+                    setCheckInCenterId(e.target.value);
+                    setCheckInRoom(getRoomsForCenter(e.target.value, centers).find((room) => room !== 'All Rooms') || '');
+                  }}
+                  required
+                >
+                  {centers.map((center) => (
+                    <option key={center.id} value={center.id}>{center.displayName || center.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="vin-admin-form-group">
+                <label className="vin-admin-form-label" htmlFor="check-in-room">ROOM / AREA</label>
+                <select
+                  id="check-in-room"
+                  className="vin-admin-form-select"
+                  value={checkInRoom}
+                  onChange={(e) => setCheckInRoom(e.target.value)}
+                  required
+                >
+                  {getRoomsForCenter(checkInCenterId, centers)
+                    .filter((room) => room !== 'All Rooms')
+                    .map((room) => <option key={room} value={room}>{room}</option>)}
+                </select>
+              </div>
+              {checkInError && <p role="alert" style={{ color: '#b91c1c', margin: 0 }}>{checkInError}</p>}
+              <div className="vin-modal-actions">
+                <button type="button" className="vin-btn-cancel" onClick={() => setCheckInTarget(null)}>Cancel</button>
+                <button type="submit" className="vin-btn-submit" disabled={isCheckingIn || isReadOnly}>
+                  {isCheckingIn ? 'Checking In…' : 'Confirm Check-In'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* ── Register / Edit Household Modal ── */}
@@ -1204,30 +1438,24 @@ export default function Household() {
 
               <div className="vin-admin-form-row">
                 <div className="vin-admin-form-group">
-                  <label className="vin-admin-form-label">EVACUATION CENTER</label>
-                  <div
-                    className="vin-hh-filter-tap-field"
-                    onClick={() => setShowFormCenterPicker(true)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormCenterPicker(true)}
-                  >
-                    <div className="vin-hh-filter-select-display-txt">{activeForm.center}</div>
-                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
-                  </div>
+                  <label className="vin-admin-form-label">BARANGAY</label>
+                  <input
+                    type="text"
+                    placeholder="Barangay"
+                    className="vin-admin-form-input"
+                    value={activeForm.barangay}
+                    onChange={(e) => setActiveForm({ ...activeForm, barangay: e.target.value })}
+                  />
                 </div>
                 <div className="vin-admin-form-group">
-                  <label className="vin-admin-form-label">ROOM NUMBER / AREA</label>
-                  <div
-                    className="vin-hh-filter-tap-field"
-                    onClick={() => setShowFormRoomPicker(true)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormRoomPicker(true)}
-                  >
-                    <div className="vin-hh-filter-select-display-txt">{activeForm.room || 'Room 1'}</div>
-                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
-                  </div>
+                  <label className="vin-admin-form-label">PUROK / SITIO</label>
+                  <input
+                    type="text"
+                    placeholder="Purok or sitio"
+                    className="vin-admin-form-input"
+                    value={activeForm.purok}
+                    onChange={(e) => setActiveForm({ ...activeForm, purok: e.target.value })}
+                  />
                 </div>
               </div>
 
@@ -1295,19 +1523,37 @@ export default function Household() {
                         </button>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.9fr 1fr 1.2fr', gap: 8 }}>
                         <input
                           type="number"
                           placeholder="Age"
                           className="vin-admin-form-input"
                           style={{ padding: '6px 10px' }}
-                          value={m.age}
+                          value={m.ageValue ?? m.age ?? ''}
                           onChange={(e) => {
                             const updated = [...activeForm.members];
-                            updated[idx].age = e.target.value;
+                            updated[idx].ageValue = e.target.value;
+                            updated[idx].age = String(updated[idx].ageUnit || 'Years').toLowerCase().startsWith('month')
+                              ? 0
+                              : Number(e.target.value) || 0;
                             setActiveForm({ ...activeForm, members: updated });
                           }}
                         />
+                        <select
+                          className="vin-admin-form-select"
+                          style={{ padding: '6px 8px' }}
+                          value={m.ageUnit || 'Years'}
+                          onChange={(e) => {
+                            const updated = [...activeForm.members];
+                            updated[idx].ageUnit = e.target.value;
+                            updated[idx].age = e.target.value === 'Months' ? 0 : Number(updated[idx].ageValue || 0);
+                            setActiveForm({ ...activeForm, members: updated });
+                          }}
+                        >
+                          <option value="Years">Years</option>
+                          <option value="Months">Months</option>
+                          <option value="Days">Days</option>
+                        </select>
                         <select
                           className="vin-admin-form-select"
                           style={{ padding: '6px 10px' }}
@@ -1380,38 +1626,6 @@ export default function Household() {
         }}
         onClose={() => setShowFilterModal(false)}
       />
-
-      {/* ── ADMIN FORM CENTER PICKER ── */}
-      {showFormCenterPicker && (
-        <CenterSelectSheet
-          selected={activeForm.center}
-          centersList={centers}
-          showAllOption={false}
-          allCentersSub="Select the evacuation center for this household"
-          onSelect={(c) => {
-            setActiveForm((prev) => ({ ...prev, center: c, room: 'Room 1' }));
-            setShowFormCenterPicker(false);
-          }}
-          onClose={() => setShowFormCenterPicker(false)}
-        />
-      )}
-
-      {/* ── ADMIN FORM ROOM PICKER ── */}
-      {showFormRoomPicker && (
-        <RoomSelectSheet
-          selected={activeForm.room}
-          centerName={activeForm.center}
-          centersList={centers}
-          showAllOption={false}
-          includeUnassigned={true}
-          allRoomsSub="Select the room at this evacuation center"
-          onSelect={(r) => {
-            setActiveForm((prev) => ({ ...prev, room: r }));
-            setShowFormRoomPicker(false);
-          }}
-          onClose={() => setShowFormRoomPicker(false)}
-        />
-      )}
 
       {/* ── ADMIN FORM CATEGORY PICKER ── */}
       {showFormCategoryPicker && (

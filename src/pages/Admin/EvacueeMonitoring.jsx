@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import {
   CheckCircle2, Clock, Building, ChevronLeft, ChevronRight,
   AlertTriangle, Users, XCircle, X, Eye, RefreshCw
@@ -9,15 +9,18 @@ import {
   useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
-import { useHouseholds } from '../../lib/householdService.js';
+import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
 import { useMonitoringLogs } from '../../lib/monitoringService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
+import { EventContext } from '../../context/eventContext.js';
 
 const STATUSES = ['All Status', 'Present', 'For Follow-up', 'Transferred', 'Absent'];
 
 export default function EvacueeMonitoring() {
+  const { selectedEvent } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
   const { households } = useHouseholds(centers);
+  const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const { logs, refresh: refreshLogs, loading: loadingLogs } = useMonitoringLogs(centers);
 
   const [filterCenter, setFilterCenter] = useState('All Centers');
@@ -28,13 +31,33 @@ export default function EvacueeMonitoring() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
+  const eventHouseholds = useMemo(() => placements
+    .filter((placement) => placement.event_id === selectedEvent?.id)
+    .map((placement) => {
+      const household = households.find((item) => item.id === placement.household_id);
+      if (!household) return null;
+      const center = centers.find((item) => item.id === placement.center_id);
+      return {
+        ...household,
+        center: center?.displayName || center?.name || household.center,
+        eventPlacement: placement,
+      };
+    })
+    .filter(Boolean), [placements, selectedEvent?.id, households, centers]);
+
   // Derive monitoring verification records combining live Supabase logs & registered households
   const monitoringRecords = useMemo(() => {
-    if (!households || households.length === 0) return [];
+    if (!eventHouseholds.length) return [];
 
-    return households.map((h, index) => {
-      // Find most recent log for this household
-      const latestLog = logs?.find((l) => l.householdId === h.id);
+    return eventHouseholds.map((h, index) => {
+      const placement = h.eventPlacement;
+      const latestLog = logs?.find((log) => {
+        if (log.householdId !== h.id || !log.createdAt) return false;
+        const time = new Date(log.createdAt).getTime();
+        const checkedInAt = placement.check_in_at ? new Date(placement.check_in_at).getTime() : 0;
+        const checkedOutAt = placement.check_out_at ? new Date(placement.check_out_at).getTime() : Infinity;
+        return time >= checkedInAt && time <= checkedOutAt;
+      });
 
       const centerObj = centers.find((c) => c.displayName === h.center || isCenterMatch(h.center, c.displayName, centers));
       const code = centerObj
@@ -109,7 +132,7 @@ export default function EvacueeMonitoring() {
         rawLog: null,
       };
     });
-  }, [households, logs, centers]);
+  }, [eventHouseholds, logs, centers]);
 
   // Aggregate KPI summary metrics
   const stats = useMemo(() => {
@@ -209,7 +232,7 @@ export default function EvacueeMonitoring() {
           <span className="vin-feature-eyebrow">DAILY VERIFICATION & HEADCOUNT</span>
           <h1 className="vin-feature-title">Evacuee Monitoring</h1>
           <p className="vin-feature-desc">
-            Track evacuee presence, absent members, and follow-ups across 2–3 hour inspection rounds.
+            Track presence for {selectedEvent?.event_name || 'the selected operation'} across 2–3 hour inspection rounds.
           </p>
         </div>
         <div className="vin-feature-header-right">

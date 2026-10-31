@@ -231,6 +231,207 @@
   font-weight: 500;
 }
 
+.dromic-report-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.dromic-report-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dromic-report-heading h2 {
+  margin: 4px 0;
+  color: #0f172a;
+  font-size: 1.4rem;
+}
+
+.dromic-report-heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.dromic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dromic-actions .vin-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.dromic-print-btn {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.dromic-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.dromic-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.dromic-form-grid input,
+.dromic-form-grid select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.84rem;
+  background: #fff;
+}
+
+.dromic-preview-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.dromic-meta-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) minmax(200px, 1fr) minmax(120px, 200px);
+  border-top: 1px solid #cbd5e1;
+  border-left: 1px solid #cbd5e1;
+}
+
+.dromic-meta-grid > * {
+  min-height: 28px;
+  padding: 6px 8px;
+  border-right: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
+  color: #111827;
+  font-size: 0.76rem;
+}
+
+.dromic-meta-grid strong {
+  font-weight: 800;
+}
+
+.dromic-meta-grid strong:nth-child(3) {
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.dromic-table-wrap {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid #111;
+}
+
+.dromic-table-wrap.is-open {
+  max-height: min(70vh, 760px);
+}
+
+.dromic-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.dromic-table th,
+.dromic-table td {
+  min-width: 28px;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid #111;
+  text-align: center;
+  color: #111;
+  font-size: 0.66rem;
+}
+
+.dromic-table thead th {
+  background: #ffe699;
+  font-weight: 800;
+}
+
+.dromic-table thead tr:first-child th:not(.family-name):not(.age-band) {
+  min-width: 30px;
+  height: 145px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: normal;
+}
+
+.dromic-table thead th.age-band {
+  height: 34px;
+  background: #fff2cc;
+}
+
+.dromic-table thead tr:nth-child(2) th:not([colspan="2"]) {
+  height: 110px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.dromic-table thead th.family-name {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-width: 220px;
+  background: #c6e0b4;
+  vertical-align: middle;
+}
+
+.dromic-table tbody td {
+  background: #fff;
+}
+
+.dromic-table tbody td:nth-child(2n + 1):not(:first-child) {
+  background: #ddebf7;
+}
+
+.dromic-table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 220px;
+  background: #fff;
+  text-align: left;
+  font-weight: 600;
+}
+
+.dromic-expand-btn {
+  align-self: flex-start;
+  padding: 7px 12px;
+  border: 1px solid #ddd6fe;
+  border-radius: 8px;
+  background: #f5f3ff;
+  color: #6b21a8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* Download Button */
 .vin-download-btn {
   background-color: #dfb235;
@@ -266,5 +467,23 @@
   }
   .vin-reports-table-card {
     overflow-x: auto;
+  }
+  .dromic-report-card {
+    padding: 14px;
+  }
+  .dromic-report-heading {
+    flex-direction: column;
+  }
+  .dromic-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .dromic-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .dromic-meta-grid {
+    grid-template-columns: 150px minmax(160px, 1fr) 120px;
   }
 }

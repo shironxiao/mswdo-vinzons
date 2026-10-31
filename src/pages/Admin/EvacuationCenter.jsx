@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import {
   MapPin, Plus, X, ChevronLeft, ChevronRight, Search,
   Building, Edit3, DoorOpen, CheckCircle2, Save, Info,
@@ -8,9 +8,16 @@ import './AdminFeatures.css';
 import { useEvacuationCenters, updateEvacuationCenter } from '../../lib/evacuationCenters.js';
 import { supabase } from '../../lib/supabase.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
+import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
+import { useRooms } from '../../lib/roomService.js';
+import { EventContext } from '../../context/eventContext.js';
 
 export default function EvacuationCenter() {
+  const { selectedEvent } = useContext(EventContext);
   const { centers: dbCenters, refetch } = useEvacuationCenters();
+  const { households } = useHouseholds(dbCenters);
+  const { rooms: databaseRooms } = useRooms(dbCenters);
+  const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -45,9 +52,34 @@ export default function EvacuationCenter() {
     return 'Available';
   };
 
+  const centers = useMemo(() => {
+    const activePlacements = placements.filter((placement) =>
+      placement.event_id === selectedEvent?.id && placement.status === 'Evacuated'
+    );
+
+    return dbCenters.map((center) => ({
+      ...center,
+      rooms: (center.rooms || []).map((room) => {
+        const databaseRoom = databaseRooms.find((item) =>
+          item.centerId === center.id &&
+          (item.roomName === room.id || item.roomName === room.name)
+        );
+        const occupied = databaseRoom
+          ? activePlacements
+              .filter((placement) => placement.room_id === databaseRoom.id)
+              .reduce((sum, placement) => {
+                const household = households.find((item) => item.id === placement.household_id);
+                return sum + (household?.familyCount || 1);
+              }, 0)
+          : 0;
+        return { ...room, occupied };
+      }),
+    }));
+  }, [dbCenters, databaseRooms, households, placements, selectedEvent?.id]);
+
   /* Filter and dynamic alphabetical sorting */
   const filtered = useMemo(() => {
-    return (dbCenters || [])
+    return centers
       .filter((center) => {
         const q = search.trim().toLowerCase();
         const matchSearch =
@@ -81,7 +113,7 @@ export default function EvacuationCenter() {
           { sensitivity: 'base', numeric: true }
         )
       );
-  }, [dbCenters, search, filterStatus, filterRoom]);
+  }, [centers, search, filterStatus, filterRoom]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -128,7 +160,7 @@ export default function EvacuationCenter() {
           <span className="vin-evac-eyebrow">OPERATION REGISTRY</span>
           <h1 className="vin-evac-title">Evacuation Centers</h1>
           <p className="vin-evac-desc">
-            Alphabetical directory of official evacuation centers and capacity in Vinzons
+            Live room capacity based on active placements for {selectedEvent?.event_name || 'the selected operation'}.
           </p>
         </div>
 

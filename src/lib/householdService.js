@@ -221,6 +221,43 @@ export function useHouseholds(centersList = []) {
   };
 }
 
+export function useEventRoomPlacements(eventId) {
+  const [placements, setPlacements] = useState([]);
+
+  const fetchPlacements = useCallback(async () => {
+    if (!eventId || eventId === 'default-active-event') return;
+
+    try {
+      const { data, error: placementError } = await supabase
+        .from('room_placements')
+        .select('id, household_id, center_id, room_id, event_id, status, check_in_at, check_out_at')
+        .eq('event_id', eventId)
+        .order('check_in_at', { ascending: false });
+
+      if (placementError) throw placementError;
+      setPlacements(data || []);
+    } catch (placementError) {
+      console.error('Could not load evacuation placements:', placementError);
+    }
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!eventId || eventId === 'default-active-event') return undefined;
+    fetchPlacements();
+
+    const channel = supabase
+      .channel(`room-placements-${eventId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_placements' }, fetchPlacements)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId, fetchPlacements]);
+
+  return { placements, refresh: fetchPlacements };
+}
+
 /**
  * Register a new household and its members into Supabase
  */
@@ -236,10 +273,6 @@ export async function createHousehold(formData, centersList = []) {
     );
     centerId = found ? found.id : null;
   }
-  if (!centerId && centersList.length > 0) {
-    centerId = centersList[0].id;
-  }
-
   // 2. Resolve room_id
   let roomId = null;
   if (centerId && formData.room && formData.room !== 'Unassigned') {
@@ -296,8 +329,10 @@ export async function createHousehold(formData, centersList = []) {
       .map((m) => ({
         household_id: insertedH.id,
         full_name: m.name.trim(),
-        age: Number(m.ageValue || m.age) || 0,
-        age_value: Number(m.ageValue || m.age) || 0,
+        age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
+          ? 0
+          : Number(m.ageValue ?? m.age) || 0,
+        age_value: Number(m.ageValue ?? m.age) || 0,
         age_unit: m.ageUnit || 'Years',
         sex: m.sex || 'Female',
         relationship_to_head: m.relationship || 'MEMBER',
@@ -338,20 +373,19 @@ export async function createHousehold(formData, centersList = []) {
 /**
  * Update an existing household profile in Supabase
  */
-export async function updateHousehold(id, formData, centersList = []) {
+export async function updateHousehold(id, formData, centersList = [], { preservePlacement = false } = {}) {
   let centerId = formData.centerId;
-  if (!centerId && formData.center) {
-    const found = centersList.find(
-      (c) =>
-        c.id === formData.center ||
-        c.displayName === formData.center ||
-        c.name === formData.center
+  if (!preservePlacement && !centerId && formData.center) {
+    const found = centersList.find((c) =>
+      c.id === formData.center ||
+      c.displayName === formData.center ||
+      c.name === formData.center
     );
     centerId = found ? found.id : null;
   }
 
   let roomId = null;
-  if (centerId && formData.room && formData.room !== 'Unassigned') {
+  if (!preservePlacement && centerId && formData.room && formData.room !== 'Unassigned') {
     const { data: roomData } = await supabase
       .from('rooms')
       .select('id')
@@ -375,11 +409,15 @@ export async function updateHousehold(id, formData, centersList = []) {
     head_name: formData.head,
     head_age: Number(formData.age) || 35,
     head_sex: formData.sex || 'Male',
+    barangay: formData.barangay || 'Unassigned',
+    purok: formData.purok || 'Unassigned',
     vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
     updated_at: new Date().toISOString(),
   };
-  if (centerId) payload.center_id = centerId;
-  payload.room_id = roomId;
+  if (!preservePlacement) {
+    payload.center_id = centerId || null;
+    payload.room_id = roomId;
+  }
 
   const { error: hError } = await supabase.from('households').update(payload).eq('id', id);
   if (hError) throw hError;
@@ -392,8 +430,14 @@ export async function updateHousehold(id, formData, centersList = []) {
       .map((m) => ({
         household_id: id,
         full_name: m.name.trim(),
-        age: Number(m.age) || 0,
+        age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
+          ? 0
+          : Number(m.ageValue ?? m.age) || 0,
+        age_value: Number(m.ageValue ?? m.age) || 0,
+        age_unit: m.ageUnit || 'Years',
         sex: m.sex || 'Female',
+        relationship_to_head: m.relationship || 'MEMBER',
+        is_household_head: Boolean(m.isHead),
         vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }));
 
@@ -425,15 +469,65 @@ export async function issueHouseholdStub(id) {
 /**
  * Check-in an existing household into an evacuation center & room for a disaster event
  */
-export async function checkInHousehold({ householdId, centerId, roomId, eventId = null, stubCode = null }) {
+export async function checkInHousehold({ householdId, centerId, roomId, roomName = null, eventId = null, stubCode = null }) {
+  const { data: existingPlacement, error: existingPlacementError } = await supabase
+    .from('room_placements')
+    .select('id')
+    .eq('household_id', householdId)
+    .eq('event_id', eventId)
+    .eq('status', 'Evacuated')
+    .maybeSingle();
+
+  if (existingPlacementError) throw existingPlacementError;
+  if (existingPlacement) throw new Error('This household is already checked into the selected operation.');
+
+  let resolvedRoomId = roomId;
+  if (!resolvedRoomId && roomName) {
+    const { data: existingRoom, error: roomLookupError } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('center_id', centerId)
+      .eq('room_name', roomName)
+      .maybeSingle();
+
+    if (roomLookupError) throw roomLookupError;
+    if (existingRoom) {
+      resolvedRoomId = existingRoom.id;
+    } else {
+      const { data: newRoom, error: createRoomError } = await supabase
+        .from('rooms')
+        .insert({ center_id: centerId, room_name: roomName, capacity_individuals: 30 })
+        .select('id')
+        .single();
+
+      if (createRoomError) throw createRoomError;
+      resolvedRoomId = newRoom.id;
+    }
+  }
+
+  if (!centerId || !resolvedRoomId) throw new Error('Select an evacuation center and room before checking in.');
+
   const code = stubCode || `STB-${String(Date.now()).slice(-6)}`;
-  
-  // 1. Update master household row
+  const { data: placement, error: placementError } = await supabase
+    .from('room_placements')
+    .insert({
+      household_id: householdId,
+      center_id: centerId,
+      room_id: resolvedRoomId,
+      event_id: eventId,
+      status: 'Evacuated',
+      check_in_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (placementError) throw placementError;
+
   const { error: hErr } = await supabase
     .from('households')
     .update({
       center_id: centerId,
-      room_id: roomId,
+      room_id: resolvedRoomId,
       stub_code: code,
       stub_issued: false,
       evacuee_status: 'Active',
@@ -441,20 +535,13 @@ export async function checkInHousehold({ householdId, centerId, roomId, eventId 
     })
     .eq('id', householdId);
 
-  if (hErr) throw hErr;
-
-  // 2. Insert into room_placements
-  try {
-    await supabase.from('room_placements').insert({
-      household_id: householdId,
-      center_id: centerId,
-      room_id: roomId,
-      event_id: eventId,
-      status: 'Evacuated',
-      check_in_at: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.warn('room_placements insert failed:', err);
+  if (hErr) {
+    const { error: rollbackError } = await supabase
+      .from('room_placements')
+      .delete()
+      .eq('id', placement.id);
+    if (rollbackError) console.error('Could not roll back failed check-in placement:', rollbackError);
+    throw hErr;
   }
 
   // 3. Insert or update relief_goods_stubs
@@ -475,8 +562,20 @@ export async function checkInHousehold({ householdId, centerId, roomId, eventId 
 /**
  * Decamp / Check-out a household from an evacuation center
  */
-export async function decampHousehold(householdId) {
-  // 1. Update household state
+export async function decampHousehold(householdId, eventId = null) {
+  let placementUpdate = supabase
+    .from('room_placements')
+    .update({
+      status: 'Decamped',
+      check_out_at: new Date().toISOString(),
+    })
+    .eq('household_id', householdId)
+    .eq('status', 'Evacuated');
+
+  if (eventId) placementUpdate = placementUpdate.eq('event_id', eventId);
+  const { error: placementError } = await placementUpdate;
+  if (placementError) throw placementError;
+
   const { error: hErr } = await supabase
     .from('households')
     .update({
@@ -486,20 +585,6 @@ export async function decampHousehold(householdId) {
     .eq('id', householdId);
 
   if (hErr) throw hErr;
-
-  // 2. Mark active room_placements as Decamped
-  try {
-    await supabase
-      .from('room_placements')
-      .update({
-        status: 'Decamped',
-        check_out_at: new Date().toISOString(),
-      })
-      .eq('household_id', householdId)
-      .eq('status', 'Evacuated');
-  } catch (err) {
-    console.warn('room_placements update failed:', err);
-  }
 
   return { success: true };
 }
@@ -544,4 +629,3 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
     return [];
   }
 }
-

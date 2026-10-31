@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
-import EventSelector from '../components/EventSelector';
+import EventSelector from '../../components/EventSelector.jsx';
 import './AdminLayout.css';
 
 /**

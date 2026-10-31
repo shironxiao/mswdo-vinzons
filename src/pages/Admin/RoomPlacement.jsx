@@ -1,20 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import { Plus, Building, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
-import { useHouseholds } from '../../lib/householdService.js';
+import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
 import { useRooms, createRoom } from '../../lib/roomService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
+import { EventContext } from '../../context/eventContext.js';
 
 const STATUSES = ['All Status', 'Active', 'Full'];
 
 export default function RoomPlacement() {
+  const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
   const { households } = useHouseholds(centers);
   const { rooms: dbRooms, refresh: refreshRooms } = useRooms(centers);
+  const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
@@ -37,16 +40,20 @@ export default function RoomPlacement() {
 
   // Calculate live room occupancies from Supabase database
   const allRooms = useMemo(() => {
+    const eventPlacements = placements.filter((placement) =>
+      placement.event_id === selectedEvent?.id && placement.status === 'Evacuated'
+    );
+    const occupancyForRoom = (roomId, centerId) => eventPlacements
+      .filter((placement) => placement.room_id === roomId && placement.center_id === centerId)
+      .reduce((sum, placement) => {
+        const household = households.find((item) => item.id === placement.household_id);
+        return sum + (household?.familyCount || 1);
+      }, 0);
+
     // 1. If we have rooms from Supabase dbRooms
     if (dbRooms && dbRooms.length > 0) {
       return dbRooms.map((r) => {
-        // Calculate real occupancy for this room
-        const roomOccupants = households.filter((h) => {
-          const matchC = h.center === r.center || isCenterMatch(h.center, r.center, centers);
-          const matchR = h.room === r.roomName || h.roomId === r.id;
-          return matchC && matchR;
-        });
-        const occupied = roomOccupants.reduce((sum, h) => sum + (h.familyCount || 1), 0);
+        const occupied = occupancyForRoom(r.id, r.centerId);
         const isFull = occupied >= r.capacity;
 
         return {
@@ -65,12 +72,21 @@ export default function RoomPlacement() {
     const list = [];
     centers.forEach((center) => {
       (center.rooms || []).forEach((r) => {
-        const roomOccupants = households.filter((h) => {
-          const matchC = h.center === center.displayName || isCenterMatch(h.center, center.displayName, centers);
-          const matchR = h.room === r.id || h.room === r.name;
-          return matchC && matchR;
+        const roomOccupants = households.filter((household) => {
+        const matchCenter =
+          household.center === center.displayName ||
+          isCenterMatch(household.center, center.displayName, centers);
+        const matchRoom = household.room === r.id || household.room === r.name;
+        return matchCenter && matchRoom;
         });
-        const occupied = roomOccupants.reduce((sum, h) => sum + (h.familyCount || 1), 0);
+        const occupied = roomOccupants.reduce((sum, household) => {
+        const placement = eventPlacements.find((item) =>
+          item.household_id === household.id &&
+          item.center_id === center.id &&
+          item.room_id === household.roomId
+        );
+        return sum + (placement ? household.familyCount || 1 : 0);
+        }, 0);
         const isFull = occupied >= (r.capacity || 25);
 
         list.push({
@@ -86,7 +102,7 @@ export default function RoomPlacement() {
     });
 
     return [...customRooms, ...list];
-  }, [dbRooms, centers, households, customRooms]);
+  }, [dbRooms, centers, households, customRooms, placements, selectedEvent?.id]);
 
   const filtered = useMemo(() => {
     return allRooms.filter((r) => {
@@ -172,6 +188,11 @@ export default function RoomPlacement() {
           <p className="vin-feature-desc">
             Organize evacuee room allocations and designated spaces across evacuation centers.
           </p>
+          <p style={{ margin: '6px 0 0', color: isReadOnly ? '#92400e' : '#64748b', fontSize: '.82rem' }}>
+            {isReadOnly
+              ? `Viewing archived occupancy for ${selectedEvent?.event_name || 'the selected operation'}; room setup remains editable.`
+              : `Occupancy is based on active placements for ${selectedEvent?.event_name || 'the selected operation'}.`}
+          </p>
         </div>
         <button
           type="button"
@@ -248,8 +269,17 @@ export default function RoomPlacement() {
                     </span>
                   </td>
                   <td style={{ fontWeight: 600 }}>{item.name}</td>
-                  <td style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#7c3aed' }}>
-                    {item.occupied} persons
+                  <td>
+                    <div style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#7c3aed' }}>
+                      {item.occupied} / {item.capacity} persons
+                    </div>
+                    <div style={{ height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', marginTop: 5 }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${Math.min(100, Math.round((item.occupied / item.capacity) * 100))}%`,
+                        background: item.status === 'Full' ? '#dc2626' : '#7c3aed',
+                      }} />
+                    </div>
                   </td>
                   <td>
                     <span className={`vin-status-tag ${item.status === 'Full' ? 'pending' : 'active'}`}>

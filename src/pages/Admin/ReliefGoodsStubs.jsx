@@ -1,19 +1,22 @@
-import { useState, useMemo } from 'react';
-import { Plus, PackageCheck, Building, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useContext } from 'react';
+import { Plus, PackageCheck, Building, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
   getRoomsForCenter,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
-import { useHouseholds } from '../../lib/householdService.js';
+import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
+import { EventContext } from '../../context/eventContext.js';
 
 const STATUSES = ['All Status', 'Distributed', 'Completed', 'Queued'];
 
 export default function ReliefGoodsStubs() {
+  const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
   const { households } = useHouseholds(centers);
+  const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
@@ -37,14 +40,25 @@ export default function ReliefGoodsStubs() {
     return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   };
 
+  const eventHouseholds = useMemo(() => placements
+    .filter((placement) => (
+      placement.event_id === selectedEvent?.id &&
+      (selectedEvent?.status !== 'Active' || placement.status === 'Evacuated')
+    ))
+    .map((placement) => {
+      const household = households.find((item) => item.id === placement.household_id);
+      return household ? { ...household, placement } : null;
+    })
+    .filter(Boolean), [placements, selectedEvent?.id, selectedEvent?.status, households]);
+
   // Generate batches dynamically connected with Supabase centers & live households
   const allBatches = useMemo(() => {
     const defaultBatches = [];
 
     centers.forEach((c, index) => {
       const code = c.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
-      const centerHouseholds = households.filter(
-        (h) => h.center === c.displayName || isCenterMatch(h.center, c.displayName, centers)
+      const centerHouseholds = eventHouseholds.filter(
+        (h) => h.placement.center_id === c.id
       );
 
       const totalHouseholds = centerHouseholds.length;
@@ -59,7 +73,7 @@ export default function ReliefGoodsStubs() {
       }
 
       defaultBatches.push({
-        batchId: `BATCH-2026-${String(index + 1).padStart(3, '0')}`,
+        batchId: `BATCH-${selectedEvent?.id || 'NO-EVENT'}-${String(index + 1).padStart(3, '0')}`,
         code,
         center: c.displayName,
         room: 'All Rooms',
@@ -84,7 +98,7 @@ export default function ReliefGoodsStubs() {
         }
 
         defaultBatches.push({
-          batchId: `BATCH-2026-${String(index + 1).padStart(3, '0')}-R${rIdx + 1}`,
+          batchId: `BATCH-${selectedEvent?.id || 'NO-EVENT'}-${String(index + 1).padStart(3, '0')}-R${rIdx + 1}`,
           code,
           center: c.displayName,
           room: rName,
@@ -96,8 +110,8 @@ export default function ReliefGoodsStubs() {
       });
     });
 
-    return [...customBatches, ...defaultBatches];
-  }, [centers, households, customBatches]);
+    return [...customBatches.filter((batch) => batch.eventId === selectedEvent?.id), ...defaultBatches];
+  }, [centers, eventHouseholds, customBatches, selectedEvent?.id]);
 
   const getNextBatchId = () => {
     const nums = allBatches.map((s) => {
@@ -110,6 +124,7 @@ export default function ReliefGoodsStubs() {
   };
 
   const handleOpenModal = () => {
+    if (isReadOnly) return;
     setForm({
       center: filterCenter !== 'All Centers' ? filterCenter : centers[0]?.displayName || 'LGU EC (Mangcaway)',
       room: filterRoom !== 'All Rooms' ? filterRoom : 'All Rooms',
@@ -122,6 +137,7 @@ export default function ReliefGoodsStubs() {
 
   const handleIssueBatch = (e) => {
     e.preventDefault();
+    if (isReadOnly) return;
     const allocatedNum = Number(form.allocated);
     if (!allocatedNum || allocatedNum <= 0) return;
 
@@ -134,6 +150,7 @@ export default function ReliefGoodsStubs() {
       distributed: 0,
       date: form.date.trim() || getTodayFormatted(),
       status: form.status,
+      eventId: selectedEvent?.id,
     };
 
     setCustomBatches([newBatch, ...customBatches]);
@@ -170,18 +187,25 @@ export default function ReliefGoodsStubs() {
           <span className="vin-feature-eyebrow">RELIEF DISTRIBUTION & ASSISTANCE</span>
           <h1 className="vin-feature-title">Relief Goods Stubs</h1>
           <p className="vin-feature-desc">
-            Issue, validate, and track relief good claim stubs and distribution batches.
+            Issue and track relief stubs for {selectedEvent?.event_name || 'the selected operation'}.
           </p>
         </div>
         <button
           type="button"
           className="vin-feature-action-btn"
           onClick={handleOpenModal}
+          disabled={isReadOnly}
+          title={isReadOnly ? 'Historical event data is read-only' : undefined}
         >
           <Plus size={18} />
           <span>Issue Stubs Batch</span>
         </button>
       </header>
+      {isReadOnly && (
+        <div role="status" style={{ padding: '10px 12px', borderRadius: 8, background: '#fffbeb', color: '#92400e', fontSize: '.84rem' }}>
+          Historical event selected — relief issuance is read-only.
+        </div>
+      )}
 
       <div className="vin-feature-content-card">
         <div className="vin-feature-toolbar">
@@ -422,7 +446,7 @@ export default function ReliefGoodsStubs() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="vin-btn-submit">
+                <button type="submit" className="vin-btn-submit" disabled={isReadOnly}>
                   Allocate Stubs Batch
                 </button>
               </div>
