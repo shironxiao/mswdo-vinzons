@@ -199,7 +199,7 @@
 .event-history-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   margin-top: 12px;
   padding: 10px 12px;
@@ -219,16 +219,16 @@
   gap: 8px;
 }
 
-.event-history-toggle > svg {
-  transition: transform 0.15s ease;
+.event-history-backdrop {
+  z-index: 2010;
 }
 
-.event-history-toggle > svg.expanded {
-  transform: rotate(180deg);
+.event-history-panel {
+  width: min(620px, 100%);
 }
 
-.event-history-content {
-  margin-top: 10px;
+.event-history-list {
+  max-height: min(460px, calc(100vh - 240px));
 }
 
 .event-option {
