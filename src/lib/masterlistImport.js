@@ -163,27 +163,3 @@ export async function importMasterlist(file) {
 
   return households.length;
 }
-
-export function downloadMasterlistTemplate() {
-  const worksheet = XLSX.utils.aoa_to_sheet([
-    ['HouseholdCode', 'HeadName', 'HeadAge', 'HeadSex', 'Barangay', 'Purok', 'Vulnerabilities', 'Members'],
-    [
-      'HH-0001',
-      'Juan Dela Cruz',
-      42,
-      'Male',
-      'Vinzons',
-      'Purok 1',
-      'PERSONS W/ DISABILITY',
-      'Maria Dela Cruz|39|Years|Female|;Baby Dela Cruz|8|Months|Female|',
-    ],
-  ]);
-  worksheet['!cols'] = [
-    { wch: 16 }, { wch: 24 }, { wch: 12 }, { wch: 12 },
-    { wch: 18 }, { wch: 16 }, { wch: 32 }, { wch: 72 },
-  ];
-
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Masterlist');
-  XLSX.writeFile(workbook, 'Vinzons_Masterlist_Import_Template.xlsx');
-}

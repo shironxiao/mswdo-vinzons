@@ -1,6 +1,6 @@
 import { useState, useMemo, useContext } from 'react';
 import {
-  MapPin, Plus, X, ChevronLeft, ChevronRight, Search,
+  MapPin, Plus, X, ChevronLeft, ChevronRight,
   Building, Edit3, DoorOpen, CheckCircle2, Save, Info,
 } from 'lucide-react';
 import './EvacuationCenter.css';
@@ -11,6 +11,7 @@ import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterMo
 import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
 import { useRooms } from '../../lib/roomService.js';
 import { EventContext } from '../../context/eventContext.js';
+import AdminSearchInput from '../../components/AdminSearchInput.jsx';
 
 export default function EvacuationCenter() {
   const { selectedEvent } = useContext(EventContext);
@@ -176,31 +177,14 @@ export default function EvacuationCenter() {
 
       {/* Filter and Search Toolbar */}
       <div className="vin-feature-toolbar" style={{ marginTop: -8 }}>
-        <div className="vin-feature-search-wrapper" style={{ flex: 1, maxWidth: 360 }}>
-          <Search size={16} className="vin-feature-search-icon" />
-          <input
-            type="text"
-            className="vin-feature-search-input"
-            placeholder="Search by center name or location..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-          {search && (
-            <button
-              type="button"
-              className="vin-feature-search-clear"
-              onClick={() => {
-                setSearch('');
-                setCurrentPage(1);
-              }}
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
+        <AdminSearchInput
+          placeholder="Search by center name or location..."
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
+            setCurrentPage(1);
+          }}
+        />
 
         <AdminFilterBar
           hasActiveFilters={filterStatus !== 'All Status' || filterRoom !== 'All Rooms'}

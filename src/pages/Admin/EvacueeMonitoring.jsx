@@ -13,6 +13,7 @@ import { useEventRoomPlacements, useHouseholds } from '../../lib/householdServic
 import { useMonitoringLogs } from '../../lib/monitoringService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { EventContext } from '../../context/eventContext.js';
+import AdminSearchInput from '../../components/AdminSearchInput.jsx';
 
 const STATUSES = ['All Status', 'Present', 'For Follow-up', 'Transferred', 'Absent'];
 
@@ -26,6 +27,7 @@ export default function EvacueeMonitoring() {
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
+  const [search, setSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -176,9 +178,18 @@ export default function EvacueeMonitoring() {
         (filterStatus === 'Transferred' && m.status === 'Transferred') ||
         (filterStatus === 'Absent' && m.status === 'Absent');
 
-      return matchCenter && matchRoom && matchStatus;
+      const query = search.trim().toLowerCase();
+      const matchSearch = !query || [
+        m.householdHead,
+        m.householdCode,
+        m.center,
+        m.room,
+        m.checkedBy,
+      ].some((value) => String(value || '').toLowerCase().includes(query));
+
+      return matchSearch && matchCenter && matchRoom && matchStatus;
     });
-  }, [monitoringRecords, filterCenter, filterRoom, filterStatus, centers]);
+  }, [monitoringRecords, filterCenter, filterRoom, filterStatus, centers, search]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -294,6 +305,14 @@ export default function EvacueeMonitoring() {
 
       <div className="vin-feature-content-card" style={{ marginTop: 16 }}>
         <div className="vin-feature-toolbar">
+          <AdminSearchInput
+            placeholder="Search by family, center, or room..."
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              setCurrentPage(1);
+            }}
+          />
           <AdminFilterBar
             hasActiveFilters={filterCenter !== 'All Centers' || filterRoom !== 'All Rooms' || filterStatus !== 'All Status'}
             onOpenFilters={() => setShowFilterModal(true)}

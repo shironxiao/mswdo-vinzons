@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Search, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
 import EventSelector from '../../components/EventSelector.jsx';
 import './AdminLayout.css';
@@ -14,37 +14,18 @@ import './AdminLayout.css';
  * @param {Object} props
  * @param {React.ReactNode} [props.children] - Page content when used as a component wrapper.
  * @param {Object} [props.sidebarProps] - Custom props forwarded to the Sidebar component.
- * @param {string} [props.searchPlaceholder="Search records"] - Placeholder text for top search bar.
- * @param {Function} [props.onSearch] - Search handler callback (e.g., query => ...).
  * @param {React.ReactNode} [props.topbarLeft] - Optional custom node on top left.
- * @param {React.ReactNode} [props.topbarRight] - Optional custom node next to search.
+ * @param {React.ReactNode} [props.topbarRight] - Optional custom node next to the event selector.
  * @param {string} [props.className] - Additional class names.
  */
 export default function AdminLayout({
   children,
   sidebarProps = {},
-  searchPlaceholder = 'Search records',
-  onSearch,
   topbarLeft,
   topbarRight,
   className = '',
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    if (onSearch) {
-      onSearch(query);
-    }
-  };
-
-  const handleSearchKeyDown = (e) => {
-    if (e.key === 'Enter' && onSearch) {
-      onSearch(searchQuery);
-    }
-  };
 
   return (
     <div className={`vin-admin-layout ${className}`}>
@@ -57,7 +38,7 @@ export default function AdminLayout({
 
       {/* Main Content Area */}
       <div className="vin-admin-main">
-        {/* Topbar with Search */}
+        {/* Topbar */}
         <header className="vin-admin-topbar">
           <div className="vin-admin-topbar-left">
             <button
@@ -72,19 +53,8 @@ export default function AdminLayout({
           </div>
 
           <div className="vin-admin-topbar-right">
-            <div className="vin-search-container">
-              <Search className="vin-search-icon" size={16} />
-              <input
-                type="text"
-                className="vin-search-input"
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onKeyDown={handleSearchKeyDown}
-                aria-label={searchPlaceholder}
-              />
-            </div>
             <EventSelector />
+            {topbarRight}
           </div>
         </header>
 

@@ -56,44 +56,6 @@
   margin-left: auto;
 }
 
-/* Search Input */
-.vin-search-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 280px;
-}
-
-.vin-search-icon {
-  position: absolute;
-  left: 14px;
-  color: #64748b;
-  pointer-events: none;
-}
-
-.vin-search-input {
-  width: 100%;
-  background-color: #ffffff;
-  border: 1px solid #e9d5ff;
-  border-radius: 9999px;
-  padding: 8px 16px 8px 38px;
-  font-size: 0.85rem;
-  color: #1e293b;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  box-sizing: border-box;
-}
-
-.vin-search-input::placeholder {
-  color: #64748b;
-  font-weight: 400;
-}
-
-.vin-search-input:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
-}
-
 .event-selector {
   min-width: 0;
 }
@@ -182,16 +144,9 @@
     padding: 0 20px 30px 20px;
   }
 
-  .vin-search-container {
-    width: 220px;
-  }
 }
 
 @media (max-width: 640px) {
-  .vin-search-container {
-    width: 170px;
-  }
-
   .event-btn {
     max-width: 45vw;
     padding: 8px 10px;

@@ -30,7 +30,8 @@ import {
 } from '../../lib/householdService.js';
 import { useRooms } from '../../lib/roomService.js';
 import { EventContext } from '../../context/eventContext.js';
-import { importMasterlist, downloadMasterlistTemplate } from '../../lib/masterlistImport.js';
+import { importMasterlist } from '../../lib/masterlistImport.js';
+import AdminSearchInput from '../../components/AdminSearchInput.jsx';
 
 /* ──────────────────────────────────────────────
    Seed Data (synced with mobile structure)
@@ -625,6 +626,7 @@ export default function Household() {
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
+  const [search, setSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
@@ -694,6 +696,18 @@ export default function Household() {
     ? (isReadOnly ? eventHouseholds : activeEventHouseholds)
     : households;
   const filtered = sourceHouseholds.filter((h) => {
+    const query = search.trim().toLowerCase();
+    const matchSearch = !query || [
+      h.name,
+      h.householdCode,
+      h.code,
+      h.id,
+      h.barangay,
+      h.purok,
+      h.center,
+      h.room,
+      ...(h.members || []).map((member) => member.name),
+    ].some((value) => String(value || '').toLowerCase().includes(query));
     const matchStub =
       filterStub === 'All' ||
       (filterStub === 'Issued' && h.stubIssued) ||
@@ -707,7 +721,7 @@ export default function Household() {
       h.room === filterRoom ||
       (h.room && h.room.toLowerCase().includes(filterRoom.toLowerCase())) ||
       (filterRoom.startsWith('Room') && h.room && h.room.includes(filterRoom.replace('Room', '').trim()));
-    return matchStub && matchCenter && matchRoom;
+    return matchSearch && matchStub && matchCenter && matchRoom;
   });
 
   const totalCount = households.length;
@@ -954,15 +968,6 @@ export default function Household() {
           </label>
           <button
             type="button"
-            className="vin-admin-tile-edit-btn"
-            onClick={downloadMasterlistTemplate}
-            title="Download the Excel import template"
-            aria-label="Download masterlist import template"
-          >
-            <FileSpreadsheet size={16} />
-          </button>
-          <button
-            type="button"
             className="vin-admin-btn-register"
             onClick={openRegister}
           >
@@ -1066,6 +1071,14 @@ export default function Household() {
       {/* ── Toolbar & Filter Controls (Mobile-style Filter Button & Active Chips) ── */}
       <div className="vin-admin-hh-toolbar-card">
         <div className="vin-admin-hh-toolbar-top">
+          <AdminSearchInput
+            placeholder="Search households, family members, or barangay..."
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              setCurrentPage(1);
+            }}
+          />
           <AdminFilterBar
             hasActiveFilters={filterStub !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms'}
             onOpenFilters={() => setShowFilterModal(true)}

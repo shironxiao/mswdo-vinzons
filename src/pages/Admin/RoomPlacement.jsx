@@ -9,6 +9,7 @@ import { useEventRoomPlacements, useHouseholds } from '../../lib/householdServic
 import { useRooms, createRoom } from '../../lib/roomService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { EventContext } from '../../context/eventContext.js';
+import AdminSearchInput from '../../components/AdminSearchInput.jsx';
 
 const STATUSES = ['All Status', 'Active', 'Full'];
 
@@ -21,6 +22,7 @@ export default function RoomPlacement() {
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
+  const [search, setSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
@@ -120,9 +122,13 @@ export default function RoomPlacement() {
         r.name.toLowerCase().includes(filterRoom.toLowerCase()) ||
         r.id.toLowerCase().includes(filterRoom.toLowerCase());
 
-      return matchCenter && matchStatus && matchRoom;
+      const query = search.trim().toLowerCase();
+      const matchSearch = !query || [r.id, r.roomKey, r.name, r.center]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+
+      return matchSearch && matchCenter && matchStatus && matchRoom;
     });
-  }, [allRooms, filterCenter, filterStatus, filterRoom, centers]);
+  }, [allRooms, filterCenter, filterStatus, filterRoom, centers, search]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -206,6 +212,14 @@ export default function RoomPlacement() {
 
       <div className="vin-feature-content-card">
         <div className="vin-feature-toolbar">
+          <AdminSearchInput
+            placeholder="Search by room or center..."
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
+              setCurrentPage(1);
+            }}
+          />
           <AdminFilterBar
             hasActiveFilters={filterCenter !== 'All Centers' || filterRoom !== 'All Rooms' || filterStatus !== 'All Status'}
             onOpenFilters={() => setShowFilterModal(true)}
