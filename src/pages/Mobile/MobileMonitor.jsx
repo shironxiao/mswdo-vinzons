@@ -197,6 +197,7 @@ export default function MobileMonitor() {
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeFamily, setActiveFamily] = useState(null);
+  const [historyFamily, setHistoryFamily] = useState(null);
   const [attendance, setAttendance] = useState({});
   const [checkInTimes, setCheckInTimes] = useState({});
   const [showScanner, setShowScanner] = useState(false);
@@ -318,12 +319,12 @@ export default function MobileMonitor() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRecords = filtered.slice(startIndex, startIndex + pageSize);
 
-  /* Active family's historical monitoring logs */
-  const activeFamilyLogs = useMemo(() => {
-    if (!activeFamily || !logs) return [];
-    const famId = activeFamily.householdId || activeFamily.id;
+  /* Selected family's historical monitoring logs */
+  const historyFamilyLogs = useMemo(() => {
+    if (!historyFamily || !logs) return [];
+    const famId = historyFamily.householdId || historyFamily.id;
     return logs.filter((l) => l.householdId === famId);
-  }, [activeFamily, logs]);
+  }, [historyFamily, logs]);
 
   const openMonitoringSheet = (family) => {
     setActiveFamily(family);
@@ -712,16 +713,28 @@ export default function MobileMonitor() {
                         </div>
                       </td>
                       <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
-                        <button
-                          type="button"
-                          className="vin-mob-row-btn update"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openMonitoringSheet(item);
-                          }}
-                        >
-                          Update
-                        </button>
+                        <div className="vin-mob-table-actions">
+                          <button
+                            type="button"
+                            className="vin-mob-row-btn view"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHistoryFamily(item);
+                            }}
+                          >
+                            View Log
+                          </button>
+                          <button
+                            type="button"
+                            className="vin-mob-row-btn update"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMonitoringSheet(item);
+                            }}
+                          >
+                            Update
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -777,9 +790,12 @@ export default function MobileMonitor() {
               </button>
             </div>
 
-            <h3 style={{ margin: '4px 0 10px', fontSize: '1.05rem', fontWeight: 800 }}>
-              {activeFamily.name}
-            </h3>
+            <div style={{ margin: '4px 0 10px' }}>
+              <div className="vin-mob-input-label">FAMILY HEAD</div>
+              <h3 style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 800 }}>
+                {activeFamily.name}
+              </h3>
+            </div>
 
             {/* Quick Relief pack issuance banner */}
             <div style={{
@@ -927,83 +943,103 @@ export default function MobileMonitor() {
               Save Monitoring Update
             </button>
 
-            {/* Monitoring History from DB */}
-            <div style={{ marginTop: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <h4 style={{ margin: 0, fontSize: '.92rem', fontWeight: 800 }}>Monitoring History</h4>
-                <span style={{ fontSize: '.75rem', color: '#64748b' }}>
-                  {activeFamilyLogs.length} round{activeFamilyLogs.length !== 1 ? 's' : ''} logged
+          </div>
+        </div>
+      )}
+
+      {/* FAMILY MONITORING HISTORY */}
+      {historyFamily && (
+        <div className="vin-mob-sheet-overlay" onClick={() => setHistoryFamily(null)}>
+          <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-mob-sheet-header">
+              <div>
+                <h2 className="vin-mob-sheet-title">Monitoring History</h2>
+                <span style={{ fontSize: '.78rem', color: '#64748b' }}>
+                  {historyFamily.center} • {historyFamily.room}
                 </span>
               </div>
-              {activeFamilyLogs.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
-                  {activeFamilyLogs.map((logItem) => (
-                    <div
-                      key={logItem.id}
-                      onClick={() => setSelectedLogDetails(logItem)}
-                      style={{
-                        padding: '10px 12px',
-                        backgroundColor: '#ffffff',
-                        borderRadius: 10,
-                        border: '1.5px solid #e2e8f0',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, fontSize: '.84rem', color: '#0f172a' }}>
-                          {logItem.createdAt
-                            ? new Date(logItem.createdAt).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true,
-                              })
-                            : 'Recorded'}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 6,
-                            background:
-                              logItem.householdStatus === 'Present'
-                                ? '#f3e8ff'
-                                : logItem.householdStatus === 'Decamped'
-                                ? '#f1f5f9'
-                                : '#fef3c7',
-                            color:
-                              logItem.householdStatus === 'Present'
-                                ? '#6b21a8'
-                                : logItem.householdStatus === 'Decamped'
-                                ? '#475569'
-                                : '#92400e',
-                          }}
-                        >
-                          {logItem.householdStatus}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', color: '#64748b' }}>
-                        <span>
-                          {logItem.presentCount}/{logItem.totalMembers} present • Tap to view details
-                        </span>
-                        <ChevronRight size={14} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0', display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '.85rem' }}>
-                  <Clock size={16} />
-                  <span>No monitoring records yet for this household.</span>
-                </div>
-              )}
+              <button type="button" className="vin-mob-sheet-close" onClick={() => setHistoryFamily(null)}>
+                <X size={18} />
+              </button>
             </div>
+
+            <div>
+              <div className="vin-mob-input-label">FAMILY HEAD</div>
+              <h3 style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 800 }}>
+                {historyFamily.name}
+              </h3>
+              <span style={{ fontSize: '.75rem', color: '#64748b' }}>
+                {historyFamilyLogs.length} round{historyFamilyLogs.length !== 1 ? 's' : ''} logged
+              </span>
+            </div>
+
+            {historyFamilyLogs.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {historyFamilyLogs.map((logItem) => (
+                  <button
+                    key={logItem.id}
+                    type="button"
+                    onClick={() => setSelectedLogDetails(logItem)}
+                    style={{
+                      padding: '10px 12px',
+                      backgroundColor: '#ffffff',
+                      borderRadius: 10,
+                      border: '1.5px solid #e2e8f0',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, fontSize: '.84rem', color: '#0f172a' }}>
+                        {logItem.createdAt
+                          ? new Date(logItem.createdAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                            })
+                          : 'Recorded'}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background:
+                            logItem.householdStatus === 'Present'
+                              ? '#f3e8ff'
+                              : logItem.householdStatus === 'Decamped'
+                              ? '#f1f5f9'
+                              : '#fef3c7',
+                          color:
+                            logItem.householdStatus === 'Present'
+                              ? '#6b21a8'
+                              : logItem.householdStatus === 'Decamped'
+                              ? '#475569'
+                              : '#92400e',
+                        }}
+                      >
+                        {logItem.householdStatus}
+                      </span>
+                    </span>
+                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', color: '#64748b' }}>
+                      <span>{logItem.presentCount}/{logItem.totalMembers} present • Tap to view details</span>
+                      <ChevronRight size={14} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0', display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '.85rem' }}>
+                <Clock size={16} />
+                <span>No monitoring records yet for this household.</span>
+              </div>
+            )}
           </div>
         </div>
       )}
