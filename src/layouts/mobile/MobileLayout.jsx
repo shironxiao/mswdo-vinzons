@@ -6,7 +6,6 @@ import {
   Wifi,
   WifiOff,
   User,
-  FileText,
   RefreshCw,
   Settings,
   LogOut,
@@ -97,7 +96,7 @@ export default function MobileLayout({ children }) {
                 </button>
               </div>
 
-              {/* Drawer Links matching Image: Profile, Reports, Sync status, Settings */}
+              {/* Drawer Links */}
               <nav className="vin-drawer-nav">
                 <button
                   type="button"
@@ -106,15 +105,6 @@ export default function MobileLayout({ children }) {
                 >
                   <User size={22} color="#7c3aed" />
                   <span>Profile</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="vin-drawer-link"
-                  onClick={() => handleNavigateMenu('/mobile/reports')}
-                >
-                  <FileText size={22} color="#7c3aed" />
-                  <span>Reports</span>
                 </button>
 
                 <button

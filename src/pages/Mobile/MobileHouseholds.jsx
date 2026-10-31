@@ -14,14 +14,11 @@ import { CenterSelectSheet, RoomSelectSheet, CategorySelectSheet } from '../../c
 import {
   useEvacuationCenters,
   isCenterMatch,
-  getRoomsForCenter,
 } from '../../lib/evacuationCenters';
 import {
   useHouseholds,
   createHousehold,
   updateHousehold,
-  checkInHousehold,
-  decampHousehold,
   searchMasterHouseholds,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
@@ -247,7 +244,7 @@ function findDuplicateHolder(households, targetHHId, memberName) {
 /* ──────────────────────────────────────────────
    Household Details & QR Panel
    ────────────────────────────────────────────── */
-function StubIssuancePanel({ household, households, onDecamp, onClose }) {
+function StubIssuancePanel({ household, households, onClose }) {
   const duplicates = household.members
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
@@ -383,33 +380,6 @@ function StubIssuancePanel({ household, households, onDecamp, onClose }) {
             </>
           )}
         </div>
-
-        {/* Decamp / Check-out Button */}
-        {!isDecamped && onDecamp && (
-          <button
-            type="button"
-            onClick={() => onDecamp(household.id)}
-            style={{
-              marginTop: 10,
-              width: '100%',
-              padding: '12px',
-              borderRadius: '12px',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              color: '#dc2626',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              cursor: 'pointer',
-            }}
-          >
-            <LogOut size={16} />
-            Decamp Household (Leaving Center)
-          </button>
-        )}
 
         {isDecamped && (
           <div
@@ -949,29 +919,6 @@ export default function MobileHouseholds() {
     }
   }, [households]); // eslint-disable-line
 
-  /* ── Decamp Handler ── */
-  const handleDecamp = async (hhId) => {
-    setHouseholds((prev) =>
-      prev.map((h) =>
-        h.id === hhId ? { ...h, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : h
-      )
-    );
-    if (selectedHousehold && selectedHousehold.id === hhId) {
-      setSelectedHousehold((prev) =>
-        prev ? { ...prev, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : null
-      );
-    }
-    setToastMsg('✓ Household has decamped successfully.');
-    setTimeout(() => setToastMsg(''), 4000);
-
-    try {
-      await decampHousehold(hhId);
-      refreshHouseholds();
-    } catch (err) {
-      console.warn('Decamp error:', err);
-    }
-  };
-
   /* ── Register / Edit ── */
   const openRegister = () => {
     const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
@@ -1285,7 +1232,6 @@ export default function MobileHouseholds() {
         <StubIssuancePanel
           household={selectedHousehold}
           households={households}
-          onDecamp={handleDecamp}
           onClose={() => setSelectedHousehold(null)}
         />
       )}
