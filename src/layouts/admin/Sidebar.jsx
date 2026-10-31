@@ -1,7 +1,9 @@
-import { MoreHorizontal, X } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { LogOut, MoreHorizontal, Settings, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import mswdoLogo from '../../assets/mswdo logo.png';
 import { DEFAULT_ADMIN_NAV_SECTIONS } from './navConfig';
+import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './Sidebar.css';
 
 /**
@@ -15,7 +17,6 @@ import './Sidebar.css';
  * @param {Function} [props.onCloseMobile] - Callback when closing mobile drawer.
  * @param {Object} [props.user] - User profile details { initials, name, role }.
  * @param {Object} [props.brand] - Brand information { name, subtitle, href }.
- * @param {Function} [props.onProfileClick] - Callback when clicking user profile.
  * @param {string} [props.className] - Additional CSS class names.
  */
 export default function Sidebar({
@@ -34,11 +35,34 @@ export default function Sidebar({
     subtitle: 'MSWDO OPERATIONS',
     href: '/admin/dashboard',
   },
-  onProfileClick,
   className = '',
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const userMenuRef = useRef(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const currentPath = activePath || location.pathname || '/admin/dashboard';
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setIsUserMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isUserMenuOpen]);
 
   const handleItemClick = (item, e) => {
     if (onNavigate) {
@@ -119,12 +143,7 @@ export default function Sidebar({
 
         {/* Bottom User Profile */}
         <div className="vin-sidebar-footer">
-          <div
-            className="vin-user-card"
-            onClick={onProfileClick}
-            role="button"
-            tabIndex={0}
-          >
+          <div className="vin-user-card" ref={userMenuRef}>
             <div className="vin-user-avatar">
               {user.initials || 'HM'}
             </div>
@@ -136,16 +155,59 @@ export default function Sidebar({
               type="button"
               className="vin-user-more-btn"
               aria-label="User account actions"
+              aria-haspopup="menu"
+              aria-expanded={isUserMenuOpen}
               onClick={(e) => {
                 e.stopPropagation();
-                if (onProfileClick) onProfileClick(e);
+                setIsUserMenuOpen((isOpen) => !isOpen);
               }}
             >
               <MoreHorizontal size={18} />
             </button>
+            {isUserMenuOpen && (
+              <div className="vin-user-menu" role="menu" aria-label="Account actions">
+                <Link
+                  to="/admin/settings"
+                  className="vin-user-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onCloseMobile?.();
+                  }}
+                >
+                  <Settings size={16} />
+                  <span>Settings</span>
+                </Link>
+                <button
+                  type="button"
+                  className="vin-user-menu-item danger"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setShowLogoutConfirmation(true);
+                  }}
+                >
+                  <LogOut size={16} />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
+      <ConfirmModal
+        isOpen={showLogoutConfirmation}
+        title="Sign Out"
+        message="Are you sure you want to log out of MSWDO Operations?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          setShowLogoutConfirmation(false);
+          navigate('/admin/login');
+        }}
+        onCancel={() => setShowLogoutConfirmation(false)}
+      />
     </>
   );
 }

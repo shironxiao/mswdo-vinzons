@@ -207,12 +207,14 @@
 
 /* User Profile Footer */
 .vin-sidebar-footer {
+  position: relative;
   margin-top: auto;
   padding: 16px 18px 20px 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .vin-user-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -221,7 +223,6 @@
   border-radius: 8px;
   background: transparent;
   border: none;
-  cursor: pointer;
   text-align: left;
   transition: background-color 0.15s ease;
 }
@@ -288,6 +289,57 @@
 
 .vin-user-more-btn:hover {
   color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.vin-user-more-btn:focus-visible,
+.vin-user-menu-item:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 2px;
+}
+
+.vin-user-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 45;
+  width: 190px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.24);
+}
+
+.vin-user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 11px;
+  color: #334155;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.vin-user-menu-item:hover {
+  background: #f1f5f9;
+}
+
+.vin-user-menu-item.danger {
+  color: #b91c1c;
+}
+
+.vin-user-menu-item.danger:hover {
+  background: #fef2f2;
 }
 
 /* Mobile backdrop */
