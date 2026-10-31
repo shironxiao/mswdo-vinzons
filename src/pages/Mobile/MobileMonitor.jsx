@@ -201,10 +201,9 @@ export default function MobileMonitor() {
   const [checkInTimes, setCheckInTimes] = useState({});
   const [showScanner, setShowScanner] = useState(false);
   const [reliefScanModal, setReliefScanModal] = useState(null);
+  const [selectedLogDetails, setSelectedLogDetails] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
   const [monitorForm, setMonitorForm] = useState({
-    interval: 'Every 2-3 hours',
-    checkedBy: 'Brgy. Capt. Reyes',
     householdStatus: 'Present',
     remarks: '',
   });
@@ -319,6 +318,13 @@ export default function MobileMonitor() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRecords = filtered.slice(startIndex, startIndex + pageSize);
 
+  /* Active family's historical monitoring logs */
+  const activeFamilyLogs = useMemo(() => {
+    if (!activeFamily || !logs) return [];
+    const famId = activeFamily.householdId || activeFamily.id;
+    return logs.filter((l) => l.householdId === famId);
+  }, [activeFamily, logs]);
+
   const openMonitoringSheet = (family) => {
     setActiveFamily(family);
     const now = new Date();
@@ -333,14 +339,12 @@ export default function MobileMonitor() {
       const prevMem = prevLog?.membersAttendance?.find((item) => item.name === m);
       const memStatus = prevMem ? prevMem.status : 'Accounted For';
       initAttendance[m] = memStatus;
-      initTimes[m] = memStatus !== 'Absent' ? (prevMem?.check_in_time || currentTimeStr) : null;
+      initTimes[m] = prevMem?.check_in_time || currentTimeStr;
     });
 
     setAttendance(initAttendance);
     setCheckInTimes(initTimes);
     setMonitorForm({
-      interval: 'Every 2-3 hours',
-      checkedBy: prevLog?.checkedBy || 'Brgy. Capt. Reyes',
       householdStatus: prevLog ? prevLog.householdStatus : 'Present',
       remarks: '',
     });
@@ -352,15 +356,22 @@ export default function MobileMonitor() {
     const updated = { ...attendance, [member]: key };
     setAttendance(updated);
 
+    // Record timestamp for ANY status selected (Accounted For, Late, Absent, Decamped)
     setCheckInTimes((prev) => ({
       ...prev,
-      [member]: key === 'Absent' ? null : (prev[member] || timeStr),
+      [member]: timeStr,
     }));
 
     // Auto-suggest household status based on member attendance
-    const hasAbsent = Object.values(updated).some((s) => s === 'Absent');
-    const hasLate = Object.values(updated).some((s) => s === 'Late');
-    if (hasAbsent || hasLate) {
+    const values = Object.values(updated);
+    const allDecamped = values.every((s) => s === 'Decamped');
+    const hasDecamped = values.some((s) => s === 'Decamped');
+    const hasAbsent = values.some((s) => s === 'Absent');
+    const hasLate = values.some((s) => s === 'Late');
+
+    if (allDecamped) {
+      setMonitorForm((prev) => ({ ...prev, householdStatus: 'Decamped' }));
+    } else if (hasDecamped || hasAbsent || hasLate) {
       setMonitorForm((prev) => ({ ...prev, householdStatus: 'For Follow-up' }));
     } else {
       setMonitorForm((prev) => ({ ...prev, householdStatus: 'Present' }));
@@ -392,8 +403,8 @@ export default function MobileMonitor() {
         householdId: familyToSave.householdId || familyToSave.id,
         centerId: familyToSave.centerId,
         roomId: familyToSave.roomId,
-        monitoringInterval: monitorForm.interval,
-        checkedBy: monitorForm.checkedBy,
+        monitoringInterval: 'Every 2-3 hours',
+        checkedBy: 'MSWDO Personnel',
         householdStatus: monitorForm.householdStatus,
         membersAttendance: familyToSave.members.map((m) => ({
           name: m,
@@ -819,26 +830,7 @@ export default function MobileMonitor() {
               )}
             </div>
 
-            <div className="vin-mob-input-group">
-              <label className="vin-mob-input-label">MONITORING INTERVAL</label>
-              <input
-                type="text"
-                className="vin-mob-select"
-                value={monitorForm.interval}
-                onChange={(e) => setMonitorForm((f) => ({ ...f, interval: e.target.value }))}
-              />
-            </div>
-            <div className="vin-mob-input-group" style={{ marginTop: 12 }}>
-              <label className="vin-mob-input-label">CHECKED BY</label>
-              <input
-                type="text"
-                className="vin-mob-select"
-                value={monitorForm.checkedBy}
-                onChange={(e) => setMonitorForm((f) => ({ ...f, checkedBy: e.target.value }))}
-              />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '14px 0 8px' }}>
               <h4 style={{ margin: 0, fontSize: '.92rem', fontWeight: 800 }}>
                 Members Attendance
               </h4>
@@ -869,23 +861,26 @@ export default function MobileMonitor() {
                 <span style={{ fontWeight: 700, fontSize: '.95rem' }}>{member}</span>
                 <div className="vin-mob-attendance-group">
                   {[
-                    { key: 'Accounted For', cls: 'active-accounted' },
-                    { key: 'Late',           cls: 'active-late'      },
-                    { key: 'Absent',         cls: 'active-absent'    },
-                  ].map(({ key, cls }) => (
+                    { key: 'Accounted For', label: 'Present',  cls: 'active-accounted' },
+                    { key: 'Late',          label: 'Late',     cls: 'active-late'      },
+                    { key: 'Absent',        label: 'Absent',   cls: 'active-absent'    },
+                    { key: 'Decamped',      label: 'Decamped', cls: 'active-decamped'  },
+                  ].map(({ key, label, cls }) => (
                     <button
                       key={key}
                       type="button"
                       className={`vin-mob-att-btn ${attendance[member] === key ? cls : ''}`}
                       onClick={() => handleToggleMember(member, key)}
                     >
-                      {key}
+                      {label || key}
                     </button>
                   ))}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#64748b', fontSize: '.78rem' }}>
-                  <span>CHECK-IN TIME</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                    {attendance[member] === 'Accounted For' ? 'PRESENT' : attendance[member] || 'STATUS'} TIME
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, color: '#1e293b' }}>
                     <Clock size={14} />
                     {checkInTimes[member] || '--:-- --'}
                   </span>
@@ -933,40 +928,74 @@ export default function MobileMonitor() {
             </button>
 
             {/* Monitoring History from DB */}
-            <div style={{ marginTop: 10 }}>
-              <h4 style={{ margin: '0 0 6px', fontSize: '.9rem', fontWeight: 800 }}>Monitoring History</h4>
-              {activeFamily.latestLog ? (
-                <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.8rem', color: '#475569' }}>
-                    <span><strong>{activeFamily.latestLog.checkedBy}</strong></span>
-                    <span>
-                      {activeFamily.latestLog.createdAt
-                        ? new Date(activeFamily.latestLog.createdAt).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true,
-                          })
-                        : ''}
-                    </span>
-                  </div>
-                  <div style={{ marginTop: 4, fontSize: '.8rem', color: '#64748b' }}>
-                    {activeFamily.latestLog.presentCount}/{activeFamily.latestLog.totalMembers} present •{' '}
-                    <span
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h4 style={{ margin: 0, fontSize: '.92rem', fontWeight: 800 }}>Monitoring History</h4>
+                <span style={{ fontSize: '.75rem', color: '#64748b' }}>
+                  {activeFamilyLogs.length} round{activeFamilyLogs.length !== 1 ? 's' : ''} logged
+                </span>
+              </div>
+              {activeFamilyLogs.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
+                  {activeFamilyLogs.map((logItem) => (
+                    <div
+                      key={logItem.id}
+                      onClick={() => setSelectedLogDetails(logItem)}
                       style={{
-                        fontWeight: 700,
-                        color: activeFamily.latestLog.householdStatus === 'Present' ? '#6b21a8' : '#92400e',
+                        padding: '10px 12px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: 10,
+                        border: '1.5px solid #e2e8f0',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      {activeFamily.latestLog.householdStatus}
-                    </span>
-                  </div>
-                  {activeFamily.latestLog.remarks && (
-                    <div style={{ marginTop: 4, fontSize: '.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                      {activeFamily.latestLog.remarks}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 700, fontSize: '.84rem', color: '#0f172a' }}>
+                          {logItem.createdAt
+                            ? new Date(logItem.createdAt).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                              })
+                            : 'Recorded'}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            background:
+                              logItem.householdStatus === 'Present'
+                                ? '#f3e8ff'
+                                : logItem.householdStatus === 'Decamped'
+                                ? '#f1f5f9'
+                                : '#fef3c7',
+                            color:
+                              logItem.householdStatus === 'Present'
+                                ? '#6b21a8'
+                                : logItem.householdStatus === 'Decamped'
+                                ? '#475569'
+                                : '#92400e',
+                          }}
+                        >
+                          {logItem.householdStatus}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', color: '#64748b' }}>
+                        <span>
+                          {logItem.presentCount}/{logItem.totalMembers} present • Tap to view details
+                        </span>
+                        <ChevronRight size={14} />
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               ) : (
                 <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0', display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '.85rem' }}>
@@ -1218,6 +1247,141 @@ export default function MobileMonitor() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── LOG DETAILS MODAL (Click to view full log record) ── */}
+      {selectedLogDetails && (
+        <div className="vin-mob-sheet-overlay" onClick={() => setSelectedLogDetails(null)} style={{ zIndex: 10000 }}>
+          <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div className="vin-mob-sheet-header">
+              <div>
+                <h2 className="vin-mob-sheet-title">Monitoring Round Details</h2>
+                <span style={{ fontSize: '.78rem', color: '#64748b' }}>
+                  {selectedLogDetails.createdAt
+                    ? new Date(selectedLogDetails.createdAt).toLocaleString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
+                    : 'Log Record'}
+                </span>
+              </div>
+              <button type="button" className="vin-mob-sheet-close" onClick={() => setSelectedLogDetails(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 6 }}>
+              {/* Summary banner */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: 12,
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>OVERALL STATUS</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{selectedLogDetails.householdStatus}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>HEADCOUNT RATIO</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#6b21a8' }}>
+                    {selectedLogDetails.presentCount} / {selectedLogDetails.totalMembers} Present
+                  </div>
+                </div>
+              </div>
+
+              {/* Members attendance list with status and timestamps */}
+              <div>
+                <span className="vin-mob-input-label">MEMBER ATTENDANCE BREAKDOWN</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                  {Array.isArray(selectedLogDetails.membersAttendance) && selectedLogDetails.membersAttendance.length > 0 ? (
+                    selectedLogDetails.membersAttendance.map((m, idx) => {
+                      const mStatus = m.status || 'Accounted For';
+                      let statusBg = '#f3e8ff';
+                      let statusColor = '#6b21a8';
+                      if (mStatus === 'Absent') {
+                        statusBg = '#fef2f2';
+                        statusColor = '#dc2626';
+                      } else if (mStatus === 'Late') {
+                        statusBg = '#fef3c7';
+                        statusColor = '#d97706';
+                      } else if (mStatus === 'Decamped') {
+                        statusBg = '#f1f5f9';
+                        statusColor = '#475569';
+                      }
+
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{m.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                              <Clock size={12} />
+                              <span>{m.check_in_time || 'Time not recorded'}</span>
+                            </div>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              backgroundColor: statusBg,
+                              color: statusColor,
+                            }}
+                          >
+                            {mStatus === 'Accounted For' ? 'Present' : mStatus}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ padding: 10, color: '#64748b', fontSize: '.84rem' }}>No individual member breakdown recorded.</div>
+                  )}
+                </div>
+              </div>
+
+              {selectedLogDetails.remarks && (
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  backgroundColor: '#fefce8',
+                  border: '1px solid #fef08a',
+                  fontSize: '0.82rem',
+                  color: '#713f12',
+                }}>
+                  <strong>Remarks:</strong> {selectedLogDetails.remarks}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="vin-btn-cancel"
+                style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700, marginTop: 6 }}
+                onClick={() => setSelectedLogDetails(null)}
+              >
+                Close Log Details
+              </button>
+            </div>
           </div>
         </div>
       )}

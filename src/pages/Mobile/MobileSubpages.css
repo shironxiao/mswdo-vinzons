@@ -381,3 +381,8 @@
   background-color: #dc2626;
   color: #ffffff;
 }
+
+.vin-mob-att-btn.active-decamped {
+  background-color: #475569;
+  color: #ffffff;
+}
