@@ -1,7 +1,7 @@
 import { useState, useMemo, useContext } from 'react';
 import {
   CheckCircle2, Clock, Building, ChevronLeft, ChevronRight,
-  AlertTriangle, Users, XCircle, X, Eye, RefreshCw
+  AlertTriangle, Users, XCircle, X, Eye
 } from 'lucide-react';
 import './AdminFeatures.css';
 import './AdminHousehold.css';
@@ -22,7 +22,7 @@ export default function EvacueeMonitoring() {
   const { centers } = useEvacuationCenters();
   const { households } = useHouseholds(centers);
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
-  const { logs, refresh: refreshLogs, loading: loadingLogs } = useMonitoringLogs(centers);
+  const { logs } = useMonitoringLogs(centers);
 
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -245,18 +245,6 @@ export default function EvacueeMonitoring() {
           <p className="vin-feature-desc">
             Track presence for {selectedEvent?.event_name || 'the selected operation'} across 2–3 hour inspection rounds.
           </p>
-        </div>
-        <div className="vin-feature-header-right">
-          <button
-            type="button"
-            className="vin-btn-secondary"
-            onClick={() => refreshLogs()}
-            title="Refresh latest monitoring data"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          >
-            <RefreshCw size={14} className={loadingLogs ? 'vin-spin' : ''} />
-            <span>Sync Live</span>
-          </button>
         </div>
       </header>
 
