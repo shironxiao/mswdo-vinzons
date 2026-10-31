@@ -339,9 +339,6 @@ function StubIssuancePanel({ household, households, onClose }) {
                 fgColor="#6b21a8"
               />
             </div>
-            <div style={{ marginTop: 8, fontSize: '0.84rem', fontWeight: 700, color: '#6b21a8' }}>
-              Room: {household.room && household.room !== 'Unassigned' ? household.room : 'Unassigned'}
-            </div>
             <div style={{ marginTop: 4, fontSize: '0.78rem', color: alreadyIssued ? '#6b21a8' : '#64748b' }}>
               {alreadyIssued
                 ? '✓ Status: Relief Pack Claimed'
