@@ -3,7 +3,7 @@ import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
   CheckCircle2, Clock, Users, ChevronLeft, ChevronRight,
-  ChevronDown,
+  ChevronDown, LogOut,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import checkIcon from '../../assets/check.png';
@@ -25,7 +25,9 @@ import {
   createHousehold,
   updateHousehold,
   issueHouseholdStub,
+  decampHousehold,
 } from '../../lib/householdService.js';
+import { useActiveEvent } from '../../lib/evacuationEventService.js';
 
 /* ──────────────────────────────────────────────
    Seed Data (synced with mobile structure)
@@ -385,12 +387,13 @@ function printStub(household) {
 /* ──────────────────────────────────────────────
    Stub Issuance Modal
    ────────────────────────────────────────────── */
-function StubIssuanceModal({ household, households, onIssue, onClose }) {
+function StubIssuanceModal({ household, households, onIssue, onDecamp, onClose }) {
   const duplicates = household.members
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
 
   const alreadyIssued = !!household.stubIssued;
+  const isDecamped = household.evacueeStatus === 'Decamped';
 
   return (
     <div className="vin-admin-modal-overlay" onClick={onClose}>
@@ -545,6 +548,56 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
             <Ticket size={20} />
             {alreadyIssued ? 'Relief Stub Already Issued' : 'Issue Relief Stub Now'}
           </button>
+
+          {/* Decamp action */}
+          {!isDecamped && onDecamp && (
+            <button
+              type="button"
+              style={{
+                marginTop: 10,
+                width: '100%',
+                padding: '12px',
+                borderRadius: '10px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                cursor: 'pointer',
+              }}
+              onClick={() => onDecamp(household.id)}
+            >
+              <LogOut size={16} />
+              Decamp Household (Evacuees Leaving Center)
+            </button>
+          )}
+
+          {isDecamped && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: '10px 14px',
+                borderRadius: '10px',
+                background: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+                color: '#64748b',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <LogOut size={14} />
+              This household is officially Decamped (Checked out)
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -557,6 +610,9 @@ function StubIssuanceModal({ household, households, onIssue, onClose }) {
 export default function Household() {
   const { centers } = useEvacuationCenters();
   const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
+  const { activeEvent } = useActiveEvent();
+
+  const [activeTab, setActiveTab] = useState('active');        // 'active' | 'masterlist'
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -585,6 +641,10 @@ export default function Household() {
 
   /* ── Filter logic ── */
   const filtered = households.filter((h) => {
+    // If on active evacuees tab, filter out decamped
+    if (activeTab === 'active' && h.evacueeStatus === 'Decamped') {
+      return false;
+    }
     const matchStub =
       filterStub === 'All' ||
       (filterStub === 'Issued' && h.stubIssued) ||
@@ -602,8 +662,9 @@ export default function Household() {
   });
 
   const totalCount = households.length;
+  const activeEvacueesCount = households.filter((h) => h.evacueeStatus !== 'Decamped').length;
   const issuedCount = households.filter((h) => h.stubIssued).length;
-  const pendingCount = totalCount - issuedCount;
+  const pendingCount = activeEvacueesCount - households.filter((h) => h.stubIssued && h.evacueeStatus !== 'Decamped').length;
   const filteredIssued = filtered.filter((h) => h.stubIssued);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
@@ -621,6 +682,24 @@ export default function Household() {
       refreshHouseholds();
     } catch (err) {
       console.warn('Could not sync stub issuance to Supabase:', err);
+    }
+  };
+
+  /* ── Decamp household ── */
+  const handleDecamp = async (hhId) => {
+    setHouseholds((prev) =>
+      prev.map((h) => (h.id === hhId ? { ...h, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : h))
+    );
+    if (selectedHousehold && selectedHousehold.id === hhId) {
+      setSelectedHousehold((prev) =>
+        prev ? { ...prev, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : null
+      );
+    }
+    try {
+      await decampHousehold(hhId);
+      refreshHouseholds();
+    } catch (err) {
+      console.warn('Could not sync decamp to Supabase:', err);
     }
   };
 
@@ -773,6 +852,55 @@ export default function Household() {
         </div>
       </header>
 
+      {/* ── Active Operation & View Tabs ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#f5f3ff', border: '1px solid #ddd6fe', padding: '6px 14px', borderRadius: 20 }}>
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#16a34a' }} />
+          <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#6b21a8' }}>
+            Operation: {activeEvent?.event_name || 'Active Evacuation Operation'}
+          </span>
+        </div>
+
+        <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: 4, borderRadius: 10, gap: 4 }}>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('active'); setCurrentPage(1); }}
+            style={{
+              border: 'none',
+              borderRadius: 8,
+              padding: '6px 14px',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: activeTab === 'active' ? '#ffffff' : 'transparent',
+              color: activeTab === 'active' ? '#7c3aed' : '#64748b',
+              boxShadow: activeTab === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Active Evacuees ({activeEvacueesCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('masterlist'); setCurrentPage(1); }}
+            style={{
+              border: 'none',
+              borderRadius: 8,
+              padding: '6px 14px',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: activeTab === 'masterlist' ? '#ffffff' : 'transparent',
+              color: activeTab === 'masterlist' ? '#7c3aed' : '#64748b',
+              boxShadow: activeTab === 'masterlist' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Resident Masterlist ({totalCount})
+          </button>
+        </div>
+      </div>
+
       {/* ── Metric Summary Cards ── */}
       <div className="vin-admin-hh-stats">
         <div className="vin-admin-hh-stat-card">
@@ -917,14 +1045,20 @@ export default function Household() {
                     )}
                   </td>
                   <td>
-                    <span className={item.stubIssued ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
-                      <img
-                        src={item.stubIssued ? checkIcon : removeIcon}
-                        alt=""
-                        className="vin-badge-img-icon"
-                      />
-                      <span>{item.stubIssued ? 'Issued' : 'Not Issued'}</span>
-                    </span>
+                    {item.evacueeStatus === 'Decamped' ? (
+                      <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <LogOut size={12} /> Decamped
+                      </span>
+                    ) : (
+                      <span className={item.stubIssued ? 'vin-admin-hh-badge-issued' : 'vin-admin-hh-badge-notissued'}>
+                        <img
+                          src={item.stubIssued ? checkIcon : removeIcon}
+                          alt=""
+                          className="vin-badge-img-icon"
+                        />
+                        <span>{item.stubIssued ? 'Issued' : 'Not Issued'}</span>
+                      </span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
@@ -1009,6 +1143,7 @@ export default function Household() {
           household={selectedHousehold}
           households={households}
           onIssue={issueStub}
+          onDecamp={handleDecamp}
           onClose={() => setSelectedHousehold(null)}
         />
       )}

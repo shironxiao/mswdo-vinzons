@@ -94,7 +94,11 @@ export function normalizeHousehold(row, centersList = []) {
         id: m.id,
         name: m.full_name,
         age: m.age,
+        ageValue: m.age_value !== null && m.age_value !== undefined ? m.age_value : m.age,
+        ageUnit: m.age_unit || 'Years',
         sex: m.sex,
+        relationship: m.relationship_to_head || 'MEMBER',
+        isHead: Boolean(m.is_household_head),
         vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }))
     : [];
@@ -105,6 +109,9 @@ export function normalizeHousehold(row, centersList = []) {
     name: row.head_name,
     age: row.head_age,
     sex: row.head_sex,
+    barangay: row.barangay || 'Unassigned',
+    purok: row.purok || 'Unassigned',
+    evacueeStatus: row.evacuee_status || (row.center_id ? 'Active' : 'Decamped'),
     vulnerabilities: Array.isArray(row.vulnerabilities) ? row.vulnerabilities : [],
     center: centerName,
     centerId: row.center_id || row.center?.id || null,
@@ -150,6 +157,9 @@ export function useHouseholds(centersList = []) {
           head_name,
           head_age,
           head_sex,
+          barangay,
+          purok,
+          evacuee_status,
           vulnerabilities,
           center_id,
           room_id,
@@ -159,7 +169,7 @@ export function useHouseholds(centersList = []) {
           created_at,
           center:evacuation_centers ( id, name, location ),
           room:rooms ( id, room_name ),
-          members:household_members ( id, full_name, age, sex, vulnerabilities )
+          members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, is_household_head, vulnerabilities )
         `)
         .order('created_at', { ascending: false });
 
@@ -264,6 +274,9 @@ export async function createHousehold(formData, centersList = []) {
       head_name: formData.head,
       head_age: Number(formData.age) || 35,
       head_sex: formData.sex || 'Male',
+      barangay: formData.barangay || 'Unassigned',
+      purok: formData.purok || 'Unassigned',
+      evacuee_status: centerId ? 'Active' : 'Decamped',
       vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
       center_id: centerId,
       room_id: roomId,
@@ -283,14 +296,39 @@ export async function createHousehold(formData, centersList = []) {
       .map((m) => ({
         household_id: insertedH.id,
         full_name: m.name.trim(),
-        age: Number(m.age) || 0,
+        age: Number(m.ageValue || m.age) || 0,
+        age_value: Number(m.ageValue || m.age) || 0,
+        age_unit: m.ageUnit || 'Years',
         sex: m.sex || 'Female',
+        relationship_to_head: m.relationship || 'MEMBER',
+        is_household_head: false,
         vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }));
 
     if (memberRows.length > 0) {
       const { error: mError } = await supabase.from('household_members').insert(memberRows);
       if (mError) console.warn('Error inserting members:', mError.message);
+    }
+  }
+
+  // 5. Optionally record initial room_placement & relief stub if assigned to a center
+  if (centerId) {
+    try {
+      await supabase.from('room_placements').insert({
+        household_id: insertedH.id,
+        center_id: centerId,
+        room_id: roomId,
+        status: 'Evacuated',
+        check_in_at: new Date().toISOString(),
+      });
+      await supabase.from('relief_goods_stubs').insert({
+        household_id: insertedH.id,
+        stub_code: stubCode,
+        stub_issued: Boolean(formData.stubIssued),
+        stub_issued_at: formData.stubIssued ? new Date().toISOString() : null,
+      });
+    } catch {
+      // Ignore if operational tables are not yet queried
     }
   }
 
@@ -385,26 +423,125 @@ export async function issueHouseholdStub(id) {
 }
 
 /**
- * Scan stub lookup: Finds household by its scanned stub code
+ * Check-in an existing household into an evacuation center & room for a disaster event
  */
-export async function findHouseholdByStubCode(stubCode) {
-  if (!stubCode) return null;
-  const cleanCode = stubCode.trim();
-  const { data, error } = await supabase
+export async function checkInHousehold({ householdId, centerId, roomId, eventId = null, stubCode = null }) {
+  const code = stubCode || `STB-${String(Date.now()).slice(-6)}`;
+  
+  // 1. Update master household row
+  const { error: hErr } = await supabase
     .from('households')
-    .select(`
-      id,
-      household_code,
-      head_name,
-      stub_code,
-      stub_issued,
-      stub_issued_at,
-      center:evacuation_centers ( name ),
-      room:rooms ( room_name )
-    `)
-    .eq('stub_code', cleanCode)
-    .maybeSingle();
+    .update({
+      center_id: centerId,
+      room_id: roomId,
+      stub_code: code,
+      stub_issued: false,
+      evacuee_status: 'Active',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', householdId);
 
-  if (error) throw error;
-  return data;
+  if (hErr) throw hErr;
+
+  // 2. Insert into room_placements
+  try {
+    await supabase.from('room_placements').insert({
+      household_id: householdId,
+      center_id: centerId,
+      room_id: roomId,
+      event_id: eventId,
+      status: 'Evacuated',
+      check_in_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('room_placements insert failed:', err);
+  }
+
+  // 3. Insert or update relief_goods_stubs
+  try {
+    await supabase.from('relief_goods_stubs').insert({
+      household_id: householdId,
+      event_id: eventId,
+      stub_code: code,
+      stub_issued: false,
+    });
+  } catch (err) {
+    console.warn('relief_goods_stubs insert failed:', err);
+  }
+
+  return { success: true, stubCode: code };
 }
+
+/**
+ * Decamp / Check-out a household from an evacuation center
+ */
+export async function decampHousehold(householdId) {
+  // 1. Update household state
+  const { error: hErr } = await supabase
+    .from('households')
+    .update({
+      evacuee_status: 'Decamped',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', householdId);
+
+  if (hErr) throw hErr;
+
+  // 2. Mark active room_placements as Decamped
+  try {
+    await supabase
+      .from('room_placements')
+      .update({
+        status: 'Decamped',
+        check_out_at: new Date().toISOString(),
+      })
+      .eq('household_id', householdId)
+      .eq('status', 'Evacuated');
+  } catch (err) {
+    console.warn('room_placements update failed:', err);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Fast search of the household masterlist (for intake and search-before-register)
+ */
+export async function searchMasterHouseholds(query = '', centersList = []) {
+  if (!query || !query.trim()) return [];
+  const clean = query.trim();
+
+  try {
+    const { data, error } = await supabase
+      .from('households')
+      .select(`
+        id,
+        household_code,
+        head_name,
+        head_age,
+        head_sex,
+        barangay,
+        purok,
+        evacuee_status,
+        vulnerabilities,
+        center_id,
+        room_id,
+        stub_code,
+        stub_issued,
+        stub_issued_at,
+        created_at,
+        center:evacuation_centers ( id, name, location ),
+        room:rooms ( id, room_name ),
+        members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, vulnerabilities )
+      `)
+      .or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%`)
+      .limit(20);
+
+    if (error) throw error;
+    return (data || []).map((row) => normalizeHousehold(row, centersList));
+  } catch (err) {
+    console.warn('Masterlist search error:', err);
+    return [];
+  }
+}
+

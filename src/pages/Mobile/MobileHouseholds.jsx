@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2, QrCode,
   AlertTriangle, Ticket, Printer, Filter, ChevronDown, Building,
-  ChevronLeft, ChevronRight, MapPin, CheckCircle2, SlidersHorizontal,
+  ChevronLeft, ChevronRight, MapPin, CheckCircle2, SlidersHorizontal, LogOut, Check,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './MobileCommon.css';
@@ -21,7 +21,11 @@ import {
   createHousehold,
   updateHousehold,
   issueHouseholdStub,
+  checkInHousehold,
+  decampHousehold,
+  searchMasterHouseholds,
 } from '../../lib/householdService.js';
+import { useActiveEvent } from '../../lib/evacuationEventService.js';
 
 /* ──────────────────────────────────────────────
    Seed data – replace with Dexie in production
@@ -565,11 +569,12 @@ function QrScannerModal({ onScan, onClose }) {
 /* ──────────────────────────────────────────────
    Stub Issuance Panel
    ────────────────────────────────────────────── */
-function StubIssuancePanel({ household, households, onIssue, onClose }) {
+function StubIssuancePanel({ household, households, onIssue, onDecamp, onClose }) {
   const duplicates = household.members
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
   const alreadyIssued = !!household.stubIssued;
+  const isDecamped = household.evacueeStatus === 'Decamped';
 
   return (
     <div className="vin-mob-sheet-overlay" onClick={onClose}>
@@ -700,6 +705,56 @@ function StubIssuancePanel({ household, households, onIssue, onClose }) {
             <Ticket size={18} />
             Mark as Issued
           </button>
+        )}
+
+        {/* Decamp / Check-out Button */}
+        {!isDecamped && onDecamp && (
+          <button
+            type="button"
+            onClick={() => onDecamp(household.id)}
+            style={{
+              marginTop: 10,
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#dc2626',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              cursor: 'pointer',
+            }}
+          >
+            <LogOut size={16} />
+            Decamp Household (Leaving Center)
+          </button>
+        )}
+
+        {isDecamped && (
+          <div
+            style={{
+              marginTop: 10,
+              padding: '10px 14px',
+              borderRadius: '10px',
+              background: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              color: '#64748b',
+              fontWeight: 600,
+              fontSize: '0.82rem',
+              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+          >
+            <LogOut size={14} />
+            This household is officially Decamped (Checked out)
+          </div>
         )}
       </div>
     </div>
@@ -1112,6 +1167,8 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
 export default function MobileHouseholds() {
   const { centers } = useEvacuationCenters();
   const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
+  const { activeEvent } = useActiveEvent();
+
   const [search, setSearch] = useState('');
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
@@ -1125,6 +1182,18 @@ export default function MobileHouseholds() {
   const [modalMode, setModalMode] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const [scanError, setScanError] = useState('');
+
+  /* ── Masterlist Intake & Check-in State ── */
+  const [showIntakeSheet, setShowIntakeSheet] = useState(false);
+  const [intakeSearch, setIntakeSearch] = useState('');
+  const [intakeResults, setIntakeResults] = useState([]);
+  const [intakeLoading, setIntakeLoading] = useState(false);
+  const [checkingInHousehold, setCheckingInHousehold] = useState(null);
+  const [checkInCenter, setCheckInCenter] = useState('');
+  const [checkInRoom, setCheckInRoom] = useState('Room 1');
+  const [showCheckInCenterPicker, setShowCheckInCenterPicker] = useState(false);
+  const [showCheckInRoomPicker, setShowCheckInRoomPicker] = useState(false);
+
   /* ── Form pickers for register/edit ── */
   const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
   const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
@@ -1267,6 +1336,107 @@ export default function MobileHouseholds() {
     }
   }, [households]); // eslint-disable-line
 
+  /* ── Masterlist Intake & Check-in Handlers ── */
+  const handleIntakeSearch = async (q) => {
+    setIntakeSearch(q);
+    if (!q || q.trim().length < 2) {
+      setIntakeResults([]);
+      return;
+    }
+    setIntakeLoading(true);
+    const results = await searchMasterHouseholds(q, centers);
+    setIntakeResults(results);
+    setIntakeLoading(false);
+  };
+
+  const handleStartCheckIn = (hh) => {
+    setCheckingInHousehold(hh);
+    setCheckInCenter(centers[0]?.displayName || centers[0]?.name || 'LGU EC (Mangcaway)');
+    setCheckInRoom('Room 1');
+  };
+
+  const handleConfirmCheckIn = async () => {
+    if (!checkingInHousehold) return;
+    const targetCenter = checkInCenter || centers[0]?.displayName || centers[0]?.name || 'LGU EC (Mangcaway)';
+    const targetRoom = checkInRoom || 'Room 1';
+    const newStub = genStubCode();
+
+    // Optimistic UI update
+    setHouseholds((prev) => {
+      const exists = prev.some((h) => h.id === checkingInHousehold.id);
+      if (exists) {
+        return prev.map((h) =>
+          h.id === checkingInHousehold.id
+            ? {
+                ...h,
+                center: targetCenter,
+                room: targetRoom,
+                stubCode: newStub,
+                stubIssued: false,
+                evacueeStatus: 'Active',
+              }
+            : h
+        );
+      }
+      return [
+        {
+          ...checkingInHousehold,
+          center: targetCenter,
+          room: targetRoom,
+          stubCode: newStub,
+          stubIssued: false,
+          evacueeStatus: 'Active',
+        },
+        ...prev,
+      ];
+    });
+
+    setToastMsg(`✓ Checked in ${checkingInHousehold.name} to ${targetRoom}!`);
+    setTimeout(() => setToastMsg(''), 4000);
+    setCheckingInHousehold(null);
+    setShowIntakeSheet(false);
+    setIntakeSearch('');
+    setIntakeResults([]);
+
+    try {
+      const centerObj = centers.find((c) => c.displayName === targetCenter || c.name === targetCenter);
+      const centerId = centerObj ? centerObj.id : null;
+      await checkInHousehold({
+        householdId: checkingInHousehold.id,
+        centerId,
+        roomId: null,
+        eventId: activeEvent?.id || null,
+        stubCode: newStub,
+      });
+      refreshHouseholds();
+    } catch (err) {
+      console.warn('Check-in error:', err);
+    }
+  };
+
+  /* ── Decamp Handler ── */
+  const handleDecamp = async (hhId) => {
+    setHouseholds((prev) =>
+      prev.map((h) =>
+        h.id === hhId ? { ...h, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : h
+      )
+    );
+    if (selectedHousehold && selectedHousehold.id === hhId) {
+      setSelectedHousehold((prev) =>
+        prev ? { ...prev, evacueeStatus: 'Decamped', room: 'Unassigned', roomId: null } : null
+      );
+    }
+    setToastMsg('✓ Household has decamped successfully.');
+    setTimeout(() => setToastMsg(''), 4000);
+
+    try {
+      await decampHousehold(hhId);
+      refreshHouseholds();
+    } catch (err) {
+      console.warn('Decamp error:', err);
+    }
+  };
+
   /* ── Register / Edit ── */
   const openRegister = () => {
     const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
@@ -1374,8 +1544,8 @@ export default function MobileHouseholds() {
           <h1 className="vin-mob-title">Households</h1>
           <p className="vin-mob-subtitle">{issuedCount} of {households.length} stubs issued</p>
         </div>
-        <button type="button" className="vin-mob-register-btn" onClick={openRegister}>
-          <Plus size={16} /><span>Register</span>
+        <button type="button" className="vin-mob-register-btn" onClick={() => setShowIntakeSheet(true)}>
+          <Plus size={16} /><span>Intake / Register</span>
         </button>
       </header>
 
@@ -1601,6 +1771,7 @@ export default function MobileHouseholds() {
           household={selectedHousehold}
           households={households}
           onIssue={issueStub}
+          onDecamp={handleDecamp}
           onClose={() => setSelectedHousehold(null)}
         />
       )}
@@ -1827,6 +1998,214 @@ export default function MobileHouseholds() {
             setShowFormCategoryPicker(null);
           }}
           onClose={() => setShowFormCategoryPicker(null)}
+        />
+      )}
+
+      {/* ── INTAKE & CHECK-IN SHEET ── */}
+      {showIntakeSheet && (
+        <div className="vin-mob-sheet-overlay" onClick={() => { setShowIntakeSheet(false); setCheckingInHousehold(null); }}>
+          <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-mob-sheet-header">
+              <div>
+                <h2 className="vin-mob-sheet-title">Evacuee Intake / Check-In</h2>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                  {activeEvent?.event_name || 'Active Disaster Operation'}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="vin-mob-sheet-close"
+                onClick={() => { setShowIntakeSheet(false); setCheckingInHousehold(null); }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Check-In configuration when a family is selected */}
+            {checkingInHousehold ? (
+              <div style={{ padding: '4px 0' }}>
+                <div style={{ padding: 12, borderRadius: 12, background: '#f5f3ff', border: '1px solid #ddd6fe', marginBottom: 14 }}>
+                  <div style={{ fontWeight: 800, fontSize: '1rem', color: '#6b21a8' }}>{checkingInHousehold.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
+                    {checkingInHousehold.householdCode} • {checkingInHousehold.barangay || 'Vinzons'} • {checkingInHousehold.familyCount} family member(s)
+                  </div>
+                </div>
+
+                <div className="vin-mob-input-group">
+                  <label className="vin-mob-input-label">ASSIGN EVACUATION CENTER</label>
+                  <div
+                    className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+                    onClick={() => setShowCheckInCenterPicker(true)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="vin-hh-filter-select-display-txt">{checkInCenter || 'Select Center'}</div>
+                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                  </div>
+                </div>
+
+                <div className="vin-mob-input-group">
+                  <label className="vin-mob-input-label">ASSIGN ROOM</label>
+                  <div
+                    className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
+                    onClick={() => setShowCheckInRoomPicker(true)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="vin-hh-filter-select-display-txt">{checkInRoom || 'Room 1'}</div>
+                    <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                  <button
+                    type="button"
+                    className="vin-btn-cancel"
+                    style={{ flex: 1, padding: 12, borderRadius: 12, fontWeight: 700 }}
+                    onClick={() => setCheckingInHousehold(null)}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    className="vin-mob-sheet-submit-btn"
+                    style={{ flex: 2, margin: 0, padding: 12, borderRadius: 12 }}
+                    onClick={handleConfirmCheckIn}
+                  >
+                    Confirm Check-In
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {/* Search Bar for Masterlist */}
+                <div className="vin-mob-search-wrapper" style={{ marginBottom: 14 }}>
+                  <Search size={18} className="vin-mob-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search masterlist by head name, code, or barangay..."
+                    value={intakeSearch}
+                    onChange={(e) => handleIntakeSearch(e.target.value)}
+                    className="vin-mob-search-input"
+                    autoFocus
+                  />
+                  {intakeSearch && (
+                    <button
+                      type="button"
+                      style={{ background: 'none', border: 'none', padding: '0 8px', color: '#94a3b8', cursor: 'pointer' }}
+                      onClick={() => { setIntakeSearch(''); setIntakeResults([]); }}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Results List */}
+                <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {intakeLoading && (
+                    <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: '0.86rem' }}>
+                      Searching MSWDO Masterlist...
+                    </div>
+                  )}
+
+                  {!intakeLoading && intakeSearch.trim().length >= 2 && intakeResults.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: 16, color: '#64748b', fontSize: '0.85rem' }}>
+                      No registered family found matching &ldquo;{intakeSearch}&rdquo;.
+                    </div>
+                  )}
+
+                  {intakeResults.map((res) => (
+                    <div
+                      key={res.id}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#1e293b' }}>{res.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          {res.householdCode} • {res.barangay || 'Vinzons'} • {res.familyCount} pers.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        style={{
+                          background: '#7c3aed',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '6px 12px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleStartCheckIn(res)}
+                      >
+                        Check-In →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Register New Family Option */}
+                <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 16, paddingTop: 14 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 8, textAlign: 'center' }}>
+                    New resident not found in masterlist?
+                  </div>
+                  <button
+                    type="button"
+                    className="vin-mob-sheet-submit-btn"
+                    style={{ margin: 0, padding: 12, borderRadius: 12, background: '#475569' }}
+                    onClick={() => {
+                      setShowIntakeSheet(false);
+                      openRegister();
+                    }}
+                  >
+                    <Plus size={16} /> Register New Household
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── CHECK-IN CENTER PICKER ── */}
+      {showCheckInCenterPicker && (
+        <CenterSelectSheet
+          selected={checkInCenter}
+          centersList={centers}
+          showAllOption={false}
+          allCentersSub="Select the evacuation center for this household"
+          onSelect={(c) => {
+            setCheckInCenter(c);
+            setCheckInRoom('Room 1');
+            setShowCheckInCenterPicker(false);
+          }}
+          onClose={() => setShowCheckInCenterPicker(false)}
+        />
+      )}
+
+      {/* ── CHECK-IN ROOM PICKER ── */}
+      {showCheckInRoomPicker && (
+        <RoomSelectSheet
+          selected={checkInRoom}
+          centerName={checkInCenter}
+          centersList={centers}
+          showAllOption={false}
+          includeUnassigned={false}
+          allRoomsSub="Select the room at this evacuation center"
+          onSelect={(r) => {
+            setCheckInRoom(r);
+            setShowCheckInRoomPicker(false);
+          }}
+          onClose={() => setShowCheckInRoomPicker(false)}
         />
       )}
 
