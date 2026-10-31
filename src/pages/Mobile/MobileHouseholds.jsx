@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Search, Plus, User, Edit, X, Trash2, QrCode,
-  AlertTriangle, Ticket, Printer, Filter, ChevronDown, Building,
-  ChevronLeft, ChevronRight, MapPin, CheckCircle2, SlidersHorizontal, LogOut, Check,
+  Search, Plus, User, Edit, X, Trash2,
+  AlertTriangle, Ticket, ChevronDown, Building,
+  ChevronLeft, ChevronRight, CheckCircle2, SlidersHorizontal, LogOut,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import './MobileCommon.css';
@@ -20,7 +20,6 @@ import {
   useHouseholds,
   createHousehold,
   updateHousehold,
-  issueHouseholdStub,
   checkInHousehold,
   decampHousehold,
   searchMasterHouseholds,
@@ -245,331 +244,10 @@ function findDuplicateHolder(households, targetHHId, memberName) {
   );
 }
 
-function chunkArray(arr, size) {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
-}
-
 /* ──────────────────────────────────────────────
-   Print ALL issued stubs (3x3 grid per page, 9 stubs)
+   Household Details & QR Panel
    ────────────────────────────────────────────── */
-function printAllStubs(issuedList) {
-  if (!issuedList || issuedList.length === 0) return;
-  const win = window.open('', '_blank');
-  if (!win) {
-    alert('Please allow popups to print stubs.');
-    return;
-  }
-
-  const chunks = chunkArray(issuedList, 9);
-
-  const pagesHtml = chunks.map((chunk) => {
-    const cardsHtml = chunk.map((h) => {
-      const qrEl = document.getElementById(`print-qr-${h.id}`);
-      const qrSvg = qrEl ? qrEl.outerHTML : '';
-      return `
-        <div class="stub-card">
-          <div class="stub-header">
-            <div class="stub-title">Relief Goods Stub</div>
-            <div class="stub-sub">Vinzons Municipal Social Welfare</div>
-          </div>
-          <div class="stub-code">${h.stubCode}</div>
-          <div class="stub-qr">${qrSvg}</div>
-          <div class="stub-footer">
-            <span class="stub-head-label">Household Head</span>
-            <span class="stub-head-name">${h.name}</span>
-            <span class="stub-room-badge">Room: ${h.room && h.room !== 'Unassigned' ? h.room : 'Unassigned'}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="print-page">
-        <div class="grid-3x3">
-          ${cardsHtml}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Relief Goods Stubs (3x3)</title>
-      <meta charset="utf-8" />
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        @page {
-          size: A4 portrait;
-          margin: 6mm;
-        }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-          background: #f8fafc;
-          color: #0f172a;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .print-page {
-          width: 198mm;
-          height: 284mm;
-          margin: 0 auto 10mm;
-          background: #fff;
-          padding: 3mm;
-          box-sizing: border-box;
-          page-break-after: always;
-          break-after: page;
-        }
-        .print-page:last-child {
-          margin-bottom: 0;
-          page-break-after: auto;
-          break-after: auto;
-        }
-        .grid-3x3 {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          grid-template-rows: repeat(3, 1fr);
-          gap: 3.5mm;
-          width: 100%;
-          height: 100%;
-        }
-        .stub-card {
-          border: 1.5px dashed #94a3b8;
-          border-radius: 8px;
-          padding: 8px 6px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: space-between;
-          text-align: center;
-          background: #fff;
-          overflow: hidden;
-        }
-        .stub-title {
-          font-size: 10px;
-          font-weight: 800;
-          text-transform: uppercase;
-          color: #0f172a;
-          letter-spacing: 0.3px;
-          line-height: 1.1;
-        }
-        .stub-sub {
-          font-size: 7.5px;
-          color: #64748b;
-          margin-top: 1px;
-          line-height: 1.1;
-        }
-        .stub-code {
-          font-size: 13px;
-          font-weight: 900;
-          letter-spacing: 1.5px;
-          color: #6b21a8;
-          margin: 2px 0;
-        }
-        .stub-qr {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 2px 0;
-        }
-        .stub-qr svg {
-          width: 78px !important;
-          height: 78px !important;
-          display: block;
-        }
-        .stub-footer {
-          width: 100%;
-          border-top: 1px solid #e2e8f0;
-          padding-top: 3px;
-        }
-        .stub-head-label {
-          display: block;
-          font-size: 7.5px;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.2px;
-        }
-        .stub-head-name {
-          display: block;
-          font-size: 10.5px;
-          font-weight: 800;
-          color: #0f172a;
-          margin-top: 1px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .stub-room-badge {
-          display: inline-block;
-          font-size: 8px;
-          font-weight: 700;
-          color: #6b21a8;
-          background: #f3e8ff;
-          border: 1px solid #ddd6fe;
-          border-radius: 3px;
-          padding: 1px 4px;
-          margin-top: 2px;
-          line-height: 1.1;
-        }
-        @media print {
-          body {
-            background: #fff;
-            padding: 0;
-          }
-          .print-page {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            page-break-after: always;
-            break-after: page;
-          }
-          .print-page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      ${pagesHtml}
-      <script>
-        window.onload = function() {
-          setTimeout(function() {
-            window.print();
-          }, 250);
-        };
-      <\/script>
-    </body>
-    </html>
-  `);
-  win.document.close();
-}
-
-/* Print single stub */
-function printStub(household) {
-  const win = window.open('', '_blank');
-  if (!win) {
-    alert('Please allow popups to print stubs.');
-    return;
-  }
-  const qrEl = document.getElementById(`print-qr-${household.id}`);
-  const qrSvg = qrEl ? qrEl.outerHTML : '';
-  win.document.write(`
-    <!DOCTYPE html>
-    <html><head><title>Stub – ${household.stubCode}</title>
-    <meta charset="utf-8" />
-    <style>
-      body{font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;padding:32px;max-width:320px;margin:auto;text-align:center}
-      .card{border:1.5px dashed #94a3b8;border-radius:12px;padding:18px 14px;display:flex;flex-direction:column;align-items:center}
-      h2{font-size:1.15rem;font-weight:800;margin:0 0 2px;text-transform:uppercase}
-      .sub{color:#64748b;font-size:.8rem;margin-bottom:10px}
-      .code{font-size:1.5rem;font-weight:900;letter-spacing:2px;color:#6b21a8;margin:6px 0}
-      .qr{margin:8px auto}
-      .qr svg{width:120px!important;height:120px!important;display:block;margin:auto}
-      .head-box{width:100%;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px}
-      .head-label{font-size:.72rem;color:#64748b;text-transform:uppercase}
-      .head-name{font-size:1.05rem;font-weight:800;color:#0f172a;margin-top:2px}
-      .head-room{margin-top:6px;font-size:.82rem;font-weight:700;color:#6b21a8;background:#f3e8ff;border:1px solid #ddd6fe;border-radius:6px;padding:3px 10px;display:inline-block}
-    </style></head><body>
-    <div class="card">
-      <h2>Relief Goods Stub</h2>
-      <p class="sub">Vinzons Municipal Social Welfare</p>
-      <p class="code">${household.stubCode}</p>
-      <div class="qr">${qrSvg}</div>
-      <div class="head-box">
-        <div class="head-label">Household Head</div>
-        <div class="head-name">${household.name}</div>
-        <div class="head-room">Room: ${household.room && household.room !== 'Unassigned' ? household.room : 'Unassigned'}</div>
-      </div>
-    </div>
-    <script>window.onload=()=>setTimeout(()=>window.print(), 200);<\/script>
-    </body></html>
-  `);
-  win.document.close();
-}
-
-/* ──────────────────────────────────────────────
-   QR Scanner Modal
-   ────────────────────────────────────────────── */
-function QrScannerModal({ onScan, onClose }) {
-  const instanceRef = { current: null };
-  const [manualCode, setManualCode] = useState('');
-
-  useEffect(() => {
-    let scanner;
-    import('html5-qrcode').then(({ Html5Qrcode }) => {
-      scanner = new Html5Qrcode('qr-reader-el');
-      instanceRef.current = scanner;
-      scanner
-        .start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          (text) => { scanner.stop().catch(() => {}); onScan(text); },
-          () => {}
-        )
-        .catch((err) => console.warn('QR camera error:', err));
-    });
-    return () => { if (instanceRef.current) instanceRef.current.stop().catch(() => {}); };
-  }, [onScan]);
-
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (manualCode.trim()) {
-      if (instanceRef.current) instanceRef.current.stop().catch(() => {});
-      onScan(manualCode.trim());
-    }
-  };
-
-  return (
-    <div className="vin-hh-qr-overlay" onClick={onClose}>
-      <div className="vin-hh-qr-box" onClick={(e) => e.stopPropagation()}>
-        <div className="vin-hh-qr-header">
-          <span className="vin-hh-qr-title"><QrCode size={18} /> Scan Stub QR Code</span>
-          <button type="button" className="vin-mob-sheet-close" onClick={onClose}><X size={18} /></button>
-        </div>
-        <div id="qr-reader-el" style={{ width: '100%' }} />
-        <p className="vin-hh-qr-hint">Point camera at printed stub QR code to automatically label as Issued.</p>
-        
-        {/* Manual code input alternative */}
-        <form onSubmit={handleManualSubmit} style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 10, display: 'flex', gap: 6 }}>
-          <input
-            type="text"
-            placeholder="Or enter/paste code (e.g. STB-001001)..."
-            value={manualCode}
-            onChange={(e) => setManualCode(e.target.value)}
-            style={{
-              flex: 1,
-              border: '1.5px solid #cbd5e1',
-              borderRadius: 8,
-              padding: '8px 10px',
-              fontSize: '0.84rem',
-              color: '#0f172a',
-              outline: 'none',
-            }}
-          />
-          <button
-            type="submit"
-            className="vin-mob-row-btn assign"
-            style={{ padding: '0 12px', whiteSpace: 'nowrap' }}
-          >
-            Scan / Issue
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────
-   Stub Issuance Panel
-   ────────────────────────────────────────────── */
-function StubIssuancePanel({ household, households, onIssue, onDecamp, onClose }) {
+function StubIssuancePanel({ household, households, onDecamp, onClose }) {
   const duplicates = household.members
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
@@ -580,7 +258,7 @@ function StubIssuancePanel({ household, households, onIssue, onDecamp, onClose }
     <div className="vin-mob-sheet-overlay" onClick={onClose}>
       <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
         <div className="vin-mob-sheet-header">
-          <h2 className="vin-mob-sheet-title">Household &amp; Stub Details</h2>
+          <h2 className="vin-mob-sheet-title">Household Details &amp; QR</h2>
           <button type="button" className="vin-mob-sheet-close" onClick={onClose}><X size={18} /></button>
         </div>
 
@@ -598,7 +276,7 @@ function StubIssuancePanel({ household, households, onIssue, onDecamp, onClose }
                 alt=""
                 className="vin-badge-img-icon"
               />
-              <span>{alreadyIssued ? 'Issued' : 'Not Issued'}</span>
+              <span>{alreadyIssued ? 'Relief Issued' : 'Relief Not Issued'}</span>
             </span>
           </div>
           <div className="vin-hh-stub-meta">
@@ -664,48 +342,42 @@ function StubIssuancePanel({ household, households, onIssue, onDecamp, onClose }
             </div>
             <div style={{ marginTop: 4, fontSize: '0.78rem', color: alreadyIssued ? '#6b21a8' : '#64748b' }}>
               {alreadyIssued
-                ? '✓ Status: ISSUED'
-                : 'Scan this printed QR code using the Scan button to automatically label as Issued'}
+                ? '✓ Status: Relief Pack Claimed'
+                : 'Present this QR code at the Evacuee Monitoring / Relief desk to claim assistance.'}
             </div>
           </div>
-          <button type="button" className="vin-hh-print-btn" onClick={() => printStub(household)}>
-            <Printer size={16} /> Print This Stub
-          </button>
         </div>
 
-        {/* Issue status or action button */}
-        {alreadyIssued ? (
-          <div
-            style={{
-              padding: 13,
-              borderRadius: 12,
-              background: '#f3e8ff',
-              border: '1px solid #ddd6fe',
-              color: '#6b21a8',
-              fontWeight: 700,
-              textAlign: 'center',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              marginTop: 10,
-            }}
-          >
-            <CheckCircle2 size={18} />
-            Stub Verified &amp; Issued
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="vin-hh-issue-btn"
-            onClick={() => onIssue(household.id)}
-            style={{ marginTop: 10 }}
-          >
-            <Ticket size={18} />
-            Mark as Issued
-          </button>
-        )}
+        {/* Status notice */}
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            background: alreadyIssued ? '#f3e8ff' : '#f8fafc',
+            border: `1px solid ${alreadyIssued ? '#ddd6fe' : '#e2e8f0'}`,
+            color: alreadyIssued ? '#6b21a8' : '#64748b',
+            fontWeight: 700,
+            textAlign: 'center',
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            marginTop: 10,
+          }}
+        >
+          {alreadyIssued ? (
+            <>
+              <CheckCircle2 size={18} />
+              Relief Stub Verified &amp; Issued
+            </>
+          ) : (
+            <>
+              <Ticket size={18} />
+              Relief Distribution via Monitor Scan
+            </>
+          )}
+        </div>
 
         {/* Decamp / Check-out Button */}
         {!isDecamped && onDecamp && (
@@ -753,7 +425,7 @@ function StubIssuancePanel({ household, households, onIssue, onDecamp, onClose }
             }}
           >
             <LogOut size={14} />
-            This household is officially Decamped (Checked out)
+            Household has decamped from the evacuation center
           </div>
         )}
       </div>
@@ -1180,8 +852,6 @@ export default function MobileHouseholds() {
   const [centerRooms, setCenterRooms] = useState(DEFAULT_CENTER_ROOMS);
   const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
-  const [showScanner, setShowScanner] = useState(false);
-  const [scanError, setScanError] = useState('');
 
   /* ── Form pickers for register/edit ── */
   const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
@@ -1230,57 +900,6 @@ export default function MobileHouseholds() {
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
-
-  /* ── QR scan & Auto-issue ── */
-  const handleScan = useCallback((code) => {
-    setShowScanner(false);
-    const trimmed = (code || '').trim();
-    const found = households.find((h) =>
-      (h.stubCode && h.stubCode.toLowerCase() === trimmed.toLowerCase()) ||
-      String(h.id) === trimmed
-    );
-    if (found) {
-      if (!found.stubIssued) {
-        setHouseholds((prev) =>
-          prev.map((h) => (h.id === found.id ? { ...h, stubIssued: true, stubIssuedDate: new Date().toISOString() } : h))
-        );
-        setSelectedHousehold({ ...found, stubIssued: true });
-        setToastMsg(`✓ Stub scanned! ${found.name} (${found.stubCode}) is now labeled as ISSUED.`);
-        setTimeout(() => setToastMsg(''), 4500);
-
-        // Sync to Supabase
-        issueHouseholdStub(found.id)
-          .then(() => refreshHouseholds())
-          .catch((err) => console.warn('Could not sync stub issuance to Supabase:', err));
-      } else {
-        setSelectedHousehold(found);
-        setToastMsg(`ℹ ${found.name} (${found.stubCode}) is ALREADY ISSUED.`);
-        setTimeout(() => setToastMsg(''), 4000);
-      }
-    } else {
-      setScanError(`No household found matching QR code: "${trimmed}"`);
-    }
-  }, [households, refreshHouseholds, setHouseholds]);
-
-  /* ── Issue stub ── */
-  const issueStub = async (hhId) => {
-    setHouseholds((prev) =>
-      prev.map((h) => (h.id === hhId ? { ...h, stubIssued: true, stubIssuedDate: new Date().toISOString() } : h))
-    );
-    const target = households.find((h) => h.id === hhId);
-    if (target) {
-      setSelectedHousehold((prev) => (prev ? { ...prev, stubIssued: true } : null));
-      setToastMsg(`✓ Stub for ${target.name} (${target.stubCode}) is now marked as ISSUED!`);
-      setTimeout(() => setToastMsg(''), 4000);
-    }
-
-    try {
-      await issueHouseholdStub(hhId);
-      refreshHouseholds();
-    } catch (err) {
-      console.warn('Could not sync stub issuance to Supabase:', err);
-    }
-  };
 
   /* ── Room assignment ── */
   const handleAssignRoom = (hhId, roomId, centerName, neededSlots) => {
@@ -1453,14 +1072,14 @@ export default function MobileHouseholds() {
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Households</h1>
-          <p className="vin-mob-subtitle">{issuedCount} of {households.length} stubs issued</p>
+          <p className="vin-mob-subtitle">{households.length} registered households</p>
         </div>
         <button type="button" className="vin-mob-register-btn" onClick={openRegister}>
           <Plus size={16} /><span>Register</span>
         </button>
       </header>
 
-      {/* Search + Scan row */}
+      {/* Search row */}
       <div className="vin-hh-toolbar">
         <div className="vin-mob-search-wrapper" style={{ flex: 1, marginBottom: 0 }}>
           <Search size={18} className="vin-mob-search-icon" />
@@ -1468,19 +1087,11 @@ export default function MobileHouseholds() {
             type="text"
             placeholder="Name, room, or stub code…"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setScanError(''); }}
+            onChange={(e) => setSearch(e.target.value)}
             className="vin-mob-search-input"
           />
         </div>
-        <button type="button" className="vin-hh-scan-btn" onClick={() => { setScanError(''); setShowScanner(true); }}>
-          <QrCode size={18} /> Scan
-        </button>
       </div>
-
-      {/* Scan error */}
-      {scanError && (
-        <div className="vin-hh-scan-error"><AlertTriangle size={14} /> {scanError}</div>
-      )}
 
       {/* Filter bar with left-aligned Filters button and active chips matching user design */}
       <div className="vin-hh-filter-bar">
@@ -1533,20 +1144,6 @@ export default function MobileHouseholds() {
             <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
-
-        {/* Spacer + Print All */}
-        <div style={{ marginLeft: 'auto' }}>
-          <button
-            type="button"
-            className="vin-hh-print-all-btn"
-            onClick={() => printAllStubs(filtered.filter((h) => h.stubCode))}
-            disabled={filtered.filter((h) => h.stubCode).length === 0}
-            title="Print QR stubs for households in view"
-          >
-            <Printer size={14} />
-            Print Stubs ({filtered.filter((h) => h.stubCode).length})
-          </button>
-        </div>
       </div>
 
       {/* Legend */}
@@ -1673,15 +1270,11 @@ export default function MobileHouseholds() {
         )}
       </div>
 
-      {/* ── QR SCANNER ── */}
-      {showScanner && <QrScannerModal onScan={handleScan} onClose={() => setShowScanner(false)} />}
-
-      {/* ── STUB ISSUANCE PANEL ── */}
+      {/* ── HOUSEHOLD DETAILS & QR PANEL ── */}
       {selectedHousehold && (
         <StubIssuancePanel
           household={selectedHousehold}
           households={households}
-          onIssue={issueStub}
           onDecamp={handleDecamp}
           onClose={() => setSelectedHousehold(null)}
         />
@@ -1911,21 +1504,6 @@ export default function MobileHouseholds() {
           onClose={() => setShowFormCategoryPicker(null)}
         />
       )}
-
-      {/* ── HIDDEN QR SVGS FOR PRINTING ── */}
-      <div style={{ position: 'fixed', left: '-9999px', top: '-9999px', pointerEvents: 'none', opacity: 0 }} aria-hidden="true">
-        {households.filter((h) => h.stubCode).map((h) => (
-          <QRCodeSVG
-            key={h.id}
-            id={`print-qr-${h.id}`}
-            value={h.stubCode}
-            size={120}
-            level="M"
-            bgColor="#ffffff"
-            fgColor="#000000"
-          />
-        ))}
-      </div>
     </div>
   );
 }

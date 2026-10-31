@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown,
   ChevronLeft, ChevronRight, SlidersHorizontal, AlertTriangle, Building,
+  QrCode, Ticket, PackageCheck, User,
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
@@ -12,9 +13,10 @@ import {
   isCenterMatch,
   getRoomsForCenter,
 } from '../../lib/evacuationCenters';
-import { useHouseholds } from '../../lib/householdService.js';
+import { useHouseholds, issueHouseholdStub } from '../../lib/householdService.js';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
+import QrScannerModal from '../../components/QrScannerModal';
 
 const INITIAL_MONITOR_DATA = [
   {
@@ -183,7 +185,7 @@ const ROOMS = ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
 
 export default function MobileMonitor() {
   const { centers } = useEvacuationCenters();
-  const { households } = useHouseholds(centers);
+  const { households, refresh: refreshHouseholds } = useHouseholds(centers);
   const { logs, refresh: refreshLogs } = useMonitoringLogs(centers);
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
@@ -194,6 +196,9 @@ export default function MobileMonitor() {
   const [activeFamily, setActiveFamily] = useState(null);
   const [attendance, setAttendance] = useState({});
   const [checkInTimes, setCheckInTimes] = useState({});
+  const [showScanner, setShowScanner] = useState(false);
+  const [reliefScanModal, setReliefScanModal] = useState(null);
+  const [toastMsg, setToastMsg] = useState('');
   const [monitorForm, setMonitorForm] = useState({
     interval: 'Every 2-3 hours',
     checkedBy: 'Brgy. Capt. Reyes',
@@ -389,26 +394,109 @@ export default function MobileMonitor() {
     }
   };
 
+  /* ── Relief Distribution QR Scan Handler ── */
+  const handleReliefScan = useCallback((code) => {
+    setShowScanner(false);
+    const trimmed = (code || '').trim();
+    if (!trimmed) return;
+
+    const found = households.find((h) =>
+      (h.stubCode && h.stubCode.toLowerCase() === trimmed.toLowerCase()) ||
+      String(h.id) === trimmed ||
+      (h.householdCode && h.householdCode.toLowerCase() === trimmed.toLowerCase())
+    );
+
+    if (!found) {
+      setReliefScanModal({
+        status: 'not-found',
+        code: trimmed,
+        errorMsg: `No registered household matches QR code: "${trimmed}"`,
+      });
+      return;
+    }
+
+    const isDecamped = found.evacueeStatus === 'Decamped';
+    const isUnassigned = !found.center || found.center === 'Unassigned' || found.room === 'Unassigned';
+
+    if (isDecamped || isUnassigned) {
+      setReliefScanModal({
+        household: found,
+        status: 'not-active',
+        errorMsg: isDecamped
+          ? `Cannot issue relief pack: ${found.name}'s family has officially Decamped (Checked out) from the evacuation center.`
+          : `Cannot issue relief pack: ${found.name}'s family is not currently checked in to any evacuation room.`,
+      });
+      return;
+    }
+
+    if (found.stubIssued) {
+      setReliefScanModal({
+        household: found,
+        status: 'already-issued',
+      });
+      return;
+    }
+
+    setReliefScanModal({
+      household: found,
+      status: 'eligible',
+    });
+  }, [households]);
+
+  /* ── Confirm Relief Pack Distribution ── */
+  const handleConfirmIssueRelief = async (hhId) => {
+    try {
+      await issueHouseholdStub(hhId);
+      if (refreshHouseholds) refreshHouseholds();
+      
+      setReliefScanModal((prev) => prev ? { ...prev, status: 'issued-success' } : null);
+      setToastMsg(`✓ Relief pack marked as ISSUED successfully!`);
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (err) {
+      console.warn('Error issuing relief stub:', err);
+      setToastMsg(`Failed to mark stub: ${err.message || 'Error updating status'}`);
+      setTimeout(() => setToastMsg(''), 4000);
+    }
+  };
+
   return (
     <div className="vin-mob-page">
+      {/* Floating Toast notification */}
+      {toastMsg && (
+        <div className="vin-room-toast">
+          <CheckCircle2 size={16} />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       {/* Header */}
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Evacuee Monitoring</h1>
-          <p className="vin-mob-subtitle">Record arrival status per family</p>
+          <p className="vin-mob-subtitle">Headcount &amp; Relief Pack Distribution</p>
         </div>
       </header>
 
-      {/* Search */}
-      <div className="vin-mob-search-wrapper">
-        <Search size={18} className="vin-mob-search-icon" />
-        <input
-          type="text"
-          placeholder="Search household or room…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="vin-mob-search-input"
-        />
+      {/* Search + Scan Toolbar */}
+      <div className="vin-hh-toolbar">
+        <div className="vin-mob-search-wrapper" style={{ flex: 1, marginBottom: 0 }}>
+          <Search size={18} className="vin-mob-search-icon" />
+          <input
+            type="text"
+            placeholder="Search family or room…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="vin-mob-search-input"
+          />
+        </div>
+        <button
+          type="button"
+          className="vin-hh-scan-btn"
+          onClick={() => { setReliefScanModal(null); setShowScanner(true); }}
+          title="Scan Relief Goods Stub"
+        >
+          <QrCode size={18} /> Scan Relief
+        </button>
       </div>
 
       {/* Filter Bar — single Filters button + active chips */}
@@ -770,6 +858,229 @@ export default function MobileMonitor() {
           }}
           onClose={() => setShowFilterSheet(false)}
         />
+      )}
+
+      {/* ── QR SCANNER MODAL ── */}
+      {showScanner && (
+        <QrScannerModal
+          title="Scan Relief Goods Stub"
+          hint="Point camera at evacuee stub QR code to verify relief pack eligibility"
+          onScan={handleReliefScan}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      {/* ── RELIEF DISTRIBUTION VERIFICATION MODAL ── */}
+      {reliefScanModal && (
+        <div className="vin-mob-sheet-overlay" onClick={() => setReliefScanModal(null)}>
+          <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div className="vin-mob-sheet-header">
+              <h2 className="vin-mob-sheet-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PackageCheck size={20} color="#7c3aed" /> Relief Goods Distribution
+              </h2>
+              <button type="button" className="vin-mob-sheet-close" onClick={() => setReliefScanModal(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {reliefScanModal.status === 'eligible' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  color: '#15803d',
+                  fontSize: '0.88rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontWeight: 600,
+                }}>
+                  <CheckCircle2 size={18} color="#16a34a" />
+                  <span>Eligible for Relief Pack Distribution</span>
+                </div>
+
+                <div className="vin-hh-stub-card" style={{ margin: 0 }}>
+                  <div className="vin-mob-profile-top">
+                    <div className="vin-mob-avatar-circle" style={{ width: 44, height: 44 }}><User size={20} /></div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>{reliefScanModal.household.name}</div>
+                      <div style={{ fontSize: '.8rem', color: '#64748b' }}>Stub: {reliefScanModal.household.stubCode}</div>
+                    </div>
+                  </div>
+                  <div className="vin-hh-stub-meta">
+                    <div><span className="vin-mob-field-label">ROOM</span><div>{reliefScanModal.household.room}</div></div>
+                    <div><span className="vin-mob-field-label">MEMBERS</span><div>{reliefScanModal.household.familyCount} persons</div></div>
+                    <div><span className="vin-mob-field-label">CENTER</span><div style={{ fontSize: '.8rem' }}>{reliefScanModal.household.center}</div></div>
+                    <div><span className="vin-mob-field-label">VULNERABILITY</span><div>
+                      {Array.isArray(reliefScanModal.household.vulnerabilities) && reliefScanModal.household.vulnerabilities.length > 0
+                        ? reliefScanModal.household.vulnerabilities.join(', ')
+                        : 'None'}
+                    </div></div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="vin-mob-sheet-submit-btn"
+                  onClick={() => handleConfirmIssueRelief(reliefScanModal.household.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    background: '#7c3aed',
+                    padding: '14px',
+                    fontSize: '0.95rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  <PackageCheck size={18} />
+                  Confirm &amp; Issue Relief Pack
+                </button>
+              </div>
+            )}
+
+            {reliefScanModal.status === 'issued-success' && (
+              <div style={{ textAlign: 'center', padding: '16px 8px' }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '50%',
+                  background: '#f0fdf4',
+                  border: '2px solid #bbf7d0',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px'
+                }}>
+                  <CheckCircle2 size={32} />
+                </div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>
+                  Relief Pack Issued!
+                </h3>
+                <p style={{ fontSize: '0.86rem', color: '#64748b', marginBottom: 16 }}>
+                  Stub {reliefScanModal.household.stubCode} for <strong>{reliefScanModal.household.name}</strong> has been verified and recorded.
+                </p>
+                <button
+                  type="button"
+                  className="vin-btn-cancel"
+                  style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700 }}
+                  onClick={() => setReliefScanModal(null)}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            {reliefScanModal.status === 'already-issued' && (
+              <div style={{ textAlign: 'center', padding: '12px 6px' }}>
+                <div style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  background: '#fef3c7',
+                  border: '2px solid #fde68a',
+                  color: '#b45309',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 10px'
+                }}>
+                  <AlertTriangle size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#92400e', marginBottom: 4 }}>
+                  Already Claimed
+                </h3>
+                <p style={{ fontSize: '0.86rem', color: '#475569', marginBottom: 12 }}>
+                  This family (<strong>{reliefScanModal.household.name}</strong> • {reliefScanModal.household.room}) has already claimed their relief pack for this distribution cycle.
+                </p>
+                <div style={{ padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b', marginBottom: 16 }}>
+                  Stub: <strong>{reliefScanModal.household.stubCode}</strong>
+                </div>
+                <button
+                  type="button"
+                  className="vin-btn-cancel"
+                  style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700 }}
+                  onClick={() => setReliefScanModal(null)}
+                >
+                  Close
+                </button>
+              </div>
+            )}
+
+            {reliefScanModal.status === 'not-active' && (
+              <div style={{ textAlign: 'center', padding: '12px 6px' }}>
+                <div style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  background: '#fef2f2',
+                  border: '2px solid #fecaca',
+                  color: '#dc2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 10px'
+                }}>
+                  <XCircle size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#991b1b', marginBottom: 4 }}>
+                  Cannot Issue Relief Pack
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#475569', marginBottom: 12, lineHeight: 1.4 }}>
+                  {reliefScanModal.errorMsg}
+                </p>
+                <div style={{ padding: 10, background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca', fontSize: '0.8rem', color: '#b91c1c', marginBottom: 16 }}>
+                  Only active evacuees currently staying in an evacuation center are eligible to claim relief packs.
+                </div>
+                <button
+                  type="button"
+                  className="vin-btn-cancel"
+                  style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700 }}
+                  onClick={() => setReliefScanModal(null)}
+                >
+                  Close
+                </button>
+              </div>
+            )}
+
+            {reliefScanModal.status === 'not-found' && (
+              <div style={{ textAlign: 'center', padding: '12px 6px' }}>
+                <div style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  background: '#fef2f2',
+                  border: '2px solid #fecaca',
+                  color: '#dc2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 10px'
+                }}>
+                  <XCircle size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#991b1b', marginBottom: 4 }}>
+                  Stub Not Found
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#475569', marginBottom: 16 }}>
+                  {reliefScanModal.errorMsg}
+                </p>
+                <button
+                  type="button"
+                  className="vin-btn-cancel"
+                  style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700 }}
+                  onClick={() => setReliefScanModal(null)}
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
