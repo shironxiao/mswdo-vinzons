@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layouts/admin/AdminLayout';
+import { EventProvider } from './context/EventContext';
 import MobileLayout from './layouts/mobile/MobileLayout';
 
 // Admin Pages
@@ -65,7 +66,7 @@ export default function App() {
             Single source of truth for all Admin views!
             Sidebar panel is shared here.
             ======================================================== */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route path="/admin" element={<EventProvider><AdminLayout /></EventProvider>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="evacuation-center" element={<EvacuationCenter />} />
           <Route path="household" element={<Household />} />

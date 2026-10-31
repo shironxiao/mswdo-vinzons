@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
+import EventSelector from '../components/EventSelector';
 import './AdminLayout.css';
 
 /**
@@ -83,7 +84,7 @@ export default function AdminLayout({
                 aria-label={searchPlaceholder}
               />
             </div>
-            {topbarRight}
+            <EventSelector />
           </div>
         </header>
 
