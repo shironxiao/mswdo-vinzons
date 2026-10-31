@@ -53,13 +53,22 @@
   padding: 20px 22px;
   display: flex;
   flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.vin-metric-card:hover {
+.vin-metric-card:hover,
+.vin-metric-card:focus-visible {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.vin-metric-card:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 3px;
 }
 
 .vin-metric-top {

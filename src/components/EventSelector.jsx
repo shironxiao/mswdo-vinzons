@@ -3,7 +3,22 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { EventContext } from '../context/eventContext.js';
-import { Menu, Check, AlertCircle, X, CalendarDays } from 'lucide-react';
+import { Menu, Check, AlertCircle, X, CalendarDays, History, ChevronDown } from 'lucide-react';
+
+const DISASTER_TYPES = [
+  'Typhoon',
+  'Flood',
+  'Earthquake',
+  'Fire',
+  'Landslide',
+  'Volcanic Eruption',
+  'Tsunami',
+  'Storm Surge',
+  'Drought',
+  'Armed Conflict',
+  'Pandemic',
+  'Other',
+];
 
 export default function EventSelector() {
   const {
@@ -17,6 +32,8 @@ export default function EventSelector() {
 
   const [showMenu, setShowMenu] = useState(false);
   const [newEventName, setNewEventName] = useState('');
+  const [newEventType, setNewEventType] = useState('Typhoon');
+  const [showHistory, setShowHistory] = useState(false);
   const [actionError, setActionError] = useState('');
   useEffect(() => {
     if (!showMenu) return undefined;
@@ -30,6 +47,8 @@ export default function EventSelector() {
   const hasActiveEvent = allEvents.some(
     (event) => event.status === 'Active' && event.id !== 'default-active-event'
   );
+  const activeEvents = allEvents.filter((event) => event.status === 'Active');
+  const historicalEvents = allEvents.filter((event) => event.status !== 'Active');
 
   const handleSelect = (event) => {
     setSelectedEvent(event);
@@ -40,8 +59,9 @@ export default function EventSelector() {
     if (!newEventName.trim()) return;
     setActionError('');
     try {
-      await startNewEvent(newEventName.trim());
+      await startNewEvent(newEventName.trim(), newEventType);
       setNewEventName('');
+      setNewEventType('Typhoon');
       setShowMenu(false);
     } catch (error) {
       setActionError(error.message || 'Could not start the evacuation operation.');
@@ -109,11 +129,11 @@ export default function EventSelector() {
 
             <div className="event-modal-body">
               <div className="event-modal-section-heading">
-                <span>Available operations</span>
-                <span className="event-count">{allEvents.length}</span>
+                <span>Current operation</span>
+                <span className="event-count">{activeEvents.length}</span>
               </div>
               <div className="event-list">
-                {allEvents.length > 0 ? allEvents.map((ev) => {
+                {activeEvents.length > 0 ? activeEvents.map((ev) => {
                   const isSelected = selectedEvent?.id === ev.id;
                   return (
                     <button
@@ -126,7 +146,7 @@ export default function EventSelector() {
                       <span className="event-option-details">
                         <span className="event-option-name">{ev.event_name}</span>
                         <span className="event-option-meta">
-                          {ev.status === 'Active' ? 'Active operation' : 'Historical · read-only'}
+                          {ev.event_type || 'Disaster'} · Active operation
                           {ev.declared_at && ` · ${new Date(ev.declared_at).toLocaleDateString()}`}
                         </span>
                       </span>
@@ -134,9 +154,55 @@ export default function EventSelector() {
                     </button>
                   );
                 }) : (
-                  <p className="event-empty-state">No evacuation operations are available.</p>
+                  <p className="event-empty-state">No active operation. Start a new operation below.</p>
                 )}
               </div>
+
+              <button
+                type="button"
+                className="event-history-toggle"
+                onClick={() => setShowHistory((visible) => !visible)}
+                aria-expanded={showHistory}
+                aria-controls="event-history-list"
+              >
+                <span><History size={16} /> View event history <span className="event-count">{historicalEvents.length}</span></span>
+                <ChevronDown size={17} className={showHistory ? 'expanded' : ''} />
+              </button>
+              {showHistory && (
+                <div className="event-history-content" id="event-history-list">
+                  {historicalEvents.length > 0 ? (
+                    <div className="event-list">
+                      {historicalEvents.map((ev) => {
+                        const isSelected = selectedEvent?.id === ev.id;
+                        const eventStatus = ev.status === 'Archived'
+                          ? 'Archived'
+                          : ev.status === 'Concluded' ? 'Concluded' : 'Historical';
+                        return (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={() => handleSelect(ev)}
+                            className={`event-option ${isSelected ? 'selected' : ''}`}
+                          >
+                            <span className="event-status-indicator historical" />
+                            <span className="event-option-details">
+                              <span className="event-option-name">{ev.event_name}</span>
+                              <span className="event-option-meta">
+                                {ev.event_type || 'Disaster'} · {eventStatus}
+                                {ev.declared_at && ` · Started ${new Date(ev.declared_at).toLocaleDateString()}`}
+                                {ev.concluded_at && ` · Ended ${new Date(ev.concluded_at).toLocaleDateString()}`}
+                              </span>
+                            </span>
+                            {isSelected && <Check size={18} className="event-option-check" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="event-empty-state">No past operations in the event history.</p>
+                  )}
+                </div>
+              )}
 
               {selectedEvent?.status !== 'Active' && (
                 <div className="event-readonly-notice">
@@ -155,7 +221,15 @@ export default function EventSelector() {
                   value={newEventName}
                   onChange={(e) => setNewEventName(e.target.value)}
                   aria-label="New event name"
+                  maxLength={150}
                 />
+                <select
+                  value={newEventType}
+                  onChange={(e) => setNewEventType(e.target.value)}
+                  aria-label="Disaster type"
+                >
+                  {DISASTER_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
                 <button
                   type="button"
                   className="event-primary-action"

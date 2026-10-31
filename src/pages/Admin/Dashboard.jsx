@@ -103,34 +103,34 @@ export default function Dashboard() {
       </header>
 
       <section className="vin-metrics-grid">
-        <div className="vin-metric-card">
+        <Link to="/admin/evacuation-center" className="vin-metric-card">
           <div className="vin-metric-top"><div className="vin-metric-icon-box icon-box-green"><Home size={19} /></div><ArrowUpRight className="vin-metric-arrow" size={17} /></div>
           <div className="vin-metric-value">{centerSummaries.length}</div>
           <div className="vin-metric-label">Centers with evacuees</div>
           <div className="vin-metric-divider" />
           <div className="vin-metric-footer">{centers.length} registered centers</div>
-        </div>
-        <div className="vin-metric-card">
+        </Link>
+        <Link to="/admin/household" className="vin-metric-card">
           <div className="vin-metric-top"><div className="vin-metric-icon-box icon-box-amber"><Users size={19} /></div><ArrowUpRight className="vin-metric-arrow" size={17} /></div>
           <div className="vin-metric-value">{totalPeople}</div>
           <div className="vin-metric-label">Individual evacuees</div>
           <div className="vin-metric-divider" />
           <div className="vin-metric-footer">{eventHouseholds.length} families in this operation</div>
-        </div>
-        <div className="vin-metric-card">
+        </Link>
+        <Link to="/admin/room-placement" className="vin-metric-card">
           <div className="vin-metric-top"><div className="vin-metric-icon-box icon-box-blue"><Building size={19} /></div><ArrowUpRight className="vin-metric-arrow" size={17} /></div>
           <div className="vin-metric-value">{occupiedRoomIds.size} / {totalRooms}</div>
           <div className="vin-metric-label">Occupied rooms</div>
           <div className="vin-metric-divider" />
           <div className="vin-metric-footer">{occupancyPercent}% room occupancy</div>
-        </div>
-        <div className="vin-metric-card">
+        </Link>
+        <Link to="/admin/relief-goods-stubs" className="vin-metric-card">
           <div className="vin-metric-top"><div className="vin-metric-icon-box icon-box-orange"><Package size={19} /></div><ArrowUpRight className="vin-metric-arrow" size={17} /></div>
           <div className="vin-metric-value">{issuedStubs}</div>
           <div className="vin-metric-label">Relief stubs issued</div>
           <div className="vin-metric-divider" />
           <div className="vin-metric-footer">{eventHouseholds.length} families checked in</div>
-        </div>
+        </Link>
       </section>
 
       <section className="vin-dash-bottom-grid">
