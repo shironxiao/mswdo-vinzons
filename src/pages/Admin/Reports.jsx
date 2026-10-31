@@ -1,5 +1,5 @@
 import { Fragment, useContext, useMemo, useState } from 'react';
-import { Calendar, FileSpreadsheet, FileText, Users, Package, Printer } from 'lucide-react';
+import { FileSpreadsheet, Printer } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import './Reports.css';
 import { EventContext } from '../../context/eventContext.js';
@@ -222,36 +222,11 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
     </body></html>`;
 }
 
-const REPORTS_LIST = [
-  {
-    id: 'daily-situation',
-    title: 'Daily situation report',
-    description: 'Centers, occupancy, presence, and relief activity for the selected operation.',
-    formats: ['PDF', 'CSV'],
-    icon: FileText,
-  },
-  {
-    id: 'household-masterlist',
-    title: 'Household masterlist',
-    description: 'Registered households, member counts, and permanent barangay/purok profiles.',
-    formats: ['PDF', 'XLSX'],
-    icon: Users,
-  },
-  {
-    id: 'relief-goods-issuance',
-    title: 'Relief-goods issuance',
-    description: 'Stub batches, quantities issued, and duplicate-claim checks.',
-    formats: ['PDF', 'CSV'],
-    icon: Package,
-  },
-];
-
 export default function Reports() {
   const { selectedEvent } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
   const { households } = useHouseholds(centers);
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
-  const [activeFilter, setActiveFilter] = useState('all');
   const [selectedCenterId, setSelectedCenterId] = useState('');
   const [barangayName, setBarangayName] = useState('');
   const [disasterType, setDisasterType] = useState(selectedEvent?.event_type || 'Typhoon');
@@ -318,29 +293,6 @@ export default function Reports() {
       rows: dromicRows,
     }));
     previewWindow.document.close();
-  };
-
-  const handleDownload = (report) => {
-    if (report.id === 'household-masterlist') {
-      const worksheet = XLSX.utils.json_to_sheet(households.map((household) => ({
-        HouseholdCode: household.householdCode,
-        HeadName: household.name,
-        HeadAge: household.age,
-        HeadSex: household.sex,
-        Barangay: household.barangay,
-        Purok: household.purok,
-        Vulnerabilities: (household.vulnerabilities || []).join(', '),
-        Members: household.members.map((member) =>
-          `${member.name}|${member.ageValue ?? member.age}|${member.ageUnit || 'Years'}|${member.sex}|${(member.vulnerabilities || []).join(',')}`
-        ).join(';'),
-      })));
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Masterlist');
-      XLSX.writeFile(workbook, 'Vinzons_Household_Masterlist.xlsx');
-      return;
-    }
-
-    window.alert(`${report.title} export is not available yet.`);
   };
 
   return (
@@ -477,54 +429,6 @@ export default function Reports() {
         </button>
       </section>
 
-      <div className="vin-reports-filters">
-        <span className="vin-filter-label">FILTER REPORTS</span>
-        <button
-          type="button"
-          className={`vin-filter-pill-btn ${activeFilter === 'all' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('all')}
-        >
-          All centers
-        </button>
-        <button
-          type="button"
-          className={`vin-filter-pill-btn ${activeFilter === 'date' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('date')}
-        >
-          <Calendar size={16} />
-          <span>Date</span>
-        </button>
-        <button
-          type="button"
-          className={`vin-filter-pill-btn ${activeFilter === 'type' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('type')}
-        >
-          <span>Document type</span>
-        </button>
-      </div>
-
-      <div className="vin-reports-table-card">
-        <table className="vin-reports-table">
-          <thead>
-            <tr>
-              <th>REPORT</th><th>DESCRIPTION</th><th>FORMAT</th><th style={{ textAlign: 'right' }}>ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {REPORTS_LIST.map((item) => {
-              const IconComp = item.icon;
-              return (
-                <tr key={item.id}>
-                  <td><div className="vin-rep-title-cell"><div className="vin-rep-icon-badge"><IconComp size={18} /></div><span className="vin-rep-name">{item.title}</span></div></td>
-                  <td><span className="vin-rep-desc">{item.description}</span></td>
-                  <td><div className="vin-rep-formats">{item.formats.map((format) => <span key={format} className="vin-format-tag">{format}</span>)}</div></td>
-                  <td style={{ textAlign: 'right' }}><button type="button" className="vin-download-btn" onClick={() => handleDownload(item)}>Download</button></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
