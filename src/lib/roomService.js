@@ -146,3 +146,12 @@ export async function createRoom(roomData, centersList = []) {
   if (error) throw error;
   return data;
 }
+
+export async function updateRoomCapacity(roomId, capacity) {
+  const { error } = await supabase
+    .from('rooms')
+    .update({ capacity_individuals: Number(capacity) })
+    .eq('id', roomId);
+
+  if (error) throw error;
+}

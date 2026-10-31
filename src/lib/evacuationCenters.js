@@ -184,46 +184,42 @@ export async function fetchEvacuationCenters() {
  * Update an existing evacuation center (details and room designations)
  * in both Supabase and local cache
  */
-export async function updateEvacuationCenter(centerId, { name, location, total_rooms, capacity, room_names }) {
-  // 1. If custom room names provided, save to localStorage
+export async function updateEvacuationCenter(centerId, {
+  name,
+  location,
+  total_rooms,
+  capacity,
+  room_names,
+  room_capacities,
+}) {
+  const updatePayload = {
+    name: name.trim(),
+    location: (location || 'Vinzons, Camarines Norte').trim(),
+    total_rooms: Math.max(1, Number(total_rooms) || 1),
+    capacity: Number(capacity) || 50,
+  };
+
+  const { data, error } = await supabase
+    .from('evacuation_centers')
+    .update(updatePayload)
+    .eq('id', centerId)
+    .select('id')
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error('Evacuation center could not be found.');
+
   if (room_names && Object.keys(room_names).length > 0) {
     if (centerId) saveCustomRoomNamesMap(centerId, room_names);
     if (name) saveCustomRoomNamesMap(name, room_names);
   }
 
-  // 2. Update Supabase
-  try {
-    const updatePayload = {
-      name: name.trim(),
-      location: (location || 'Vinzons, Camarines Norte').trim(),
-      total_rooms: Math.max(1, Number(total_rooms) || 1),
-      capacity: Number(capacity) || 50,
-    };
-
-    const { error } = await supabase
-      .from('evacuation_centers')
-      .update(updatePayload)
-      .eq('id', centerId);
-
-    if (error) {
-      console.warn('Supabase update error (id check):', error.message);
-      // Fallback update by name if id was a string or generated
-      await supabase
-        .from('evacuation_centers')
-        .update(updatePayload)
-        .eq('name', name.trim());
-    }
-  } catch (err) {
-    console.warn('Network error updating center in Supabase:', err);
-  }
-
-  // 3. Update localStorage cache
   try {
     const cached = localStorage.getItem(STORAGE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached);
       const updated = parsed.map((c) => {
-        if (c.id === centerId || c.name === name || c.displayName === name) {
+        if (c.id === centerId) {
           const roomCount = Math.max(1, Number(total_rooms) || c.total_rooms || 1);
           const capNum = Number(capacity) || c.capacity || 50;
           const avgCap = Math.round(capNum / roomCount);
@@ -231,12 +227,15 @@ export async function updateEvacuationCenter(centerId, { name, location, total_r
           for (let i = 1; i <= roomCount; i++) {
             const rId = `Room ${i}`;
             const rName = room_names?.[rId] || c.rooms?.[i - 1]?.name || rId;
+            const roomCapacity = Number(room_capacities?.[rId]) || avgCap;
             newRooms.push({
               id: rId,
               name: rName,
-              capacity: avgCap,
+              capacity: roomCapacity,
               occupied: c.rooms?.[i - 1]?.occupied || 0,
-              description: rName !== rId ? `${rName} (Cap. ${avgCap})` : `Capacity: ${avgCap} persons`,
+              description: rName !== rId
+                ? `${rName} (Cap. ${roomCapacity})`
+                : `Capacity: ${roomCapacity} persons`,
             });
           }
           return {
@@ -256,6 +255,7 @@ export async function updateEvacuationCenter(centerId, { name, location, total_r
   } catch (err) {
     console.warn('Cache update error:', err);
   }
+
 }
 
 function getCachedOrFallbackCenters() {

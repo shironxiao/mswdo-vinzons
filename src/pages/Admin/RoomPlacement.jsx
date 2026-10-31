@@ -1,12 +1,12 @@
 import { useState, useMemo, useContext } from 'react';
-import { Plus, Building, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building, ChevronLeft, ChevronRight } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
 import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
-import { useRooms, createRoom } from '../../lib/roomService.js';
+import { useRooms } from '../../lib/roomService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { EventContext } from '../../context/eventContext.js';
 import AdminSearchInput from '../../components/AdminSearchInput.jsx';
@@ -17,7 +17,7 @@ export default function RoomPlacement() {
   const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
   const { households } = useHouseholds(centers);
-  const { rooms: dbRooms, refresh: refreshRooms } = useRooms(centers);
+  const { rooms: dbRooms } = useRooms(centers);
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -26,19 +26,6 @@ export default function RoomPlacement() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
-
-  // Custom added rooms state (fallback / optimistic)
-  const [customRooms, setCustomRooms] = useState([]);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState({
-    center: '',
-    id: '',
-    name: '',
-    capacity: 30,
-    occupied: 0,
-    status: 'Active',
-  });
 
   // Calculate live room occupancies from Supabase database
   const allRooms = useMemo(() => {
@@ -103,8 +90,8 @@ export default function RoomPlacement() {
       });
     });
 
-    return [...customRooms, ...list];
-  }, [dbRooms, centers, households, customRooms, placements, selectedEvent?.id]);
+    return list;
+  }, [dbRooms, centers, households, placements, selectedEvent?.id]);
 
   const filtered = useMemo(() => {
     return allRooms.filter((r) => {
@@ -134,57 +121,6 @@ export default function RoomPlacement() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRooms = filtered.slice(startIndex, startIndex + pageSize);
 
-  const handleOpenAddModal = () => {
-    const defaultCenter =
-      filterCenter !== 'All Centers'
-        ? filterCenter
-        : centers[0]?.displayName || 'LGU EC (Mangcaway)';
-
-    const nextNum = allRooms.length + 101;
-    setForm({
-      center: defaultCenter,
-      id: `RM-${nextNum}`,
-      name: '',
-      occupied: 0,
-      status: 'Active',
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleAddRoom = async (e) => {
-    e.preventDefault();
-    if (!form.name.trim()) return;
-
-    const occupiedNum = Number(form.occupied) || 0;
-    const code = form.id.trim() || `RM-${allRooms.length + 101}`;
-
-    const newRoom = {
-      id: code,
-      roomKey: form.name.match(/Room\s*\d+/i)?.[0] || form.name.trim(),
-      center: form.center,
-      name: form.name.trim(),
-      occupied: occupiedNum,
-      status: form.status,
-    };
-
-    setCustomRooms([newRoom, ...customRooms]);
-    setIsModalOpen(false);
-
-    try {
-      await createRoom(
-        {
-          center: form.center,
-          roomName: form.name.trim(),
-          capacity: form.capacity || 30,
-        },
-        centers
-      );
-      refreshRooms();
-    } catch (err) {
-      console.warn('Could not save room to Supabase:', err);
-    }
-  };
-
   return (
     <div className="vin-feature-page">
       <header className="vin-feature-header">
@@ -200,14 +136,6 @@ export default function RoomPlacement() {
               : `Occupancy is based on active placements for ${selectedEvent?.event_name || 'the selected operation'}.`}
           </p>
         </div>
-        <button
-          type="button"
-          className="vin-feature-action-btn"
-          onClick={handleOpenAddModal}
-        >
-          <Plus size={18} />
-          <span>Add Room/Space</span>
-        </button>
       </header>
 
       <div className="vin-feature-content-card">
@@ -353,114 +281,6 @@ export default function RoomPlacement() {
         </div>
       )}
 
-      {/* ── Add Room Modal Popup ── */}
-      {isModalOpen && (
-        <div className="vin-modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="vin-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="vin-modal-head">
-              <div>
-                <h2>Add Room / Space</h2>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                  Assign a new room or designated space to an evacuation center.
-                </span>
-              </div>
-              <button
-                type="button"
-                className="vin-modal-close"
-                onClick={() => setIsModalOpen(false)}
-                aria-label="Close modal"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddRoom}>
-              {/* Evacuation Center Selection */}
-              <div className="vin-form-group">
-                <label className="vin-form-label">Evacuation Center</label>
-                <select
-                  className="vin-form-select"
-                  value={form.center}
-                  onChange={(e) => setForm({ ...form, center: e.target.value })}
-                  required
-                >
-                  {centers.map((ec) => (
-                    <option key={ec.id || ec.displayName} value={ec.displayName}>
-                      {ec.displayName} ({ec.location})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Room Code */}
-              <div className="vin-form-group">
-                <label className="vin-form-label">Room Code</label>
-                <input
-                  type="text"
-                  className="vin-form-input"
-                  placeholder="e.g. RM-103"
-                  value={form.id}
-                  onChange={(e) => setForm({ ...form, id: e.target.value })}
-                  required
-                />
-              </div>
-
-              {/* Room Name / Designation */}
-              <div className="vin-form-group">
-                <label className="vin-form-label">Room Name / Designation</label>
-                <input
-                  type="text"
-                  className="vin-form-input"
-                  placeholder="e.g. Room 103 - Grade 2 Gumamela"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              {/* Occupancy & Status Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="vin-form-group">
-                  <label className="vin-form-label">Occupancy (Persons)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="vin-form-input"
-                    placeholder="0"
-                    value={form.occupied}
-                    onChange={(e) => setForm({ ...form, occupied: e.target.value })}
-                  />
-                </div>
-                <div className="vin-form-group">
-                  <label className="vin-form-label">Room Status</label>
-                  <select
-                    className="vin-form-select"
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Full">Full</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Modal Actions */}
-              <div className="vin-modal-actions">
-                <button
-                  type="button"
-                  className="vin-btn-cancel"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="vin-btn-submit">
-                  Save Room
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       {/* ── Mobile-Style Filter Modal ── */}
       <AdminFilterModal
         isOpen={showFilterModal}

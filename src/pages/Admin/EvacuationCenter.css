@@ -732,6 +732,38 @@
   gap: 4px;
 }
 
+.vin-room-editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vin-add-room-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  color: #6b21a8;
+  background: #fff;
+  border: 1px solid #d8b4fe;
+  border-radius: 9px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vin-add-room-btn:hover:not(:disabled) {
+  background: #faf5ff;
+}
+
+.vin-add-room-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .vin-renaming-title {
   font-size: 0.95rem;
   font-weight: 800;
@@ -750,7 +782,7 @@
 
 .vin-room-rename-row {
   display: grid;
-  grid-template-columns: 110px 1fr 100px;
+  grid-template-columns: 110px minmax(0, 1fr) 120px 78px;
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
@@ -782,6 +814,48 @@
 }
 
 .vin-room-rename-input:focus {
+  border-color: #7c3aed;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.vin-capacity-total {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.vin-room-count-hint {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.vin-room-capacity-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #64748b;
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.vin-room-capacity-input {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  color: #0f172a;
+  box-sizing: border-box;
+  outline: none;
+  background: #fbfdfc;
+}
+
+.vin-room-capacity-input:focus {
   border-color: #7c3aed;
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
@@ -837,5 +911,13 @@
   .vin-room-rename-row {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .vin-room-editor-header {
+    flex-direction: column;
+  }
+
+  .vin-room-occ-col {
+    text-align: left;
   }
 }

@@ -9,7 +9,7 @@ import { useEvacuationCenters, updateEvacuationCenter } from '../../lib/evacuati
 import { supabase } from '../../lib/supabase.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
-import { useRooms } from '../../lib/roomService.js';
+import { createRoom, updateRoomCapacity, useRooms } from '../../lib/roomService.js';
 import { EventContext } from '../../context/eventContext.js';
 import AdminSearchInput from '../../components/AdminSearchInput.jsx';
 
@@ -17,7 +17,7 @@ export default function EvacuationCenter() {
   const { selectedEvent } = useContext(EventContext);
   const { centers: dbCenters, refetch } = useEvacuationCenters();
   const { households } = useHouseholds(dbCenters);
-  const { rooms: databaseRooms } = useRooms(dbCenters);
+  const { rooms: databaseRooms, refresh: refreshRooms } = useRooms(dbCenters);
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All Status');
@@ -58,9 +58,8 @@ export default function EvacuationCenter() {
       placement.event_id === selectedEvent?.id && placement.status === 'Evacuated'
     );
 
-    return dbCenters.map((center) => ({
-      ...center,
-      rooms: (center.rooms || []).map((room) => {
+    return dbCenters.map((center) => {
+      const rooms = (center.rooms || []).map((room) => {
         const databaseRoom = databaseRooms.find((item) =>
           item.centerId === center.id &&
           (item.roomName === room.id || item.roomName === room.name)
@@ -73,9 +72,19 @@ export default function EvacuationCenter() {
                 return sum + (household?.familyCount || 1);
               }, 0)
           : 0;
-        return { ...room, occupied };
-      }),
-    }));
+        return {
+          ...room,
+          databaseRoomId: databaseRoom?.id,
+          capacity: databaseRoom?.capacity || room.capacity,
+          occupied,
+        };
+      });
+      return {
+        ...center,
+        capacity: rooms.reduce((sum, room) => sum + (Number(room.capacity) || 0), 0),
+        rooms,
+      };
+    });
   }, [dbCenters, databaseRooms, households, placements, selectedEvent?.id]);
 
   /* Filter and dynamic alphabetical sorting */
@@ -439,9 +448,12 @@ export default function EvacuationCenter() {
       {selectedCenter && (
         <CenterDetailsModal
           center={selectedCenter}
+          databaseRooms={databaseRooms}
+          centersList={dbCenters}
           onClose={() => setSelectedCenter(null)}
           onSaveSuccess={async () => {
             if (refetch) await refetch();
+            await refreshRooms();
           }}
         />
       )}
@@ -450,9 +462,9 @@ export default function EvacuationCenter() {
 }
 
 /* ──────────────────────────────────────────────
-   Center Details & Room Renaming Modal
+   Center Details & Room Management Modal
    ────────────────────────────────────────────── */
-function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
+function CenterDetailsModal({ center, databaseRooms, centersList, onClose, onSaveSuccess }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'edit'
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -462,7 +474,14 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
     name: center.displayName || center.name || '',
     location: center.location || '',
     total_rooms: String(center.total_rooms || (center.rooms || []).length || 1),
-    capacity: String(center.capacity || (center.total_rooms || 1) * 25),
+  });
+
+  const [roomCapacities, setRoomCapacities] = useState(() => {
+    const map = {};
+    (center.rooms || []).forEach((room) => {
+      map[room.id] = String(room.capacity || 25);
+    });
+    return map;
   });
 
   const [roomNames, setRoomNames] = useState(() => {
@@ -476,7 +495,13 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
   const roomCountNum = Math.max(1, Number(form.total_rooms) || 1);
   const currentRoomIds = Array.from({ length: roomCountNum }, (_, i) => `Room ${i + 1}`);
 
-  const totalCap = Number(form.capacity) || (center.capacity || (center.total_rooms * 25));
+  const getRoomCapacity = (roomId, index) => (
+    Number(roomCapacities[roomId]) || center.rooms?.[index]?.capacity || 25
+  );
+  const totalCap = currentRoomIds.reduce(
+    (sum, roomId, index) => sum + getRoomCapacity(roomId, index),
+    0
+  );
   const totalOcc = (center.rooms || []).reduce((sum, r) => sum + (r.occupied || 0), 0);
   const availableSlots = Math.max(0, totalCap - totalOcc);
   const occPct = totalCap > 0 ? Math.min(100, Math.round((totalOcc / totalCap) * 100)) : 0;
@@ -488,6 +513,13 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
     }));
   };
 
+  const handleRoomCapacityChange = (roomId, value) => {
+    setRoomCapacities((prev) => ({
+      ...prev,
+      [roomId]: value,
+    }));
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return;
@@ -495,12 +527,42 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
     setErrorMsg('');
 
     try {
+      await Promise.all(currentRoomIds.map(async (roomId, index) => {
+        const capacity = Number(roomCapacities[roomId] ?? getRoomCapacity(roomId, index));
+        if (!Number.isInteger(capacity) || capacity < 1) {
+          throw new Error(`Enter a valid capacity for ${roomId}.`);
+        }
+
+        const room = center.rooms?.[index];
+        const databaseRoom = databaseRooms.find((item) => (
+          item.id === room?.databaseRoomId ||
+          (
+            item.centerId === center.id &&
+            (item.roomName === roomId || item.roomName === roomNames[roomId])
+          )
+        ));
+
+        if (databaseRoom) {
+          await updateRoomCapacity(databaseRoom.id, capacity);
+        } else {
+          await createRoom({
+            centerId: center.id,
+            roomName: roomId,
+            capacity,
+          }, centersList);
+        }
+      }));
+
       await updateEvacuationCenter(center.id, {
         name: form.name,
         location: form.location,
         total_rooms: roomCountNum,
-        capacity: Number(form.capacity) || roomCountNum * 25,
+        capacity: totalCap,
         room_names: roomNames,
+        room_capacities: Object.fromEntries(currentRoomIds.map((roomId, index) => [
+          roomId,
+          getRoomCapacity(roomId, index),
+        ])),
       });
 
       setSaveSuccess(true);
@@ -608,24 +670,6 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
                   <DoorOpen size={18} color="#7c3aed" />
                   <span>Designated Rooms &amp; Capacities ({currentRoomIds.length})</span>
                 </h3>
-                <button
-                  type="button"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#7c3aed',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                  onClick={() => setActiveTab('edit')}
-                >
-                  <Edit3 size={13} />
-                  <span>Rename Rooms</span>
-                </button>
               </div>
 
               <div className="vin-rooms-grid">
@@ -655,7 +699,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
           </div>
         )}
 
-        {/* Tab 2: Edit Center & Rename Rooms */}
+        {/* Tab 2: Edit Center & Rooms */}
         {activeTab === 'edit' && (
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             <div className="vin-center-modal-body">
@@ -667,7 +711,7 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
               {saveSuccess && (
                 <div style={{ padding: '10px 14px', background: '#f3e8ff', color: '#6b21a8', borderRadius: 8, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <CheckCircle2 size={16} />
-                  <span>Center information and room names updated successfully!</span>
+                  <span>Center and room details updated successfully!</span>
                 </div>
               )}
 
@@ -702,37 +746,51 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
                     <label className="vin-form-label">Total Rooms</label>
                     <input
                       type="number"
-                      min="1"
                       className="vin-form-input"
                       value={form.total_rooms}
-                      onChange={(e) => setForm({ ...form, total_rooms: e.target.value })}
-                      required
+                      readOnly
+                      aria-describedby="room-count-hint"
                     />
+                    <small id="room-count-hint" className="vin-room-count-hint">
+                      Use Add Room below to increase the room count.
+                    </small>
                   </div>
                   <div className="vin-form-group" style={{ margin: 0 }}>
                     <label className="vin-form-label">Total Capacity (Persons)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      className="vin-form-input"
-                      value={form.capacity}
-                      onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-                      required
-                    />
+                    <div className="vin-form-input vin-capacity-total" aria-live="polite">
+                      {totalCap}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Room Renaming List */}
+              {/* Room Names and Capacity List */}
               <div className="vin-renaming-box">
-                <div className="vin-renaming-header">
-                  <h4 className="vin-renaming-title">
-                    <DoorOpen size={16} color="#7c3aed" />
-                    <span>Rename Rooms &amp; Assign Designations</span>
-                  </h4>
-                  <p className="vin-renaming-desc">
-                    Enter custom designations for each room (e.g. <em>Room 101 - Gumamela</em>, <em>Main Court - Stage Left</em>, <em>School Clinic</em>).
-                  </p>
+                <div className="vin-room-editor-header">
+                  <div className="vin-renaming-header">
+                    <h4 className="vin-renaming-title">
+                      <DoorOpen size={16} color="#7c3aed" />
+                      <span>Room Names &amp; Capacities</span>
+                    </h4>
+                    <p className="vin-renaming-desc">
+                      Set each room&apos;s designation and maximum number of persons. Total capacity is calculated from these values.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="vin-add-room-btn"
+                    onClick={() => {
+                      const nextRoomNumber = roomCountNum + 1;
+                      const roomId = `Room ${nextRoomNumber}`;
+                      setForm((prev) => ({ ...prev, total_rooms: String(nextRoomNumber) }));
+                      setRoomNames((prev) => ({ ...prev, [roomId]: roomId }));
+                      setRoomCapacities((prev) => ({ ...prev, [roomId]: '25' }));
+                    }}
+                    disabled={isSaving}
+                  >
+                    <Plus size={16} />
+                    <span>Add Room</span>
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -751,8 +809,19 @@ function CenterDetailsModal({ center, onClose, onSaveSuccess }) {
                           value={roomNames[roomId] !== undefined ? roomNames[roomId] : roomId}
                           onChange={(e) => handleRoomNameChange(roomId, e.target.value)}
                         />
+                        <label className="vin-room-capacity-col">
+                          <span>Capacity</span>
+                          <input
+                            type="number"
+                            min="1"
+                            className="vin-room-capacity-input"
+                            value={roomCapacities[roomId] ?? String(getRoomCapacity(roomId, idx))}
+                            onChange={(e) => handleRoomCapacityChange(roomId, e.target.value)}
+                            required
+                          />
+                        </label>
                         <div className="vin-room-occ-col">
-                          {currentOcc} occ.
+                          {currentOcc} occupied
                         </div>
                       </div>
                     );
