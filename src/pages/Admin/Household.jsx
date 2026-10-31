@@ -723,7 +723,10 @@ export default function Household() {
   const issueStub = async (hhId) => {
     if (isReadOnly) return;
     try {
-      await issueHouseholdStub(hhId);
+      await issueHouseholdStub(
+        hhId,
+        selectedEvent?.id === 'default-active-event' ? null : selectedEvent?.id
+      );
       await refreshHouseholds();
     } catch (err) {
       setActionError(`Could not issue relief stub: ${err.message || 'Unknown error'}`);

@@ -447,22 +447,73 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
   }
 }
 
+export async function getEventReliefStubRecords(eventId) {
+  if (!eventId) return [];
+
+  const { data, error } = await supabase
+    .from('relief_goods_stubs')
+    .select('household_id, event_id, stub_code, stub_issued, stub_issued_at')
+    .eq('event_id', eventId);
+
+  if (error) throw error;
+  return data || [];
+}
+
 /**
- * Mark a household stub as issued (called when scanning the printed QR code)
+ * Mark a household stub as issued and persist the event-specific issue record.
  */
-export async function issueHouseholdStub(id) {
+export async function issueHouseholdStub(id, eventId = null) {
+  const issuedAt = new Date().toISOString();
   const { data, error } = await supabase
     .from('households')
     .update({
       stub_issued: true,
-      stub_issued_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      stub_issued_at: issuedAt,
+      updated_at: issuedAt,
     })
     .eq('id', id)
-    .select()
+    .select('id, stub_code')
     .single();
 
   if (error) throw error;
+
+  if (eventId) {
+    const { data: existingStub, error: lookupError } = await supabase
+      .from('relief_goods_stubs')
+      .select('household_id')
+      .eq('household_id', id)
+      .eq('event_id', eventId)
+      .maybeSingle();
+
+    if (lookupError) throw lookupError;
+
+    const stubRecord = {
+      stub_code: data.stub_code,
+      stub_issued: true,
+      stub_issued_at: issuedAt,
+    };
+
+    if (existingStub) {
+      const { error: updateError } = await supabase
+        .from('relief_goods_stubs')
+        .update(stubRecord)
+        .eq('household_id', id)
+        .eq('event_id', eventId);
+
+      if (updateError) throw updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from('relief_goods_stubs')
+        .insert({
+          household_id: id,
+          event_id: eventId,
+          ...stubRecord,
+        });
+
+      if (insertError) throw insertError;
+    }
+  }
+
   return data;
 }
 

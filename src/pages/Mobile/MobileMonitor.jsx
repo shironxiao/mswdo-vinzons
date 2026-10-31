@@ -16,6 +16,7 @@ import {
   getRoomsForCenter,
 } from '../../lib/evacuationCenters';
 import { useHouseholds, issueHouseholdStub } from '../../lib/householdService.js';
+import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 import QrScannerModal from '../../components/QrScannerModal';
@@ -188,6 +189,7 @@ const ROOMS = ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
 export default function MobileMonitor() {
   const { centers } = useEvacuationCenters();
   const { households, refresh: refreshHouseholds } = useHouseholds(centers);
+  const { activeEvent } = useActiveEvent();
   const { logs, refresh: refreshLogs } = useMonitoringLogs(centers);
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
@@ -492,7 +494,12 @@ export default function MobileMonitor() {
   /* ── Confirm Relief Pack Distribution ── */
   const handleConfirmIssueRelief = async (hhId) => {
     try {
-      await issueHouseholdStub(hhId);
+      await issueHouseholdStub(
+        hhId,
+        activeEvent?.status === 'Active' && activeEvent.id !== 'default-active-event'
+          ? activeEvent.id
+          : null
+      );
       if (refreshHouseholds) refreshHouseholds();
       
       // Also update activeFamily if currently open

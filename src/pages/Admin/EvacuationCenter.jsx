@@ -21,7 +21,6 @@ export default function EvacuationCenter() {
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All Status');
-  const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
@@ -105,16 +104,7 @@ export default function EvacuationCenter() {
           (filterStatus === 'Occupied' && status === 'Occupied') ||
           (filterStatus === 'Empty' && status === 'Empty');
 
-        let matchRoom = true;
-        if (filterRoom === '1 Room') {
-          matchRoom = Number(center.total_rooms) === 1;
-        } else if (filterRoom === '2-5 Rooms') {
-          matchRoom = Number(center.total_rooms) >= 2 && Number(center.total_rooms) <= 5;
-        } else if (filterRoom === '6+ Rooms') {
-          matchRoom = Number(center.total_rooms) >= 6;
-        }
-
-        return matchSearch && matchStatus && matchRoom;
+        return matchSearch && matchStatus;
       })
       .sort((a, b) =>
         (a.displayName || a.name || '').localeCompare(
@@ -123,7 +113,7 @@ export default function EvacuationCenter() {
           { sensitivity: 'base', numeric: true }
         )
       );
-  }, [centers, search, filterStatus, filterRoom]);
+  }, [centers, search, filterStatus]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
@@ -196,7 +186,7 @@ export default function EvacuationCenter() {
         />
 
         <AdminFilterBar
-          hasActiveFilters={filterStatus !== 'All Status' || filterRoom !== 'All Rooms'}
+          hasActiveFilters={filterStatus !== 'All Status'}
           onOpenFilters={() => setShowFilterModal(true)}
           activeChips={[
             filterStatus !== 'All Status' && {
@@ -205,15 +195,6 @@ export default function EvacuationCenter() {
               value: filterStatus,
               onRemove: () => {
                 setFilterStatus('All Status');
-                setCurrentPage(1);
-              },
-            },
-            filterRoom !== 'All Rooms' && {
-              key: 'room',
-              label: 'Room',
-              value: filterRoom,
-              onRemove: () => {
-                setFilterRoom('All Rooms');
                 setCurrentPage(1);
               },
             },
@@ -427,18 +408,10 @@ export default function EvacuationCenter() {
           { id: 'Occupied', label: 'Occupied' },
           { id: 'Empty', label: 'Empty' },
         ]}
-        roomOptions={[
-          { id: 'All Rooms', label: 'All Rooms' },
-          { id: '1 Room', label: '1 Room' },
-          { id: '2-5 Rooms', label: '2-5 Rooms' },
-          { id: '6+ Rooms', label: '6+ Rooms' },
-        ]}
         statusValue={filterStatus}
-        roomValue={filterRoom}
         resultCount={filtered.length}
-        onApply={({ status, room }) => {
+        onApply={({ status }) => {
           setFilterStatus(status);
-          setFilterRoom(room);
           setCurrentPage(1);
         }}
         onClose={() => setShowFilterModal(false)}

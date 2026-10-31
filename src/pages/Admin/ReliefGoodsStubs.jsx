@@ -1,22 +1,28 @@
-import { useState, useMemo, useContext } from 'react';
-import { Plus, PackageCheck, Building, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useState, useMemo, useContext, useEffect } from 'react';
+import { Building, ChevronLeft, ChevronRight, CircleCheck, Clock3 } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
-  getRoomsForCenter,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
-import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
+import {
+  getEventReliefStubRecords,
+  issueHouseholdStub,
+  useEventRoomPlacements,
+  useHouseholds,
+} from '../../lib/householdService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { EventContext } from '../../context/eventContext.js';
 import AdminSearchInput from '../../components/AdminSearchInput.jsx';
+import { supabase } from '../../lib/supabase.js';
 
-const STATUSES = ['All Status', 'Distributed', 'Completed', 'Queued'];
+const STATUSES = ['All Status', 'Issued', 'Pending'];
 
 export default function ReliefGoodsStubs() {
   const { selectedEvent, isReadOnly } = useContext(EventContext);
+  const selectedEventId = selectedEvent?.id;
   const { centers } = useEvacuationCenters();
-  const { households } = useHouseholds(centers);
+  const { households, refresh: refreshHouseholds } = useHouseholds(centers);
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -24,23 +30,59 @@ export default function ReliefGoodsStubs() {
   const [search, setSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [stubRecordState, setStubRecordState] = useState({ eventId: null, records: [] });
+  const [stubErrorState, setStubErrorState] = useState({ eventId: null, message: '' });
+  const [issuingHouseholdId, setIssuingHouseholdId] = useState(null);
   const pageSize = 8;
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [customBatches, setCustomBatches] = useState([]);
-  const [form, setForm] = useState({
-    center: '',
-    room: 'All Rooms',
-    allocated: '',
-    date: 'Oct 27, 2026',
-    status: 'Queued',
-  });
+  const stubRecords = useMemo(
+    () => stubRecordState.eventId === selectedEventId ? stubRecordState.records : [],
+    [stubRecordState, selectedEventId]
+  );
+  const stubError = stubErrorState.eventId === selectedEventId
+    ? stubErrorState.message
+    : '';
 
-  const getTodayFormatted = () => {
-    const d = new Date();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
-    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-  };
+  useEffect(() => {
+    if (!selectedEventId || selectedEventId === 'default-active-event') return undefined;
+
+    let isSubscribed = true;
+    const loadStubRecords = () => {
+      getEventReliefStubRecords(selectedEventId)
+        .then((records) => {
+          if (!isSubscribed) return;
+          setStubRecordState({ eventId: selectedEventId, records });
+          setStubErrorState({ eventId: selectedEventId, message: '' });
+        })
+        .catch((error) => {
+          if (!isSubscribed) return;
+          setStubErrorState({
+            eventId: selectedEventId,
+            message: error.message || 'Could not load relief stub records.',
+          });
+        });
+    };
+
+    loadStubRecords();
+    const channel = supabase
+      .channel(`relief-stubs-${selectedEventId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'relief_goods_stubs',
+          filter: `event_id=eq.${selectedEventId}`,
+        },
+        loadStubRecords
+      )
+      .subscribe();
+
+    return () => {
+      isSubscribed = false;
+      supabase.removeChannel(channel);
+    };
+  }, [selectedEventId]);
 
   const eventHouseholds = useMemo(() => placements
     .filter((placement) => (
@@ -53,138 +95,91 @@ export default function ReliefGoodsStubs() {
     })
     .filter(Boolean), [placements, selectedEvent?.id, selectedEvent?.status, households]);
 
-  // Generate batches dynamically connected with Supabase centers & live households
-  const allBatches = useMemo(() => {
-    const defaultBatches = [];
+  const householdRows = useMemo(() => {
+    const recordsByHousehold = new Map(
+      stubRecords.map((record) => [record.household_id, record])
+    );
 
-    centers.forEach((c, index) => {
-      const code = c.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
-      const centerHouseholds = eventHouseholds.filter(
-        (h) => h.placement.center_id === c.id
-      );
-
-      const totalHouseholds = centerHouseholds.length;
-      const distributedCount = centerHouseholds.filter((h) => h.stubIssued).length;
-
-      // Status determined by live stub issuance
-      let batchStatus = 'Queued';
-      if (totalHouseholds > 0 && distributedCount >= totalHouseholds) {
-        batchStatus = 'Completed';
-      } else if (distributedCount > 0) {
-        batchStatus = 'Distributed';
-      }
-
-      defaultBatches.push({
-        batchId: `BATCH-${selectedEvent?.id || 'NO-EVENT'}-${String(index + 1).padStart(3, '0')}`,
-        code,
-        center: c.displayName,
-        room: 'All Rooms',
-        allocated: totalHouseholds > 0 ? totalHouseholds : c.capacity || 30,
-        distributed: distributedCount,
-        date: getTodayFormatted(),
-        status: batchStatus,
-      });
-
-      // Specific room distribution if center has registered households in rooms
-      const distinctRooms = Array.from(new Set(centerHouseholds.map((h) => h.room).filter(Boolean)));
-      distinctRooms.forEach((rName, rIdx) => {
-        const roomHH = centerHouseholds.filter((h) => h.room === rName);
-        const roomDist = roomHH.filter((h) => h.stubIssued).length;
-        const roomTotal = roomHH.length;
-
-        let rStatus = 'Queued';
-        if (roomTotal > 0 && roomDist >= roomTotal) {
-          rStatus = 'Completed';
-        } else if (roomDist > 0) {
-          rStatus = 'Distributed';
-        }
-
-        defaultBatches.push({
-          batchId: `BATCH-${selectedEvent?.id || 'NO-EVENT'}-${String(index + 1).padStart(3, '0')}-R${rIdx + 1}`,
-          code,
-          center: c.displayName,
-          room: rName,
-          allocated: roomTotal,
-          distributed: roomDist,
-          date: getTodayFormatted(),
-          status: rStatus,
-        });
-      });
+    return eventHouseholds.map((household) => {
+      const stubRecord = recordsByHousehold.get(household.id);
+      const center = centers.find((item) => item.id === household.placement.center_id);
+      return {
+        ...household,
+        centerName: center?.displayName || household.center || 'Unassigned Center',
+        roomName: household.room || 'Unassigned',
+        stubCode: stubRecord?.stub_code || household.stubCode || '—',
+        stubIssued: stubRecord
+          ? Boolean(stubRecord.stub_issued)
+          : Boolean(household.stubIssued),
+        stubIssuedAt: stubRecord?.stub_issued_at || household.stubIssuedAt,
+      };
     });
-
-    return [...customBatches.filter((batch) => batch.eventId === selectedEvent?.id), ...defaultBatches];
-  }, [centers, eventHouseholds, customBatches, selectedEvent?.id]);
-
-  const getNextBatchId = () => {
-    const nums = allBatches.map((s) => {
-      const match = s.batchId.match(/BATCH-\d+-(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
-    const max = nums.length > 0 ? Math.max(...nums) : 0;
-    const next = String(max + 1).padStart(3, '0');
-    return `BATCH-2026-${next}`;
-  };
-
-  const handleOpenModal = () => {
-    if (isReadOnly) return;
-    setForm({
-      center: filterCenter !== 'All Centers' ? filterCenter : centers[0]?.displayName || 'LGU EC (Mangcaway)',
-      room: filterRoom !== 'All Rooms' ? filterRoom : 'All Rooms',
-      allocated: '',
-      date: getTodayFormatted(),
-      status: 'Queued',
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleIssueBatch = (e) => {
-    e.preventDefault();
-    if (isReadOnly) return;
-    const allocatedNum = Number(form.allocated);
-    if (!allocatedNum || allocatedNum <= 0) return;
-
-    const newBatch = {
-      batchId: getNextBatchId(),
-      code: form.center.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase(),
-      center: form.center,
-      room: form.room || 'All Rooms',
-      allocated: allocatedNum,
-      distributed: 0,
-      date: form.date.trim() || getTodayFormatted(),
-      status: form.status,
-      eventId: selectedEvent?.id,
-    };
-
-    setCustomBatches([newBatch, ...customBatches]);
-    setIsModalOpen(false);
-  };
+  }, [eventHouseholds, centers, stubRecords]);
 
   const filtered = useMemo(() => {
-    return allBatches.filter((s) => {
+    return householdRows.filter((household) => {
       const matchCenter =
         filterCenter === 'All Centers' ||
-        s.center === filterCenter ||
-        isCenterMatch(s.center, filterCenter, centers);
+        household.centerName === filterCenter ||
+        isCenterMatch(household.centerName, filterCenter, centers);
 
       const matchRoom =
         filterRoom === 'All Rooms' ||
-        s.room === filterRoom ||
-        s.room === 'All Rooms';
+        household.roomName === filterRoom;
 
       const matchStatus =
-        filterStatus === 'All Status' || s.status === filterStatus;
+        filterStatus === 'All Status' ||
+        (filterStatus === 'Issued' && household.stubIssued) ||
+        (filterStatus === 'Pending' && !household.stubIssued);
 
       const query = search.trim().toLowerCase();
-      const matchSearch = !query || [s.batchId, s.center, s.room, s.status]
+      const matchSearch = !query || [
+        household.name,
+        household.householdCode,
+        household.stubCode,
+        household.centerName,
+        household.roomName,
+      ]
         .some((value) => String(value || '').toLowerCase().includes(query));
 
       return matchSearch && matchCenter && matchRoom && matchStatus;
     });
-  }, [allBatches, filterCenter, filterRoom, filterStatus, centers, search]);
+  }, [householdRows, filterCenter, filterRoom, filterStatus, centers, search]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedBatches = filtered.slice(startIndex, startIndex + pageSize);
+  const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
+
+  const handleIssueStub = async (household) => {
+    if (
+      isReadOnly ||
+      !selectedEventId ||
+      selectedEventId === 'default-active-event' ||
+      household.stubIssued
+    ) return;
+    setIssuingHouseholdId(household.id);
+    setStubErrorState({ eventId: selectedEventId, message: '' });
+
+    try {
+      await issueHouseholdStub(household.id, selectedEventId);
+      const [, records] = await Promise.all([
+        refreshHouseholds(),
+        getEventReliefStubRecords(selectedEventId),
+      ]);
+      setStubRecordState({ eventId: selectedEventId, records });
+    } catch (error) {
+      setStubErrorState({
+        eventId: selectedEventId,
+        message: error.message || 'Could not issue the relief stub.',
+      });
+    } finally {
+      setIssuingHouseholdId(null);
+    }
+  };
+
+  const formatIssuedAt = (date) => (
+    date ? new Date(date).toLocaleString() : '—'
+  );
 
   return (
     <div className="vin-feature-page">
@@ -196,27 +191,22 @@ export default function ReliefGoodsStubs() {
             Issue and track relief stubs for {selectedEvent?.event_name || 'the selected operation'}.
           </p>
         </div>
-        <button
-          type="button"
-          className="vin-feature-action-btn"
-          onClick={handleOpenModal}
-          disabled={isReadOnly}
-          title={isReadOnly ? 'Historical event data is read-only' : undefined}
-        >
-          <Plus size={18} />
-          <span>Issue Stubs Batch</span>
-        </button>
       </header>
       {isReadOnly && (
         <div role="status" style={{ padding: '10px 12px', borderRadius: 8, background: '#fffbeb', color: '#92400e', fontSize: '.84rem' }}>
           Historical event selected — relief issuance is read-only.
         </div>
       )}
+      {stubError && (
+        <div role="alert" style={{ padding: '10px 12px', borderRadius: 8, background: '#fef2f2', color: '#b91c1c', fontSize: '.84rem' }}>
+          {stubError}
+        </div>
+      )}
 
       <div className="vin-feature-content-card">
         <div className="vin-feature-toolbar">
           <AdminSearchInput
-            placeholder="Search by batch, center, or room..."
+            placeholder="Search by household, stub, center, or room..."
             value={search}
             onChange={(value) => {
               setSearch(value);
@@ -261,45 +251,73 @@ export default function ReliefGoodsStubs() {
         <table className="vin-feature-table">
           <thead>
             <tr>
-              <th>BATCH ID</th>
+              <th>HOUSEHOLD</th>
               <th>CENTER</th>
-              <th>ROOM / AREA</th>
-              <th>ALLOCATED STUBS</th>
-              <th>DISTRIBUTED</th>
-              <th>DATE ISSUED</th>
+              <th>ROOM</th>
+              <th>HOUSEHOLD SIZE</th>
+              <th>STUB CODE</th>
               <th>STATUS</th>
+              <th>ISSUED AT</th>
+              <th>ACTION</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedBatches.length === 0 ? (
+            {paginatedHouseholds.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  No relief goods stubs match the current filter criteria.
+                <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  No households match the current operation and filters.
                 </td>
               </tr>
             ) : (
-              paginatedBatches.map((item) => (
-                <tr key={item.batchId}>
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      <PackageCheck size={16} color="#d97706" />
-                      {item.batchId}
-                    </span>
+              paginatedHouseholds.map((household) => (
+                <tr key={household.id}>
+                  <td>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{household.name}</div>
+                    <small style={{ color: '#64748b' }}>{household.householdCode}</small>
                   </td>
                   <td style={{ fontWeight: 600 }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <Building size={15} color="#2563eb" />
-                      {item.center}
+                      {household.centerName}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 600, color: '#475569' }}>{item.room}</td>
-                  <td>{item.allocated} stubs</td>
-                  <td style={{ fontWeight: 700, color: '#6b21a8' }}>{item.distributed} claimed</td>
-                  <td>{item.date}</td>
+                  <td style={{ fontWeight: 600, color: '#475569' }}>{household.roomName}</td>
+                  <td>{household.familyCount} persons</td>
+                  <td style={{ fontWeight: 600 }}>{household.stubCode}</td>
                   <td>
-                    <span className={`vin-status-tag ${item.status === 'Queued' ? 'pending' : 'active'}`}>
-                      {item.status}
+                    <span className={`vin-status-tag ${household.stubIssued ? 'active' : 'pending'}`}>
+                      {household.stubIssued ? 'Issued' : 'Pending'}
                     </span>
+                  </td>
+                  <td>
+                    {household.stubIssuedAt ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <Clock3 size={14} color="#64748b" />
+                        {formatIssuedAt(household.stubIssuedAt)}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td>
+                    {household.stubIssued ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#15803d', fontWeight: 700 }}>
+                        <CircleCheck size={16} />
+                        Issued
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="vin-btn-submit"
+                        onClick={() => handleIssueStub(household)}
+                        disabled={
+                          isReadOnly ||
+                          issuingHouseholdId === household.id ||
+                          !selectedEventId ||
+                          selectedEventId === 'default-active-event'
+                        }
+                      >
+                        {issuingHouseholdId === household.id ? 'Issuing…' : 'Issue stub'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -312,7 +330,7 @@ export default function ReliefGoodsStubs() {
       {filtered.length > 0 && (
         <div className="vin-admin-pagination">
           <span className="vin-pagination-info">
-            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> relief goods batches
+            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> households
           </span>
 
           <div className="vin-pagination-btns">
@@ -354,124 +372,10 @@ export default function ReliefGoodsStubs() {
         </div>
       )}
 
-      {/* ── Issue Stubs Batch Modal Popup ── */}
-      {isModalOpen && (
-        <div className="vin-modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="vin-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="vin-modal-head">
-              <div>
-                <h2>Issue Stubs Batch</h2>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                  Allocate a new batch of relief goods claim stubs to an evacuation center.
-                </span>
-              </div>
-              <button
-                type="button"
-                className="vin-modal-close"
-                onClick={() => setIsModalOpen(false)}
-                aria-label="Close modal"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleIssueBatch}>
-              {/* Evacuation Center */}
-              <div className="vin-form-group">
-                <label className="vin-form-label">Evacuation Center</label>
-                <select
-                  className="vin-form-select"
-                  value={form.center}
-                  onChange={(e) => setForm({ ...form, center: e.target.value })}
-                  required
-                >
-                  {centers.map((c) => (
-                    <option key={c.id || c.displayName} value={c.displayName}>
-                      {c.displayName} ({c.location})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Room Designation */}
-              <div className="vin-form-group">
-                <label className="vin-form-label">Room Designation</label>
-                <select
-                  className="vin-form-select"
-                  value={form.room}
-                  onChange={(e) => setForm({ ...form, room: e.target.value })}
-                >
-                  <option value="All Rooms">All Rooms</option>
-                  {getRoomsForCenter(form.center, centers).filter((r) => r !== 'All Rooms').map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Allocated Stubs */}
-              <div className="vin-form-group">
-                <label className="vin-form-label">Allocated Stubs (Quantity)</label>
-                <input
-                  type="number"
-                  min="1"
-                  className="vin-form-input"
-                  placeholder="e.g. 100"
-                  value={form.allocated}
-                  onChange={(e) => setForm({ ...form, allocated: e.target.value })}
-                  required
-                />
-              </div>
-
-              {/* Date & Status */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="vin-form-group">
-                  <label className="vin-form-label">Date Issued</label>
-                  <input
-                    type="text"
-                    className="vin-form-input"
-                    placeholder="e.g. Oct 27, 2026"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="vin-form-group">
-                  <label className="vin-form-label">Batch Status</label>
-                  <select
-                    className="vin-form-select"
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  >
-                    <option value="Queued">Queued</option>
-                    <option value="Distributed">Distributed</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Modal Actions */}
-              <div className="vin-modal-actions">
-                <button
-                  type="button"
-                  className="vin-btn-cancel"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="vin-btn-submit" disabled={isReadOnly}>
-                  Allocate Stubs Batch
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       {/* ── Mobile-Style Filter Modal ── */}
       <AdminFilterModal
         isOpen={showFilterModal}
-        title="Filter Relief Batches"
+        title="Filter Relief Stubs"
         statusOptions={STATUSES.map((s) => ({ id: s, label: s }))}
         statusValue={filterStatus}
         centerValue={filterCenter}
