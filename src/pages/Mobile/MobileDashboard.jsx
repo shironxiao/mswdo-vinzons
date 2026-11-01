@@ -1,15 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Home,
   Building,
   Ticket,
   Activity,
   ChevronRight,
-  Clock,
-  UserCheck,
-  CheckCircle2,
-  AlertCircle,
-  PackageCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
@@ -40,83 +35,169 @@ const SEED_MONITORING = [
   { id: 4, name: 'Juan Dela Cruz', status: 'Recorded', present: 5, total: 5 },
 ];
 
-// Clickable Recent Activity feed items mapping to their respective sections
-const RECENT_ACTIVITIES = [
-  {
-    id: 'act-1',
-    section: 'households',
-    path: '/mobile/households',
-    type: 'Household Registered',
-    title: 'Antonio Magno & Family',
-    sub: 'Room 1 • LGU EC (Mangcaway)',
-    time: '12m ago',
-    badge: '4 Members',
-    badgeVariant: 'green',
-    icon: Home,
-    iconColor: '#7c3aed',
-    iconBgClass: 'green',
-  },
-  {
-    id: 'act-2',
-    section: 'relief',
-    path: '/mobile/households',
-    type: 'Relief Stub Issued',
-    title: 'Rosa Santos • RG-10249',
-    sub: 'Family Food Pack • Marked Issued',
-    time: '34m ago',
-    badge: 'Issued',
-    badgeVariant: 'amber',
-    icon: Ticket,
-    iconColor: '#b45309',
-    iconBgClass: 'amber',
-  },
-  {
-    id: 'act-3',
-    section: 'monitor',
-    path: '/mobile/monitor',
-    type: 'Attendance Check',
-    title: 'Juan Dela Cruz Family',
-    sub: 'PLGU EC (Mat-I) • 5/5 Present',
-    time: '1h ago',
-    badge: 'Recorded',
-    badgeVariant: 'blue',
-    icon: Activity,
-    iconColor: '#0284c7',
-    iconBgClass: 'blue',
-  },
-  {
-    id: 'act-4',
-    section: 'centers',
-    path: '/mobile/centers',
-    type: 'Center Room Assigned',
-    title: 'Vinzons Central Elementary School',
-    sub: 'Room 3 designated for incoming evacuees',
-    time: '2h ago',
-    badge: 'Active',
-    badgeVariant: 'mint',
-    icon: Building,
-    iconColor: '#059669',
-    iconBgClass: 'mint',
-  },
-  {
-    id: 'act-5',
-    section: 'relief',
-    path: '/mobile/households',
-    type: 'Distribution Verification',
-    title: 'Patricia Cruz • RG-10250',
-    sub: 'Pending distribution verification',
-    time: '3h ago',
-    badge: 'Pending',
-    badgeVariant: 'amber',
-    icon: Ticket,
-    iconColor: '#b45309',
-    iconBgClass: 'amber',
-  },
-];
+const RECENT_ACTIVITY_LIMIT = 5;
+
+function formatActivityTime(timestamp) {
+  const elapsedMinutes = Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000);
+  if (!Number.isFinite(elapsedMinutes)) return 'Recently';
+  if (elapsedMinutes < 1) return 'Just now';
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours}h ago`;
+  return `${Math.floor(elapsedHours / 24)}d ago`;
+}
+
+function getCenterAndRoom(row, centers) {
+  const center = centers.find((item) => item.id === row.center_id);
+  return {
+    center: center?.displayName || center?.name || row.center?.name || 'Unassigned Center',
+    room: row.room?.room_name || 'Room not assigned',
+  };
+}
 
 export default function MobileDashboard() {
   const navigate = useNavigate();
   const { centers } = useEvacuationCenters();
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState(false);
+
+  const fetchRecentActivities = useCallback(async () => {
+    const [householdsResult, monitoringResult] = await Promise.all([
+      supabase
+        .from('households')
+        .select(`
+          id,
+          head_name,
+          center_id,
+          stub_code,
+          stub_issued,
+          stub_issued_at,
+          created_at,
+          center:evacuation_centers ( id, name, location ),
+          room:rooms ( id, room_name ),
+          members:household_members ( id )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(RECENT_ACTIVITY_LIMIT),
+      supabase
+        .from('monitoring_logs')
+        .select(`
+          id,
+          center_id,
+          household_status,
+          total_members,
+          present_count,
+          created_at,
+          household:households ( id, head_name ),
+          center:evacuation_centers ( id, name, location ),
+          room:rooms ( id, room_name )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(RECENT_ACTIVITY_LIMIT),
+    ]);
+
+    if (householdsResult.error) {
+      console.warn('Could not fetch household activity:', householdsResult.error.message);
+    }
+    if (monitoringResult.error) {
+      console.warn('Could not fetch monitoring activity:', monitoringResult.error.message);
+    }
+    if (householdsResult.error && monitoringResult.error) {
+      setActivityError(true);
+      setActivityLoading(false);
+      return;
+    }
+
+    const activities = [];
+    (householdsResult.data || []).forEach((household) => {
+      const { center, room } = getCenterAndRoom(household, centers);
+      const title = household.head_name || 'Household';
+      const familyCount = (household.members?.length || 0) + 1;
+
+      if (household.created_at) {
+        activities.push({
+          id: `household-${household.id}`,
+          path: '/mobile/households',
+          type: 'Household Registered',
+          title: `${title} & Family`,
+          sub: `${room} • ${center}`,
+          timestamp: household.created_at,
+          badge: `${familyCount} Members`,
+          badgeVariant: 'green',
+          icon: Home,
+          iconColor: '#7c3aed',
+          iconBgClass: 'green',
+        });
+      }
+
+      if (household.stub_issued && household.stub_issued_at) {
+        activities.push({
+          id: `stub-${household.id}`,
+          path: '/mobile/households',
+          type: 'Relief Stub Issued',
+          title: `${title} • ${household.stub_code || 'Stub'}`,
+          sub: `${room} • ${center}`,
+          timestamp: household.stub_issued_at,
+          badge: 'Issued',
+          badgeVariant: 'amber',
+          icon: Ticket,
+          iconColor: '#b45309',
+          iconBgClass: 'amber',
+        });
+      }
+    });
+
+    (monitoringResult.data || []).forEach((log) => {
+      const { center, room } = getCenterAndRoom(log, centers);
+      const status = log.household_status || 'Recorded';
+      activities.push({
+        id: `monitoring-${log.id}`,
+        path: '/mobile/monitor',
+        type: 'Attendance Check',
+        title: `${log.household?.head_name || 'Household'} Family`,
+        sub: `${center} • ${log.present_count || 0}/${log.total_members || 0} Present • ${room}`,
+        timestamp: log.created_at,
+        badge: status,
+        badgeVariant: 'blue',
+        icon: Activity,
+        iconColor: '#0284c7',
+        iconBgClass: 'blue',
+      });
+    });
+
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    setRecentActivities(activities.slice(0, RECENT_ACTIVITY_LIMIT));
+    setActivityError(false);
+    setActivityLoading(false);
+  }, [centers]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadRecentActivities = async () => {
+      try {
+        await fetchRecentActivities();
+      } catch (error) {
+        console.warn('Could not load recent dashboard activity:', error);
+        if (isMounted) {
+          setActivityError(true);
+          setActivityLoading(false);
+        }
+      }
+    };
+
+    loadRecentActivities();
+    const channel = supabase
+      .channel('mobile-dashboard-recent-activity')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, loadRecentActivities)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, loadRecentActivities)
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [fetchRecentActivities]);
 
   // Dynamic metrics state
   const [metrics, setMetrics] = useState({
@@ -261,7 +342,16 @@ export default function MobileDashboard() {
       </div>
 
       <div className="vin-mob-activity-feed">
-        {RECENT_ACTIVITIES.map((act) => {
+        {activityLoading && recentActivities.length === 0 && (
+          <p className="vin-mob-section-sub" role="status">Loading recent activity...</p>
+        )}
+        {!activityLoading && activityError && recentActivities.length === 0 && (
+          <p className="vin-mob-section-sub" role="alert">Could not load recent activity. Please try again later.</p>
+        )}
+        {!activityLoading && !activityError && recentActivities.length === 0 && (
+          <p className="vin-mob-section-sub">No recent activity yet.</p>
+        )}
+        {recentActivities.map((act) => {
           const IconComponent = act.icon;
           return (
             <div
@@ -279,7 +369,7 @@ export default function MobileDashboard() {
                 <div className="vin-mob-activity-info">
                   <div className="vin-mob-activity-header">
                     <span className="vin-mob-activity-type">{act.type}</span>
-                    <span className="vin-mob-activity-time">• {act.time}</span>
+                    <span className="vin-mob-activity-time">• {formatActivityTime(act.timestamp)}</span>
                   </div>
                   <span className="vin-mob-activity-title">{act.title}</span>
                   <span className="vin-mob-activity-sub">{act.sub}</span>
