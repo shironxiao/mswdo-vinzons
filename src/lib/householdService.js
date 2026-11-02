@@ -73,6 +73,7 @@ const LOCAL_STORAGE_KEY = 'vinzons_cached_households';
  */
 export function normalizeHousehold(row, centersList = []) {
   if (!row) return null;
+  const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
 
   // Resolve center display name
   let centerName = row.center?.name || 'Unassigned Center';
@@ -119,6 +120,14 @@ export function normalizeHousehold(row, centersList = []) {
     roomId: row.room_id || row.room?.id || null,
     familyCount: 1 + members.length,
     members,
+    monthlyIncome: profile?.monthly_income ?? 0,
+    housingType: profile?.housing_type || '',
+    isSingleParent: Boolean(profile?.is_single_parent),
+    govAssistanceAvailed: Array.isArray(profile?.gov_assistance_availed)
+      ? profile.gov_assistance_availed
+      : [],
+    characteristicsRemarks: profile?.characteristics_remarks || '',
+    floodHazardLevel: profile?.flood_hazard_level || '',
     stubCode: row.stub_code,
     stubIssued: Boolean(row.stub_issued),
     stubIssuedAt: row.stub_issued_at || null,
@@ -169,6 +178,7 @@ export function useHouseholds(centersList = []) {
           created_at,
           center:evacuation_centers ( id, name, location ),
           room:rooms ( id, room_name ),
+          profile:household_profiles ( monthly_income, housing_type, is_single_parent, gov_assistance_availed, characteristics_remarks, flood_hazard_level ),
           members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, is_household_head, vulnerabilities )
         `)
         .order('created_at', { ascending: false });
@@ -203,6 +213,9 @@ export function useHouseholds(centersList = []) {
         fetchHouseholds();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'household_members' }, () => {
+        fetchHouseholds();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'household_profiles' }, () => {
         fetchHouseholds();
       })
       .subscribe();
@@ -322,6 +335,12 @@ export async function createHousehold(formData, centersList = []) {
 
   if (hError) throw hError;
 
+  const { error: profileError } = await supabase.from('household_profiles').upsert(
+    householdProfilePayload(insertedH.id, formData),
+    { onConflict: 'household_id' }
+  );
+  if (profileError) throw profileError;
+
   // 4. Insert members if any
   if (Array.isArray(formData.members) && formData.members.length > 0) {
     const memberRows = formData.members
@@ -368,6 +387,21 @@ export async function createHousehold(formData, centersList = []) {
   }
 
   return insertedH;
+}
+
+function householdProfilePayload(householdId, formData) {
+  return {
+    household_id: householdId,
+    monthly_income: Number(formData.monthlyIncome) || 0,
+    housing_type: formData.housingType || null,
+    is_single_parent: Boolean(formData.isSingleParent),
+    gov_assistance_availed: Array.isArray(formData.govAssistanceAvailed)
+      ? formData.govAssistanceAvailed
+      : [],
+    characteristics_remarks: formData.characteristicsRemarks || null,
+    flood_hazard_level: formData.floodHazardLevel || null,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 /**
@@ -421,6 +455,22 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
 
   const { error: hError } = await supabase.from('households').update(payload).eq('id', id);
   if (hError) throw hError;
+
+  const hasProfileFields = [
+    'monthlyIncome',
+    'housingType',
+    'isSingleParent',
+    'govAssistanceAvailed',
+    'characteristicsRemarks',
+    'floodHazardLevel',
+  ].some((field) => Object.prototype.hasOwnProperty.call(formData, field));
+  if (hasProfileFields) {
+    const { error: profileError } = await supabase.from('household_profiles').upsert(
+      householdProfilePayload(id, formData),
+      { onConflict: 'household_id' }
+    );
+    if (profileError) throw profileError;
+  }
 
   // Replace members
   if (Array.isArray(formData.members)) {
@@ -668,6 +718,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
         created_at,
         center:evacuation_centers ( id, name, location ),
         room:rooms ( id, room_name ),
+        profile:household_profiles ( monthly_income, housing_type, is_single_parent, gov_assistance_availed, characteristics_remarks, flood_hazard_level ),
         members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, vulnerabilities )
       `)
       .or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%`)

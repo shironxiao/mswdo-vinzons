@@ -642,6 +642,12 @@ export default function Household() {
     room: 'Unassigned',
     vulnerabilities: [],
     members: [],
+    monthlyIncome: '',
+    housingType: '',
+    isSingleParent: false,
+    govAssistanceAvailed: [],
+    characteristicsRemarks: '',
+    floodHazardLevel: '',
   });
 
   const currentEventPlacements = useMemo(
@@ -821,6 +827,12 @@ export default function Household() {
       room: 'Unassigned',
       vulnerabilities: [],
       members: [],
+      monthlyIncome: '',
+      housingType: '',
+      isSingleParent: false,
+      govAssistanceAvailed: [],
+      characteristicsRemarks: '',
+      floodHazardLevel: '',
     });
     setModalMode('register');
   };
@@ -838,6 +850,12 @@ export default function Household() {
       room: 'Unassigned',
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
       members: item.members || [],
+      monthlyIncome: item.monthlyIncome ?? '',
+      housingType: item.housingType || '',
+      isSingleParent: Boolean(item.isSingleParent),
+      govAssistanceAvailed: Array.isArray(item.govAssistanceAvailed) ? item.govAssistanceAvailed : [],
+      characteristicsRemarks: item.characteristicsRemarks || '',
+      floodHazardLevel: item.floodHazardLevel || '',
     });
     setModalMode('edit');
   };
@@ -862,6 +880,12 @@ export default function Household() {
         vulnerabilities: activeForm.vulnerabilities || [],
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
+        monthlyIncome: Number(activeForm.monthlyIncome) || 0,
+        housingType: activeForm.housingType,
+        isSingleParent: activeForm.isSingleParent,
+        govAssistanceAvailed: activeForm.govAssistanceAvailed,
+        characteristicsRemarks: activeForm.characteristicsRemarks,
+        floodHazardLevel: activeForm.floodHazardLevel,
         stubCode: generatedCode,
         stubIssued: false,
       };
@@ -900,6 +924,12 @@ export default function Household() {
                 vulnerabilities: activeForm.vulnerabilities || [],
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
+                monthlyIncome: Number(activeForm.monthlyIncome) || 0,
+                housingType: activeForm.housingType,
+                isSingleParent: activeForm.isSingleParent,
+                govAssistanceAvailed: activeForm.govAssistanceAvailed,
+                characteristicsRemarks: activeForm.characteristicsRemarks,
+                floodHazardLevel: activeForm.floodHazardLevel,
               }
             : h
         )
@@ -1475,6 +1505,48 @@ export default function Household() {
                       : 'None — tap to select'}
                   </div>
                   <ChevronDown size={16} className="vin-hh-filter-select-icon" />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <span className="vin-admin-form-label">HOUSEHOLD PROFILE</span>
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-monthly-income">MONTHLY INCOME</label>
+                  <input id="admin-monthly-income" type="number" min="0" max="99999999.99" step="0.01" placeholder="0.00"
+                    className="vin-admin-form-input" value={activeForm.monthlyIncome}
+                    onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
+                </div>
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-housing-type">HOUSING TYPE</label>
+                  <input id="admin-housing-type" type="text" maxLength={100} placeholder="e.g. Owned, rented, shared"
+                    className="vin-admin-form-input" value={activeForm.housingType}
+                    onChange={(e) => setActiveForm({ ...activeForm, housingType: e.target.value })} />
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>
+                  <input type="checkbox" checked={activeForm.isSingleParent}
+                    onChange={(e) => setActiveForm({ ...activeForm, isSingleParent: e.target.checked })} />
+                  Single-parent household
+                </label>
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-gov-assistance">GOVERNMENT ASSISTANCE AVAILED</label>
+                  <input id="admin-gov-assistance" type="text" placeholder="Separate multiple entries with commas"
+                    className="vin-admin-form-input" value={activeForm.govAssistanceAvailed.join(', ')}
+                    onChange={(e) => setActiveForm({
+                      ...activeForm,
+                      govAssistanceAvailed: e.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                    })} />
+                </div>
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-characteristics-remarks">CHARACTERISTICS / REMARKS</label>
+                  <textarea id="admin-characteristics-remarks" placeholder="Additional household characteristics"
+                    className="vin-admin-form-input" rows={3} value={activeForm.characteristicsRemarks}
+                    onChange={(e) => setActiveForm({ ...activeForm, characteristicsRemarks: e.target.value })} />
+                </div>
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-flood-hazard-level">FLOOD HAZARD LEVEL</label>
+                  <input id="admin-flood-hazard-level" type="text" maxLength={50} placeholder="e.g. Low, Medium, High"
+                    className="vin-admin-form-input" value={activeForm.floodHazardLevel}
+                    onChange={(e) => setActiveForm({ ...activeForm, floodHazardLevel: e.target.value })} />
                 </div>
               </div>
 
