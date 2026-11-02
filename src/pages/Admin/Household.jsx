@@ -18,7 +18,9 @@ import {
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import {
   CategorySelectSheet,
+  ProfileSelectSheet,
 } from '../../components/CenterSelectSheet.jsx';
+import { HOUSEHOLD_PROFILE_OPTIONS } from '../../lib/householdProfileOptions.js';
 import {
   useHouseholds,
   useEventRoomPlacements,
@@ -630,6 +632,7 @@ export default function Household() {
 
   /* ── Form picker for vulnerabilities ── */
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
+  const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
 
   const [activeForm, setActiveForm] = useState({
     id: '',
@@ -1517,10 +1520,14 @@ export default function Household() {
                     onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
                 </div>
                 <div className="vin-admin-form-group">
-                  <label className="vin-admin-form-label" htmlFor="admin-housing-type">HOUSING TYPE</label>
-                  <input id="admin-housing-type" type="text" maxLength={100} placeholder="e.g. Owned, rented, shared"
-                    className="vin-admin-form-input" value={activeForm.housingType}
-                    onChange={(e) => setActiveForm({ ...activeForm, housingType: e.target.value })} />
+                  <span className="vin-admin-form-label">HOUSING TYPE</span>
+                  <div id="admin-housing-type" className="vin-admin-form-select"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                    onClick={() => setShowFormProfilePicker('housingType')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('housingType')}>
+                    <span>{activeForm.housingType || 'Select housing type'}</span>
+                    <ChevronDown size={16} />
+                  </div>
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>
                   <input type="checkbox" checked={activeForm.isSingleParent}
@@ -1528,13 +1535,18 @@ export default function Household() {
                   Single-parent household
                 </label>
                 <div className="vin-admin-form-group">
-                  <label className="vin-admin-form-label" htmlFor="admin-gov-assistance">GOVERNMENT ASSISTANCE AVAILED</label>
-                  <input id="admin-gov-assistance" type="text" placeholder="Separate multiple entries with commas"
-                    className="vin-admin-form-input" value={activeForm.govAssistanceAvailed.join(', ')}
-                    onChange={(e) => setActiveForm({
-                      ...activeForm,
-                      govAssistanceAvailed: e.target.value.split(',').map((item) => item.trim()).filter(Boolean),
-                    })} />
+                  <span className="vin-admin-form-label">GOVERNMENT ASSISTANCE AVAILED</span>
+                  <div id="admin-gov-assistance" className="vin-admin-form-select"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                    onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {activeForm.govAssistanceAvailed.length
+                        ? activeForm.govAssistanceAvailed.join(', ')
+                        : 'Select assistance'}
+                    </span>
+                    <ChevronDown size={16} style={{ flexShrink: 0 }} />
+                  </div>
                 </div>
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-characteristics-remarks">CHARACTERISTICS / REMARKS</label>
@@ -1543,10 +1555,14 @@ export default function Household() {
                     onChange={(e) => setActiveForm({ ...activeForm, characteristicsRemarks: e.target.value })} />
                 </div>
                 <div className="vin-admin-form-group">
-                  <label className="vin-admin-form-label" htmlFor="admin-flood-hazard-level">FLOOD HAZARD LEVEL</label>
-                  <input id="admin-flood-hazard-level" type="text" maxLength={50} placeholder="e.g. Low, Medium, High"
-                    className="vin-admin-form-input" value={activeForm.floodHazardLevel}
-                    onChange={(e) => setActiveForm({ ...activeForm, floodHazardLevel: e.target.value })} />
+                  <span className="vin-admin-form-label">FLOOD HAZARD LEVEL</span>
+                  <div id="admin-flood-hazard-level" className="vin-admin-form-select"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                    onClick={() => setShowFormProfilePicker('floodHazardLevel')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('floodHazardLevel')}>
+                    <span>{activeForm.floodHazardLevel || 'Select flood hazard level'}</span>
+                    <ChevronDown size={16} />
+                  </div>
                 </div>
               </div>
 
@@ -1724,6 +1740,24 @@ export default function Household() {
             setShowFormCategoryPicker(null);
           }}
           onClose={() => setShowFormCategoryPicker(null)}
+        />
+      )}
+      {showFormProfilePicker && (
+        <ProfileSelectSheet
+          selected={activeForm[showFormProfilePicker]}
+          options={HOUSEHOLD_PROFILE_OPTIONS[showFormProfilePicker]}
+          multiple={showFormProfilePicker === 'govAssistanceAvailed'}
+          title={{
+            housingType: 'Select Housing Type',
+            govAssistanceAvailed: 'Select Government Assistance',
+            floodHazardLevel: 'Select Flood Hazard Level',
+          }[showFormProfilePicker]}
+          otherMaxLength={showFormProfilePicker === 'floodHazardLevel' ? 50 : 100}
+          onSelect={(value) => setActiveForm((prev) => ({
+            ...prev,
+            [showFormProfilePicker]: value,
+          }))}
+          onClose={() => setShowFormProfilePicker(null)}
         />
       )}
 

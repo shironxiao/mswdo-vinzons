@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 import { getRoomsForCenter } from '../lib/evacuationCenters.js';
 
 /* ── Shared category list (7 official DSWD/MSWDO vulnerability categories) ── */
-export const HOUSEHOLD_CATEGORIES = [
+const HOUSEHOLD_CATEGORIES = [
   { value: 'PREGNANT',                label: 'Pregnant',                  sub: 'Currently pregnant' },
   { value: 'LACTATING MOTHERS',       label: 'Lactating Mothers',         sub: 'Currently breastfeeding' },
   { value: 'CHILD HEADED FAMILY',     label: 'Child Headed Family',       sub: 'Family headed by a minor' },
@@ -428,6 +428,132 @@ export function CategorySelectSheet({
           {tempSelected.length > 0
             ? `Apply (${tempSelected.length} selected)`
             : 'Apply — None Selected'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ProfileSelectSheet({
+  selected,
+  options,
+  multiple = false,
+  title,
+  otherMaxLength = 100,
+  onSelect,
+  onClose,
+}) {
+  const selectedValues = multiple
+    ? (Array.isArray(selected) ? selected : [])
+    : (selected ? [selected] : []);
+  const optionValues = [...new Set([...options, ...selectedValues])];
+  const [tempSelected, setTempSelected] = useState(selectedValues);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [otherValue, setOtherValue] = useState('');
+  const filteredOptions = optionValues.filter((option) =>
+    option.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  );
+
+  const toggleOption = (option) => {
+    if (multiple) {
+      setTempSelected((prev) =>
+        prev.includes(option) ? prev.filter((value) => value !== option) : [...prev, option]
+      );
+    } else {
+      setTempSelected(option ? [option] : []);
+    }
+  };
+
+  const handleConfirm = () => {
+    const values = otherValue.trim()
+      ? (multiple ? [...tempSelected, otherValue.trim()] : [otherValue.trim()])
+      : tempSelected;
+    onSelect(multiple ? [...new Set(values)] : (values[0] || ''));
+    onClose();
+  };
+
+  return (
+    <div className="vin-center-picker-overlay" onClick={onClose}>
+      <div className="vin-center-picker-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="vin-center-picker-handle" />
+        <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, padding: '0 4px' }}>
+          {title}
+        </div>
+        <div className="vin-center-picker-search-box">
+          <Search size={16} className="vin-center-picker-search-icon" />
+          <input
+            type="text"
+            className="vin-center-picker-search-input"
+            placeholder={`Search ${optionValues.length} options...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+          />
+          {searchQuery && (
+            <button type="button" className="vin-center-picker-clear-btn"
+              onClick={() => setSearchQuery('')} aria-label="Clear search">
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <div className="vin-center-picker-list">
+          {!multiple && (
+            <div className={`vin-center-picker-item ${tempSelected.length === 0 ? 'selected' : ''}`}
+              onClick={() => toggleOption('')}>
+              <div className="vin-center-picker-radio"><div className="vin-center-picker-radio-dot" /></div>
+              <div className="vin-center-picker-info"><span className="vin-center-picker-name">Not specified</span></div>
+            </div>
+          )}
+          {filteredOptions.map((option) => {
+            const isSelected = tempSelected.includes(option);
+            return (
+              <div key={option}
+                className={`vin-center-picker-item ${isSelected ? 'selected' : ''}`}
+                onClick={() => toggleOption(option)}>
+                {multiple ? (
+                  <div style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 5,
+                    border: isSelected ? '2px solid #7c3aed' : '2px solid #cbd5e1',
+                    background: isSelected ? '#7c3aed' : '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    {isSelected && (
+                      <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                        <path d="M1 4L4.5 7.5L11 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                ) : (
+                  <div className="vin-center-picker-radio"><div className="vin-center-picker-radio-dot" /></div>
+                )}
+                <div className="vin-center-picker-info">
+                  <span className="vin-center-picker-name">{option}</span>
+                </div>
+              </div>
+            );
+          })}
+          {filteredOptions.length === 0 && searchQuery && (
+            <div className="vin-center-picker-empty">No options found.</div>
+          )}
+        </div>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 4px', fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+          OTHER / SPECIFY
+          <input
+            type="text"
+            className="vin-center-picker-search-input"
+            maxLength={otherMaxLength}
+            placeholder="Enter another value"
+            value={otherValue}
+            onChange={(e) => setOtherValue(e.target.value)}
+          />
+        </label>
+        <button type="button" className="vin-center-picker-submit" onClick={handleConfirm}>
+          {multiple ? `Apply (${tempSelected.length + (otherValue.trim() ? 1 : 0)} selected)` : 'Select'}
         </button>
       </div>
     </div>

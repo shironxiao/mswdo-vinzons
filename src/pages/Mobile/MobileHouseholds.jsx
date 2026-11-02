@@ -10,7 +10,13 @@ import './MobileSubpages.css';
 import './MobileHouseholds.css';
 import checkIcon from '../../assets/check.png';
 import removeIcon from '../../assets/remove.png';
-import { CenterSelectSheet, RoomSelectSheet, CategorySelectSheet } from '../../components/CenterSelectSheet';
+import {
+  CenterSelectSheet,
+  RoomSelectSheet,
+  CategorySelectSheet,
+  ProfileSelectSheet,
+} from '../../components/CenterSelectSheet';
+import { HOUSEHOLD_PROFILE_OPTIONS } from '../../lib/householdProfileOptions.js';
 import {
   useEvacuationCenters,
   isCenterMatch,
@@ -830,6 +836,7 @@ export default function MobileHouseholds() {
   const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
   const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
+  const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
 
   const [activeForm, setActiveForm] = useState({
     head: '', age: '', sex: 'Male',
@@ -1377,10 +1384,14 @@ export default function MobileHouseholds() {
                     onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
                 </div>
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label" htmlFor="mobile-housing-type">HOUSING TYPE</label>
-                  <input id="mobile-housing-type" type="text" maxLength={100} placeholder="e.g. Owned, rented, shared"
-                    className="vin-mob-select" value={activeForm.housingType}
-                    onChange={(e) => setActiveForm({ ...activeForm, housingType: e.target.value })} />
+                  <span className="vin-mob-input-label">HOUSING TYPE</span>
+                  <div id="mobile-housing-type" className="vin-mob-select"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                    onClick={() => setShowFormProfilePicker('housingType')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('housingType')}>
+                    <span>{activeForm.housingType || 'Select housing type'}</span>
+                    <ChevronDown size={16} />
+                  </div>
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>
                   <input type="checkbox" checked={activeForm.isSingleParent}
@@ -1388,13 +1399,18 @@ export default function MobileHouseholds() {
                   Single-parent household
                 </label>
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label" htmlFor="mobile-gov-assistance">GOVERNMENT ASSISTANCE AVAILED</label>
-                  <input id="mobile-gov-assistance" type="text" placeholder="Separate multiple entries with commas"
-                    className="vin-mob-select" value={activeForm.govAssistanceAvailed.join(', ')}
-                    onChange={(e) => setActiveForm({
-                      ...activeForm,
-                      govAssistanceAvailed: e.target.value.split(',').map((item) => item.trim()).filter(Boolean),
-                    })} />
+                  <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE AVAILED</span>
+                  <div id="mobile-gov-assistance" className="vin-mob-select"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                    onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {activeForm.govAssistanceAvailed.length
+                        ? activeForm.govAssistanceAvailed.join(', ')
+                        : 'Select assistance'}
+                    </span>
+                    <ChevronDown size={16} style={{ flexShrink: 0 }} />
+                  </div>
                 </div>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label" htmlFor="mobile-characteristics-remarks">CHARACTERISTICS / REMARKS</label>
@@ -1403,10 +1419,14 @@ export default function MobileHouseholds() {
                     onChange={(e) => setActiveForm({ ...activeForm, characteristicsRemarks: e.target.value })} />
                 </div>
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label" htmlFor="mobile-flood-hazard-level">FLOOD HAZARD LEVEL</label>
-                  <input id="mobile-flood-hazard-level" type="text" maxLength={50} placeholder="e.g. Low, Medium, High"
-                    className="vin-mob-select" value={activeForm.floodHazardLevel}
-                    onChange={(e) => setActiveForm({ ...activeForm, floodHazardLevel: e.target.value })} />
+                  <span className="vin-mob-input-label">FLOOD HAZARD LEVEL</span>
+                  <div id="mobile-flood-hazard-level" className="vin-mob-select"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                    onClick={() => setShowFormProfilePicker('floodHazardLevel')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('floodHazardLevel')}>
+                    <span>{activeForm.floodHazardLevel || 'Select flood hazard level'}</span>
+                    <ChevronDown size={16} />
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1523,6 +1543,24 @@ export default function MobileHouseholds() {
             setShowFormCategoryPicker(null);
           }}
           onClose={() => setShowFormCategoryPicker(null)}
+        />
+      )}
+      {showFormProfilePicker && (
+        <ProfileSelectSheet
+          selected={activeForm[showFormProfilePicker]}
+          options={HOUSEHOLD_PROFILE_OPTIONS[showFormProfilePicker]}
+          multiple={showFormProfilePicker === 'govAssistanceAvailed'}
+          title={{
+            housingType: 'Select Housing Type',
+            govAssistanceAvailed: 'Select Government Assistance',
+            floodHazardLevel: 'Select Flood Hazard Level',
+          }[showFormProfilePicker]}
+          otherMaxLength={showFormProfilePicker === 'floodHazardLevel' ? 50 : 100}
+          onSelect={(value) => setActiveForm((prev) => ({
+            ...prev,
+            [showFormProfilePicker]: value,
+          }))}
+          onClose={() => setShowFormProfilePicker(null)}
         />
       )}
     </div>
