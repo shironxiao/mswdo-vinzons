@@ -99,6 +99,7 @@ export function normalizeHousehold(row, centersList = []) {
         ageUnit: m.age_unit || 'Years',
         sex: m.sex,
         relationship: m.relationship_to_head || 'MEMBER',
+        occupation: m.occupation || '',
         isHead: Boolean(m.is_household_head),
         vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }))
@@ -110,6 +111,7 @@ export function normalizeHousehold(row, centersList = []) {
     name: row.head_name,
     age: row.head_age,
     sex: row.head_sex,
+    headOccupation: row.head_occupation || '',
     barangay: row.barangay || 'Unassigned',
     purok: row.purok || 'Unassigned',
     evacueeStatus: row.evacuee_status || (row.center_id ? 'Active' : 'Decamped'),
@@ -166,6 +168,7 @@ export function useHouseholds(centersList = []) {
           head_name,
           head_age,
           head_sex,
+          head_occupation,
           barangay,
           purok,
           evacuee_status,
@@ -179,7 +182,7 @@ export function useHouseholds(centersList = []) {
           center:evacuation_centers ( id, name, location ),
           room:rooms ( id, room_name ),
           profile:household_profiles ( monthly_income, housing_type, is_single_parent, gov_assistance_availed, characteristics_remarks, flood_hazard_level ),
-          members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, is_household_head, vulnerabilities )
+          members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities )
         `)
         .order('created_at', { ascending: false });
 
@@ -320,6 +323,7 @@ export async function createHousehold(formData, centersList = []) {
       head_name: formData.head,
       head_age: Number(formData.age) || 35,
       head_sex: formData.sex || 'Male',
+      head_occupation: formData.headOccupation || null,
       barangay: formData.barangay || 'Unassigned',
       purok: formData.purok || 'Unassigned',
       evacuee_status: centerId ? 'Active' : 'Decamped',
@@ -355,6 +359,7 @@ export async function createHousehold(formData, centersList = []) {
         age_unit: m.ageUnit || 'Years',
         sex: m.sex || 'Female',
         relationship_to_head: m.relationship || 'MEMBER',
+        occupation: m.occupation || null,
         is_household_head: false,
         vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }));
@@ -443,6 +448,7 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
     head_name: formData.head,
     head_age: Number(formData.age) || 35,
     head_sex: formData.sex || 'Male',
+    head_occupation: formData.headOccupation || null,
     barangay: formData.barangay || 'Unassigned',
     purok: formData.purok || 'Unassigned',
     vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
@@ -487,6 +493,7 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
         age_unit: m.ageUnit || 'Years',
         sex: m.sex || 'Female',
         relationship_to_head: m.relationship || 'MEMBER',
+        occupation: m.occupation || null,
         is_household_head: Boolean(m.isHead),
         vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
       }));
@@ -706,6 +713,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
         head_name,
         head_age,
         head_sex,
+        head_occupation,
         barangay,
         purok,
         evacuee_status,
@@ -719,7 +727,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
         center:evacuation_centers ( id, name, location ),
         room:rooms ( id, room_name ),
         profile:household_profiles ( monthly_income, housing_type, is_single_parent, gov_assistance_availed, characteristics_remarks, flood_hazard_level ),
-        members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, vulnerabilities )
+        members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, vulnerabilities )
       `)
       .or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%`)
       .limit(20);

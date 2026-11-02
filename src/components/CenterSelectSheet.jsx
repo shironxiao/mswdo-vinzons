@@ -605,3 +605,74 @@ export function GenderSelectSheet({ selected, onSelect, onClose, title = 'Select
     </div>
   );
 }
+
+export function ChoiceSelectSheet({
+  selected,
+  options,
+  title,
+  onSelect,
+  onClose,
+  allowOther = false,
+}) {
+  const [otherValue, setOtherValue] = useState('');
+  const values = [...new Set([...(options || []), ...(selected && !options?.includes(selected) ? [selected] : [])])];
+
+  return (
+    <div className="vin-center-picker-overlay" onClick={onClose}>
+      <div className="vin-center-picker-sheet" style={{ height: 'auto', minHeight: 0, maxHeight: '85vh' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="vin-center-picker-handle" />
+        <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 800, padding: '0 4px' }}>
+          {title}
+        </div>
+        <div className="vin-center-picker-list">
+          <button
+            type="button"
+            className={`vin-center-picker-item ${!selected ? 'selected' : ''}`}
+            onClick={() => {
+              onSelect('');
+              onClose();
+            }}
+            style={{ width: '100%', textAlign: 'left', font: 'inherit', cursor: 'pointer' }}
+          >
+            <span className="vin-center-picker-radio"><span className="vin-center-picker-radio-dot" /></span>
+            <span className="vin-center-picker-info"><span className="vin-center-picker-name">Not specified</span></span>
+          </button>
+          {values.map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={`vin-center-picker-item ${selected === value ? 'selected' : ''}`}
+              onClick={() => {
+                onSelect(value);
+                onClose();
+              }}
+              style={{ width: '100%', textAlign: 'left', font: 'inherit', cursor: 'pointer' }}
+            >
+              <span className="vin-center-picker-radio"><span className="vin-center-picker-radio-dot" /></span>
+              <span className="vin-center-picker-info"><span className="vin-center-picker-name">{value}</span></span>
+            </button>
+          ))}
+        </div>
+        {allowOther && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <label htmlFor="choice-select-other" className="vin-center-picker-name">Other / specify</label>
+            <input id="choice-select-other" type="text" maxLength={150}
+              className="vin-center-picker-search-input" value={otherValue}
+              onChange={(e) => setOtherValue(e.target.value)} placeholder="Enter a value" />
+            <button type="button" className="vin-center-picker-submit" disabled={!otherValue.trim()}
+              onClick={() => {
+                onSelect(otherValue.trim());
+                onClose();
+              }}>
+              Use this value
+            </button>
+          </div>
+        )}
+        {!allowOther && (
+          <button type="button" className="vin-center-picker-submit" onClick={onClose}>Cancel</button>
+        )}
+      </div>
+    </div>
+  );
+}

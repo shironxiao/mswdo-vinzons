@@ -20,8 +20,13 @@ import {
   CategorySelectSheet,
   ProfileSelectSheet,
   GenderSelectSheet,
+  ChoiceSelectSheet,
 } from '../../components/CenterSelectSheet.jsx';
-import { HOUSEHOLD_PROFILE_OPTIONS } from '../../lib/householdProfileOptions.js';
+import {
+  HOUSEHOLD_PROFILE_OPTIONS,
+  HOUSEHOLD_RELATIONSHIPS,
+  OCCUPATION_OPTIONS,
+} from '../../lib/householdProfileOptions.js';
 import { joinFullName, splitFullName } from '../../lib/householdNames.js';
 import {
   useHouseholds,
@@ -636,6 +641,7 @@ export default function Household() {
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
   const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
   const [showGenderPicker, setShowGenderPicker] = useState(null);
+  const [showFormChoicePicker, setShowFormChoicePicker] = useState(null);
 
   const [activeForm, setActiveForm] = useState({
     id: '',
@@ -647,6 +653,7 @@ export default function Household() {
     sex: 'Male',
     barangay: '',
     purok: '',
+    headOccupation: '',
     center: 'Unassigned Center',
     room: 'Unassigned',
     vulnerabilities: [],
@@ -835,6 +842,7 @@ export default function Household() {
       sex: 'Male',
       barangay: '',
       purok: '',
+      headOccupation: '',
       center: 'Unassigned Center',
       room: 'Unassigned',
       vulnerabilities: [],
@@ -862,12 +870,14 @@ export default function Household() {
       sex: item.sex || 'Male',
       barangay: item.barangay === 'Unassigned' ? '' : item.barangay,
       purok: item.purok === 'Unassigned' ? '' : item.purok,
+      headOccupation: item.headOccupation || '',
       center: 'Unassigned Center',
       room: 'Unassigned',
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
       members: (item.members || []).map((member) => ({
         ...member,
         ...splitFullName(member.name || ''),
+        occupationEnabled: Boolean(member.occupation),
       })),
       monthlyIncome: item.monthlyIncome ?? '',
       housingType: item.housingType || '',
@@ -920,6 +930,7 @@ export default function Household() {
         sex: activeForm.sex,
         barangay: activeForm.barangay || 'Unassigned',
         purok: activeForm.purok || 'Unassigned',
+        headOccupation: activeForm.headOccupation,
         center: 'Unassigned Center',
         room: 'Unassigned',
         vulnerabilities: activeForm.vulnerabilities || [],
@@ -966,6 +977,7 @@ export default function Household() {
                 sex: activeForm.sex,
                 barangay: activeForm.barangay || 'Unassigned',
                 purok: activeForm.purok || 'Unassigned',
+                headOccupation: activeForm.headOccupation,
                 vulnerabilities: activeForm.vulnerabilities || [],
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
@@ -996,7 +1008,8 @@ export default function Household() {
       ...p,
       members: [...p.members, {
         name: '', firstName: '', middleName: '', lastName: '',
-        age: '', sex: 'Female', vulnerabilities: [],
+        age: '', sex: 'Female', relationship: 'Member',
+        occupation: '', vulnerabilities: [],
       }],
     }));
   };
@@ -1520,6 +1533,7 @@ export default function Household() {
                   <label className="vin-admin-form-label">BARANGAY</label>
                   <input
                     type="text"
+                    maxLength={100}
                     placeholder="Barangay"
                     className="vin-admin-form-input"
                     value={activeForm.barangay}
@@ -1530,12 +1544,22 @@ export default function Household() {
                   <label className="vin-admin-form-label">PUROK / SITIO</label>
                   <input
                     type="text"
+                    maxLength={50}
                     placeholder="Purok or sitio"
                     className="vin-admin-form-input"
                     value={activeForm.purok}
                     onChange={(e) => setActiveForm({ ...activeForm, purok: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="vin-admin-form-group">
+                <span className="vin-admin-form-label">HOUSEHOLD HEAD OCCUPATION</span>
+                <button type="button" className="vin-admin-form-select"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}
+                  onClick={() => setShowFormChoicePicker({ target: 'head', field: 'headOccupation' })}>
+                  {activeForm.headOccupation || 'Select occupation'}<ChevronDown size={16} />
+                </button>
               </div>
 
               <div className="vin-admin-form-group">
@@ -1735,6 +1759,48 @@ export default function Household() {
                           <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
                         </div>
                       </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div className="vin-admin-form-group">
+                          <span className="vin-admin-form-label">RELATIONSHIP TO HOUSEHOLD HEAD</span>
+                          <button type="button" className="vin-admin-form-select"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}
+                            onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'relationship' })}>
+                            {m.relationship || 'Select relationship'}<ChevronDown size={14} />
+                          </button>
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.88rem', fontWeight: 600 }}>
+                          <input type="checkbox" checked={Boolean(m.occupationEnabled ?? m.occupation)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setActiveForm((prev) => ({
+                                  ...prev,
+                                  members: prev.members.map((member, index) =>
+                                    index === idx ? { ...member, occupationEnabled: true } : member
+                                  ),
+                                }));
+                                setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' });
+                              } else {
+                                setActiveForm((prev) => ({
+                                  ...prev,
+                                  members: prev.members.map((member, index) =>
+                                    index === idx ? { ...member, occupation: '', occupationEnabled: false } : member
+                                  ),
+                                }));
+                              }
+                            }} />
+                          Has occupation
+                        </label>
+                        {Boolean(m.occupationEnabled ?? m.occupation) && (
+                          <div className="vin-admin-form-group">
+                            <span className="vin-admin-form-label">OCCUPATION</span>
+                            <button type="button" className="vin-admin-form-select"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+                              onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' })}>
+                              {m.occupation || 'Select occupation'}<ChevronDown size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1836,6 +1902,37 @@ export default function Household() {
             }
           }}
           onClose={() => setShowGenderPicker(null)}
+        />
+      )}
+      {showFormChoicePicker && (
+        <ChoiceSelectSheet
+          selected={showFormChoicePicker.target === 'head'
+            ? activeForm.headOccupation
+            : activeForm.members[showFormChoicePicker.index]?.[showFormChoicePicker.field]}
+          options={showFormChoicePicker.field === 'relationship' ? HOUSEHOLD_RELATIONSHIPS : OCCUPATION_OPTIONS}
+          title={showFormChoicePicker.field === 'relationship'
+            ? 'Select Relationship to Head'
+            : showFormChoicePicker.target === 'head' ? 'Select Head Occupation' : 'Select Member Occupation'}
+          allowOther={showFormChoicePicker.field === 'occupation'}
+          onSelect={(value) => {
+            if (showFormChoicePicker.target === 'head') {
+              setActiveForm((prev) => ({ ...prev, headOccupation: value }));
+            } else {
+              setActiveForm((prev) => ({
+                ...prev,
+                members: prev.members.map((member, index) =>
+                  index === showFormChoicePicker.index
+                    ? {
+                        ...member,
+                        [showFormChoicePicker.field]: value,
+                        ...(showFormChoicePicker.field === 'occupation' ? { occupationEnabled: true } : {}),
+                      }
+                    : member
+                ),
+              }));
+            }
+          }}
+          onClose={() => setShowFormChoicePicker(null)}
         />
       )}
 

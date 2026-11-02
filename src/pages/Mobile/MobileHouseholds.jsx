@@ -16,8 +16,13 @@ import {
   CategorySelectSheet,
   ProfileSelectSheet,
   GenderSelectSheet,
+  ChoiceSelectSheet,
 } from '../../components/CenterSelectSheet';
-import { HOUSEHOLD_PROFILE_OPTIONS } from '../../lib/householdProfileOptions.js';
+import {
+  HOUSEHOLD_PROFILE_OPTIONS,
+  HOUSEHOLD_RELATIONSHIPS,
+  OCCUPATION_OPTIONS,
+} from '../../lib/householdProfileOptions.js';
 import { joinFullName, splitFullName } from '../../lib/householdNames.js';
 import {
   useEvacuationCenters,
@@ -840,9 +845,11 @@ export default function MobileHouseholds() {
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
   const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
   const [showGenderPicker, setShowGenderPicker] = useState(null);
+  const [showFormChoicePicker, setShowFormChoicePicker] = useState(null);
 
   const [activeForm, setActiveForm] = useState({
     head: '', headFirstName: '', headMiddleName: '', headLastName: '', age: '', sex: 'Male',
+    barangay: '', purok: '', headOccupation: '',
     center: 'LGU EC (Mangcaway)',
     room: 'Room 1', vulnerabilities: [], members: [],
     monthlyIncome: '', housingType: '', isSingleParent: false,
@@ -933,7 +940,8 @@ export default function MobileHouseholds() {
     const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
     setActiveForm({
       head: '', headFirstName: '', headMiddleName: '', headLastName: '',
-      age: '', sex: 'Male', center: defaultCenter, room: 'Room 1',
+      age: '', sex: 'Male', barangay: '', purok: '', headOccupation: '',
+      center: defaultCenter, room: 'Room 1',
       vulnerabilities: [], members: [], monthlyIncome: '', housingType: '',
       isSingleParent: false, govAssistanceAvailed: [],
       characteristicsRemarks: '', floodHazardLevel: '',
@@ -949,9 +957,13 @@ export default function MobileHouseholds() {
       headMiddleName: headNameParts.middleName,
       headLastName: headNameParts.lastName,
       age: item.age, sex: item.sex, center: item.center, room: item.room,
+      barangay: item.barangay === 'Unassigned' ? '' : item.barangay,
+      purok: item.purok === 'Unassigned' ? '' : item.purok,
+      headOccupation: item.headOccupation || '',
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
       members: (item.members || []).map((member) => ({
         ...member, ...splitFullName(member.name || ''),
+        occupationEnabled: Boolean(member.occupation),
       })),
       monthlyIncome: item.monthlyIncome ?? '',
       housingType: item.housingType || '', isSingleParent: Boolean(item.isSingleParent),
@@ -997,6 +1009,9 @@ export default function MobileHouseholds() {
         name: activeForm.head,
         age: Number(activeForm.age) || 30,
         sex: activeForm.sex,
+        barangay: activeForm.barangay || 'Unassigned',
+        purok: activeForm.purok || 'Unassigned',
+        headOccupation: activeForm.headOccupation,
         center: activeForm.center,
         room: activeForm.room,
         vulnerabilities: activeForm.vulnerabilities || [],
@@ -1042,6 +1057,9 @@ export default function MobileHouseholds() {
                 name: activeForm.head,
                 age: Number(activeForm.age) || h.age,
                 sex: activeForm.sex,
+                barangay: activeForm.barangay || 'Unassigned',
+                purok: activeForm.purok || 'Unassigned',
+                headOccupation: activeForm.headOccupation,
                 center: activeForm.center,
                 room: activeForm.room,
                 vulnerabilities: activeForm.vulnerabilities || [],
@@ -1076,7 +1094,8 @@ export default function MobileHouseholds() {
       ...p,
       members: [...p.members, {
         name: '', firstName: '', middleName: '', lastName: '',
-        age: '', sex: 'Female', vulnerabilities: [],
+        age: '', sex: 'Female', relationship: 'Member',
+        occupation: '', vulnerabilities: [],
       }],
     }));
   const removeMember = (idx) =>
@@ -1378,6 +1397,28 @@ export default function MobileHouseholds() {
                   </button>
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="vin-mob-input-group">
+                  <label className="vin-mob-input-label" htmlFor="mobile-barangay">BARANGAY</label>
+                  <input id="mobile-barangay" type="text" maxLength={100} placeholder="Barangay"
+                    className="vin-mob-select" value={activeForm.barangay}
+                    onChange={(e) => setActiveForm({ ...activeForm, barangay: e.target.value })} />
+                </div>
+                <div className="vin-mob-input-group">
+                  <label className="vin-mob-input-label" htmlFor="mobile-purok">PUROK / SITIO</label>
+                  <input id="mobile-purok" type="text" maxLength={50} placeholder="Purok or sitio"
+                    className="vin-mob-select" value={activeForm.purok}
+                    onChange={(e) => setActiveForm({ ...activeForm, purok: e.target.value })} />
+                </div>
+              </div>
+              <div className="vin-mob-input-group">
+                <span className="vin-mob-input-label">HOUSEHOLD HEAD OCCUPATION</span>
+                <button type="button" className="vin-mob-select"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                  onClick={() => setShowFormChoicePicker({ target: 'head', field: 'headOccupation' })}>
+                  {activeForm.headOccupation || 'Select occupation'}<ChevronDown size={16} />
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 12 }}>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label">EVACUATION CENTER</label>
@@ -1532,6 +1573,46 @@ export default function MobileHouseholds() {
                       <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
                     </div>
                   </div>
+                  <div className="vin-mob-input-group">
+                    <span className="vin-mob-input-label">RELATIONSHIP TO HOUSEHOLD HEAD</span>
+                    <button type="button" className="vin-mob-select"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                      onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'relationship' })}>
+                      {m.relationship || 'Select relationship'}<ChevronDown size={14} />
+                    </button>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.88rem', fontWeight: 600 }}>
+                    <input type="checkbox" checked={Boolean(m.occupationEnabled ?? m.occupation)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setActiveForm((prev) => ({
+                            ...prev,
+                            members: prev.members.map((member, index) =>
+                              index === idx ? { ...member, occupationEnabled: true } : member
+                            ),
+                          }));
+                          setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' });
+                        } else {
+                          setActiveForm((prev) => ({
+                            ...prev,
+                            members: prev.members.map((member, index) =>
+                              index === idx ? { ...member, occupation: '', occupationEnabled: false } : member
+                            ),
+                          }));
+                        }
+                      }} />
+                    Has occupation
+                  </label>
+                  {Boolean(m.occupationEnabled ?? m.occupation) && (
+                    <div className="vin-mob-input-group">
+                      <span className="vin-mob-input-label">OCCUPATION</span>
+                      <button type="button" className="vin-mob-select"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left', font: 'inherit', cursor: 'pointer' }}
+                        onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' })}>
+                        {m.occupation || 'Select occupation'}<ChevronDown size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               <button type="submit" className="vin-mob-sheet-submit-btn">Save Household</button>
@@ -1637,6 +1718,37 @@ export default function MobileHouseholds() {
             }
           }}
           onClose={() => setShowGenderPicker(null)}
+        />
+      )}
+      {showFormChoicePicker && (
+        <ChoiceSelectSheet
+          selected={showFormChoicePicker.target === 'head'
+            ? activeForm.headOccupation
+            : activeForm.members[showFormChoicePicker.index]?.[showFormChoicePicker.field]}
+          options={showFormChoicePicker.field === 'relationship' ? HOUSEHOLD_RELATIONSHIPS : OCCUPATION_OPTIONS}
+          title={showFormChoicePicker.field === 'relationship'
+            ? 'Select Relationship to Head'
+            : showFormChoicePicker.target === 'head' ? 'Select Head Occupation' : 'Select Member Occupation'}
+          allowOther={showFormChoicePicker.field === 'occupation'}
+          onSelect={(value) => {
+            if (showFormChoicePicker.target === 'head') {
+              setActiveForm((prev) => ({ ...prev, headOccupation: value }));
+            } else {
+              setActiveForm((prev) => ({
+                ...prev,
+                members: prev.members.map((member, index) =>
+                  index === showFormChoicePicker.index
+                    ? {
+                        ...member,
+                        [showFormChoicePicker.field]: value,
+                        ...(showFormChoicePicker.field === 'occupation' ? { occupationEnabled: true } : {}),
+                      }
+                    : member
+                ),
+              }));
+            }
+          }}
+          onClose={() => setShowFormChoicePicker(null)}
         />
       )}
     </div>

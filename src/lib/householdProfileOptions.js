@@ -17,3 +17,33 @@ export const HOUSEHOLD_PROFILE_OPTIONS = {
   ],
   floodHazardLevel: ['Low', 'Moderate', 'High', 'Very High', 'Not Assessed'],
 };
+
+export const HOUSEHOLD_RELATIONSHIPS = [
+  'Member',
+  'Spouse',
+  'Son',
+  'Daughter',
+  'Father',
+  'Mother',
+  'Brother',
+  'Sister',
+  'Grandparent',
+  'Grandchild',
+  'Other relative',
+  'Other',
+];
+
+export const OCCUPATION_OPTIONS = [
+  'Farmer',
+  'Fisherfolk',
+  'Laborer',
+  'Government employee',
+  'Private employee',
+  'Self-employed',
+  'Vendor',
+  'Driver',
+  'Homemaker',
+  'Student',
+  'Unemployed',
+  'Other',
+];
