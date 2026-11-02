@@ -831,10 +831,13 @@ export default function MobileHouseholds() {
 
   /* ── Filter + search ── */
   const filtered = households.filter((h) => {
-    const matchSearch =
-      h.name.toLowerCase().includes(search.toLowerCase()) ||
-      h.room.toLowerCase().includes(search.toLowerCase()) ||
-      (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
+    const searchTerm = search.trim().toLowerCase();
+    const matchSearch = !searchTerm || [
+      h.name,
+      h.room,
+      h.stubCode,
+      ...(h.members || []).map((member) => member.name),
+    ].some((value) => String(value || '').toLowerCase().includes(searchTerm));
     const isActive = h.evacueeStatus === 'Active' || (!h.evacueeStatus && h.room && h.room !== 'Unassigned');
     const matchStatus =
       filterStatus === 'All' ||
@@ -1120,7 +1123,7 @@ export default function MobileHouseholds() {
           <Search size={18} className="vin-mob-search-icon" />
           <input
             type="text"
-            placeholder="Name, room, or stub code…"
+            placeholder="Search household head or members"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="vin-mob-search-input"
