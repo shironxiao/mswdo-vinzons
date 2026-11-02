@@ -659,7 +659,6 @@ export default function Household() {
     vulnerabilities: [],
     members: [],
     monthlyIncome: '',
-    isSingleParent: false,
     hasWorkedDole: null,
     doleEmploymentYear: '',
     hasReceivedGovernmentAssistance: null,
@@ -853,7 +852,6 @@ export default function Household() {
       vulnerabilities: [],
       members: [],
       monthlyIncome: '',
-      isSingleParent: false,
       hasWorkedDole: null,
       doleEmploymentYear: '',
       hasReceivedGovernmentAssistance: null,
@@ -887,10 +885,8 @@ export default function Household() {
       members: (item.members || []).map((member) => ({
         ...member,
         ...splitFullName(member.name || ''),
-        occupationEnabled: Boolean(member.occupation),
       })),
       monthlyIncome: item.monthlyIncome ?? '',
-      isSingleParent: Boolean(item.isSingleParent),
       hasWorkedDole: item.hasWorkedDole ?? null,
       doleEmploymentYear: item.doleEmploymentYear ?? '',
       hasReceivedGovernmentAssistance: item.hasReceivedGovernmentAssistance ?? null,
@@ -952,7 +948,6 @@ export default function Household() {
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
         monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-        isSingleParent: activeForm.isSingleParent,
         hasWorkedDole: activeForm.hasWorkedDole,
         doleEmploymentYear: activeForm.doleEmploymentYear,
         hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
@@ -1002,7 +997,6 @@ export default function Household() {
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
                 monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-                isSingleParent: activeForm.isSingleParent,
                 hasWorkedDole: activeForm.hasWorkedDole,
                 doleEmploymentYear: activeForm.doleEmploymentYear,
                 hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
@@ -1613,11 +1607,6 @@ export default function Household() {
                     className="vin-admin-form-input" value={activeForm.monthlyIncome}
                     onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>
-                  <input type="checkbox" checked={activeForm.isSingleParent}
-                    onChange={(e) => setActiveForm({ ...activeForm, isSingleParent: e.target.checked })} />
-                  Single-parent household
-                </label>
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-worked-dole">WORKED IN DOLE BEFORE?</label>
                   <select id="admin-worked-dole" className="vin-admin-form-select"
@@ -1860,38 +1849,14 @@ export default function Household() {
                             {m.relationship || 'Select relationship'}<ChevronDown size={14} />
                           </button>
                         </div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.88rem', fontWeight: 600 }}>
-                          <input type="checkbox" checked={Boolean(m.occupationEnabled ?? m.occupation)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setActiveForm((prev) => ({
-                                  ...prev,
-                                  members: prev.members.map((member, index) =>
-                                    index === idx ? { ...member, occupationEnabled: true } : member
-                                  ),
-                                }));
-                                setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' });
-                              } else {
-                                setActiveForm((prev) => ({
-                                  ...prev,
-                                  members: prev.members.map((member, index) =>
-                                    index === idx ? { ...member, occupation: '', occupationEnabled: false } : member
-                                  ),
-                                }));
-                              }
-                            }} />
-                          Has occupation
-                        </label>
-                        {Boolean(m.occupationEnabled ?? m.occupation) && (
-                          <div className="vin-admin-form-group">
-                            <span className="vin-admin-form-label">OCCUPATION</span>
-                            <button type="button" className="vin-admin-form-select"
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
-                              onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' })}>
-                              {m.occupation || 'Select occupation'}<ChevronDown size={14} />
-                            </button>
-                          </div>
-                        )}
+                        <div className="vin-admin-form-group">
+                          <span className="vin-admin-form-label">OCCUPATION</span>
+                          <button type="button" className="vin-admin-form-select"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+                            onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' })}>
+                            {m.occupation || 'Select occupation'}<ChevronDown size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -2013,11 +1978,7 @@ export default function Household() {
                 ...prev,
                 members: prev.members.map((member, index) =>
                   index === showFormChoicePicker.index
-                    ? {
-                        ...member,
-                        [showFormChoicePicker.field]: value,
-                        ...(showFormChoicePicker.field === 'occupation' ? { occupationEnabled: true } : {}),
-                      }
+                    ? { ...member, [showFormChoicePicker.field]: value }
                     : member
                 ),
               }));

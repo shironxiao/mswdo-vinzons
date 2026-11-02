@@ -123,7 +123,6 @@ export function normalizeHousehold(row, centersList = []) {
     familyCount: 1 + members.length,
     members,
     monthlyIncome: profile?.monthly_income ?? 0,
-    isSingleParent: Boolean(profile?.is_single_parent),
     hasWorkedDole: profile?.has_worked_dole ?? null,
     doleEmploymentYear: profile?.dole_employment_year ?? '',
     hasReceivedGovernmentAssistance: profile?.has_received_government_assistance ?? null,
@@ -186,7 +185,7 @@ export function useHouseholds(centersList = []) {
           created_at,
           center:evacuation_centers ( id, name, location ),
           room:rooms ( id, room_name ),
-          profile:household_profiles ( monthly_income, is_single_parent, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
+          profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
           members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities )
         `)
         .order('created_at', { ascending: false });
@@ -403,7 +402,6 @@ function householdProfilePayload(householdId, formData) {
   return {
     household_id: householdId,
     monthly_income: Number(formData.monthlyIncome) || 0,
-    is_single_parent: Boolean(formData.isSingleParent),
     has_worked_dole: formData.hasWorkedDole ?? null,
     dole_employment_year: Number(formData.doleEmploymentYear) || null,
     has_received_government_assistance: formData.hasReceivedGovernmentAssistance ?? null,
@@ -474,7 +472,6 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
 
   const hasProfileFields = [
     'monthlyIncome',
-    'isSingleParent',
     'hasWorkedDole',
     'doleEmploymentYear',
     'hasReceivedGovernmentAssistance',
@@ -741,7 +738,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
         created_at,
         center:evacuation_centers ( id, name, location ),
         room:rooms ( id, room_name ),
-        profile:household_profiles ( monthly_income, is_single_parent, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
+        profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
         members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, vulnerabilities )
       `)
       .or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%`)

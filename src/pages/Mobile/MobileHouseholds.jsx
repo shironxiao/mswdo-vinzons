@@ -852,7 +852,7 @@ export default function MobileHouseholds() {
     barangay: '', purok: '', headOccupation: '',
     center: 'LGU EC (Mangcaway)',
     room: 'Room 1', vulnerabilities: [], members: [],
-    monthlyIncome: '', isSingleParent: false,
+    monthlyIncome: '',
     hasWorkedDole: null, doleEmploymentYear: '',
     hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
     governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
@@ -946,7 +946,7 @@ export default function MobileHouseholds() {
       age: '', sex: 'Male', barangay: '', purok: '', headOccupation: '',
       center: defaultCenter, room: 'Room 1',
       vulnerabilities: [], members: [], monthlyIncome: '',
-      isSingleParent: false, hasWorkedDole: null, doleEmploymentYear: '',
+      hasWorkedDole: null, doleEmploymentYear: '',
       hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
       governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
       otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
@@ -968,10 +968,8 @@ export default function MobileHouseholds() {
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
       members: (item.members || []).map((member) => ({
         ...member, ...splitFullName(member.name || ''),
-        occupationEnabled: Boolean(member.occupation),
       })),
       monthlyIncome: item.monthlyIncome ?? '',
-      isSingleParent: Boolean(item.isSingleParent),
       hasWorkedDole: item.hasWorkedDole ?? null,
       doleEmploymentYear: item.doleEmploymentYear ?? '',
       hasReceivedGovernmentAssistance: item.hasReceivedGovernmentAssistance ?? null,
@@ -1029,7 +1027,6 @@ export default function MobileHouseholds() {
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
         monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-        isSingleParent: activeForm.isSingleParent,
         hasWorkedDole: activeForm.hasWorkedDole,
         doleEmploymentYear: activeForm.doleEmploymentYear,
         hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
@@ -1082,7 +1079,6 @@ export default function MobileHouseholds() {
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
                 monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-                isSingleParent: activeForm.isSingleParent,
                 hasWorkedDole: activeForm.hasWorkedDole,
                 doleEmploymentYear: activeForm.doleEmploymentYear,
                 hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
@@ -1493,11 +1489,6 @@ export default function MobileHouseholds() {
                     className="vin-mob-select" value={activeForm.monthlyIncome}
                     onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>
-                  <input type="checkbox" checked={activeForm.isSingleParent}
-                    onChange={(e) => setActiveForm({ ...activeForm, isSingleParent: e.target.checked })} />
-                  Single-parent household
-                </label>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label" htmlFor="mobile-worked-dole">WORKED IN DOLE BEFORE?</label>
                   <select id="mobile-worked-dole" className="vin-mob-select"
@@ -1669,38 +1660,14 @@ export default function MobileHouseholds() {
                       {m.relationship || 'Select relationship'}<ChevronDown size={14} />
                     </button>
                   </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.88rem', fontWeight: 600 }}>
-                    <input type="checkbox" checked={Boolean(m.occupationEnabled ?? m.occupation)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setActiveForm((prev) => ({
-                            ...prev,
-                            members: prev.members.map((member, index) =>
-                              index === idx ? { ...member, occupationEnabled: true } : member
-                            ),
-                          }));
-                          setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' });
-                        } else {
-                          setActiveForm((prev) => ({
-                            ...prev,
-                            members: prev.members.map((member, index) =>
-                              index === idx ? { ...member, occupation: '', occupationEnabled: false } : member
-                            ),
-                          }));
-                        }
-                      }} />
-                    Has occupation
-                  </label>
-                  {Boolean(m.occupationEnabled ?? m.occupation) && (
-                    <div className="vin-mob-input-group">
-                      <span className="vin-mob-input-label">OCCUPATION</span>
-                      <button type="button" className="vin-mob-select"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left', font: 'inherit', cursor: 'pointer' }}
-                        onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' })}>
-                        {m.occupation || 'Select occupation'}<ChevronDown size={14} />
-                      </button>
-                    </div>
-                  )}
+                  <div className="vin-mob-input-group">
+                    <span className="vin-mob-input-label">OCCUPATION</span>
+                    <button type="button" className="vin-mob-select"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left', font: 'inherit', cursor: 'pointer' }}
+                      onClick={() => setShowFormChoicePicker({ target: 'member', index: idx, field: 'occupation' })}>
+                      {m.occupation || 'Select occupation'}<ChevronDown size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
               <button type="submit" className="vin-mob-sheet-submit-btn">Save Household</button>
@@ -1825,11 +1792,7 @@ export default function MobileHouseholds() {
                 ...prev,
                 members: prev.members.map((member, index) =>
                   index === showFormChoicePicker.index
-                    ? {
-                        ...member,
-                        [showFormChoicePicker.field]: value,
-                        ...(showFormChoicePicker.field === 'occupation' ? { occupationEnabled: true } : {}),
-                      }
+                    ? { ...member, [showFormChoicePicker.field]: value }
                     : member
                 ),
               }));
