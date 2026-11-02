@@ -15,8 +15,10 @@ import {
   RoomSelectSheet,
   CategorySelectSheet,
   ProfileSelectSheet,
+  GenderSelectSheet,
 } from '../../components/CenterSelectSheet';
 import { HOUSEHOLD_PROFILE_OPTIONS } from '../../lib/householdProfileOptions.js';
+import { joinFullName, splitFullName } from '../../lib/householdNames.js';
 import {
   useEvacuationCenters,
   isCenterMatch,
@@ -837,9 +839,10 @@ export default function MobileHouseholds() {
   const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
   const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
+  const [showGenderPicker, setShowGenderPicker] = useState(null);
 
   const [activeForm, setActiveForm] = useState({
-    head: '', age: '', sex: 'Male',
+    head: '', headFirstName: '', headMiddleName: '', headLastName: '', age: '', sex: 'Male',
     center: 'LGU EC (Mangcaway)',
     room: 'Room 1', vulnerabilities: [], members: [],
     monthlyIncome: '', housingType: '', isSingleParent: false,
@@ -929,7 +932,8 @@ export default function MobileHouseholds() {
   const openRegister = () => {
     const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
     setActiveForm({
-      head: '', age: '', sex: 'Male', center: defaultCenter, room: 'Room 1',
+      head: '', headFirstName: '', headMiddleName: '', headLastName: '',
+      age: '', sex: 'Male', center: defaultCenter, room: 'Room 1',
       vulnerabilities: [], members: [], monthlyIncome: '', housingType: '',
       isSingleParent: false, govAssistanceAvailed: [],
       characteristicsRemarks: '', floodHazardLevel: '',
@@ -938,16 +942,48 @@ export default function MobileHouseholds() {
   };
   const openEdit = (item, e) => {
     e.stopPropagation();
+    const headNameParts = splitFullName(item.name || '');
     setActiveForm({
-      id: item.id, head: item.name, age: item.age, sex: item.sex, center: item.center, room: item.room,
+      id: item.id, head: item.name,
+      headFirstName: headNameParts.firstName,
+      headMiddleName: headNameParts.middleName,
+      headLastName: headNameParts.lastName,
+      age: item.age, sex: item.sex, center: item.center, room: item.room,
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
-      members: item.members || [], monthlyIncome: item.monthlyIncome ?? '',
+      members: (item.members || []).map((member) => ({
+        ...member, ...splitFullName(member.name || ''),
+      })),
+      monthlyIncome: item.monthlyIncome ?? '',
       housingType: item.housingType || '', isSingleParent: Boolean(item.isSingleParent),
       govAssistanceAvailed: Array.isArray(item.govAssistanceAvailed) ? item.govAssistanceAvailed : [],
       characteristicsRemarks: item.characteristicsRemarks || '',
       floodHazardLevel: item.floodHazardLevel || '',
     });
     setModalMode('edit');
+  };
+  const setHeadNamePart = (field, value) => {
+    setActiveForm((prev) => {
+      const next = { ...prev, [field]: value };
+      next.head = joinFullName({
+        firstName: next.headFirstName,
+        middleName: next.headMiddleName,
+        lastName: next.headLastName,
+      });
+      return next;
+    });
+  };
+  const setMemberNamePart = (index, field, value) => {
+    setActiveForm((prev) => {
+      const members = [...prev.members];
+      const member = { ...members[index], [field]: value };
+      member.name = joinFullName({
+        firstName: member.firstName,
+        middleName: member.middleName,
+        lastName: member.lastName,
+      });
+      members[index] = member;
+      return { ...prev, members };
+    });
   };
   const handleSaveHousehold = async (e) => {
     e.preventDefault();
@@ -1036,7 +1072,13 @@ export default function MobileHouseholds() {
   };
 
   const addMember = () =>
-    setActiveForm((p) => ({ ...p, members: [...p.members, { name: '', age: '', sex: 'Female', vulnerabilities: [] }] }));
+    setActiveForm((p) => ({
+      ...p,
+      members: [...p.members, {
+        name: '', firstName: '', middleName: '', lastName: '',
+        age: '', sex: 'Female', vulnerabilities: [],
+      }],
+    }));
   const removeMember = (idx) =>
     setActiveForm((p) => ({ ...p, members: p.members.filter((_, i) => i !== idx) }));
 
@@ -1311,9 +1353,14 @@ export default function MobileHouseholds() {
             <form onSubmit={handleSaveHousehold} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="vin-mob-input-group">
                 <label className="vin-mob-input-label">HOUSEHOLD HEAD</label>
-                <input type="text" placeholder="Full name" className="vin-mob-select"
-                  value={activeForm.head}
-                  onChange={(e) => setActiveForm({ ...activeForm, head: e.target.value })} required />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+                  <input type="text" placeholder="First name" aria-label="First name" className="vin-mob-select"
+                    value={activeForm.headFirstName} onChange={(e) => setHeadNamePart('headFirstName', e.target.value)} required />
+                  <input type="text" placeholder="Middle" aria-label="Middle name (optional)" className="vin-mob-select"
+                    value={activeForm.headMiddleName} onChange={(e) => setHeadNamePart('headMiddleName', e.target.value)} />
+                  <input type="text" placeholder="Last name" aria-label="Last name" className="vin-mob-select"
+                    value={activeForm.headLastName} onChange={(e) => setHeadNamePart('headLastName', e.target.value)} required />
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="vin-mob-input-group">
@@ -1323,11 +1370,12 @@ export default function MobileHouseholds() {
                     onChange={(e) => setActiveForm({ ...activeForm, age: e.target.value })} />
                 </div>
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label">SEX</label>
-                  <select className="vin-mob-select" value={activeForm.sex}
-                    onChange={(e) => setActiveForm({ ...activeForm, sex: e.target.value })}>
-                    <option>Male</option><option>Female</option>
-                  </select>
+                  <label className="vin-mob-input-label">GENDER</label>
+                  <button type="button" className="vin-mob-select"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                    onClick={() => setShowGenderPicker({ target: 'head' })}>
+                    {activeForm.sex || 'Select gender'}<ChevronDown size={16} />
+                  </button>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 12 }}>
@@ -1437,11 +1485,16 @@ export default function MobileHouseholds() {
               </div>
               {activeForm.members.map((m, idx) => (
                 <div key={idx} className="vin-mob-member-box">
-                  <div className="vin-mob-member-top">
-                    <input type="text" placeholder="Member Name" className="vin-mob-select"
-                      value={m.name}
-                      onChange={(e) => { const u = [...activeForm.members]; u[idx].name = e.target.value; setActiveForm({ ...activeForm, members: u }); }}
-                      style={{ padding: '8px 12px' }} />
+                  <div className="vin-mob-member-top" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) auto', gap: 6 }}>
+                    <input type="text" placeholder="First name" aria-label={`Member ${idx + 1} first name`} className="vin-mob-select"
+                      value={m.firstName ?? ''} onChange={(e) => setMemberNamePart(idx, 'firstName', e.target.value)}
+                      style={{ padding: '8px', minWidth: 0 }} />
+                    <input type="text" placeholder="Middle" aria-label={`Member ${idx + 1} middle name`} className="vin-mob-select"
+                      value={m.middleName ?? ''} onChange={(e) => setMemberNamePart(idx, 'middleName', e.target.value)}
+                      style={{ padding: '8px', minWidth: 0 }} />
+                    <input type="text" placeholder="Last name" aria-label={`Member ${idx + 1} last name`} className="vin-mob-select"
+                      value={m.lastName ?? ''} onChange={(e) => setMemberNamePart(idx, 'lastName', e.target.value)}
+                      style={{ padding: '8px', minWidth: 0 }} />
                     <button type="button" onClick={() => removeMember(idx)}
                       style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 6 }}>
                       <Trash2 size={16} />
@@ -1451,11 +1504,11 @@ export default function MobileHouseholds() {
                     <input type="number" placeholder="Age" className="vin-mob-select" value={m.age}
                       onChange={(e) => { const u = [...activeForm.members]; u[idx].age = e.target.value; setActiveForm({ ...activeForm, members: u }); }}
                       style={{ padding: 8 }} />
-                    <select className="vin-mob-select" value={m.sex}
-                      onChange={(e) => { const u = [...activeForm.members]; u[idx].sex = e.target.value; setActiveForm({ ...activeForm, members: u }); }}
-                      style={{ padding: 8 }}>
-                      <option>Male</option><option>Female</option>
-                    </select>
+                    <button type="button" className="vin-mob-select"
+                      style={{ padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                      onClick={() => setShowGenderPicker({ target: 'member', index: idx })}>
+                      {m.sex || 'Gender'}<ChevronDown size={14} />
+                    </button>
                     <div
                       className="vin-mob-select"
                       style={{
@@ -1561,6 +1614,29 @@ export default function MobileHouseholds() {
             [showFormProfilePicker]: value,
           }))}
           onClose={() => setShowFormProfilePicker(null)}
+        />
+      )}
+      {showGenderPicker && (
+        <GenderSelectSheet
+          selected={showGenderPicker.target === 'member'
+            ? activeForm.members[showGenderPicker.index]?.sex
+            : activeForm.sex}
+          title={showGenderPicker.target === 'member'
+            ? `Gender for ${activeForm.members[showGenderPicker.index]?.name || `Member #${showGenderPicker.index + 1}`}`
+            : 'Select Household Head Gender'}
+          onSelect={(sex) => {
+            if (showGenderPicker.target === 'member') {
+              setActiveForm((prev) => ({
+                ...prev,
+                members: prev.members.map((member, index) =>
+                  index === showGenderPicker.index ? { ...member, sex } : member
+                ),
+              }));
+            } else {
+              setActiveForm((prev) => ({ ...prev, sex }));
+            }
+          }}
+          onClose={() => setShowGenderPicker(null)}
         />
       )}
     </div>

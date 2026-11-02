@@ -19,8 +19,10 @@ import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterMo
 import {
   CategorySelectSheet,
   ProfileSelectSheet,
+  GenderSelectSheet,
 } from '../../components/CenterSelectSheet.jsx';
 import { HOUSEHOLD_PROFILE_OPTIONS } from '../../lib/householdProfileOptions.js';
+import { joinFullName, splitFullName } from '../../lib/householdNames.js';
 import {
   useHouseholds,
   useEventRoomPlacements,
@@ -633,10 +635,14 @@ export default function Household() {
   /* ── Form picker for vulnerabilities ── */
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
   const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
+  const [showGenderPicker, setShowGenderPicker] = useState(null);
 
   const [activeForm, setActiveForm] = useState({
     id: '',
     head: '',
+    headFirstName: '',
+    headMiddleName: '',
+    headLastName: '',
     age: '',
     sex: 'Male',
     barangay: '',
@@ -822,6 +828,9 @@ export default function Household() {
     setActiveForm({
       id: `HH-00${households.length + 1}`,
       head: '',
+      headFirstName: '',
+      headMiddleName: '',
+      headLastName: '',
       age: '',
       sex: 'Male',
       barangay: '',
@@ -842,9 +851,13 @@ export default function Household() {
 
   const openEdit = (item, e) => {
     e.stopPropagation();
+    const headNameParts = splitFullName(item.name || '');
     setActiveForm({
       id: item.id,
       head: item.name,
+      headFirstName: headNameParts.firstName,
+      headMiddleName: headNameParts.middleName,
+      headLastName: headNameParts.lastName,
       age: item.age || 40,
       sex: item.sex || 'Male',
       barangay: item.barangay === 'Unassigned' ? '' : item.barangay,
@@ -852,7 +865,10 @@ export default function Household() {
       center: 'Unassigned Center',
       room: 'Unassigned',
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
-      members: item.members || [],
+      members: (item.members || []).map((member) => ({
+        ...member,
+        ...splitFullName(member.name || ''),
+      })),
       monthlyIncome: item.monthlyIncome ?? '',
       housingType: item.housingType || '',
       isSingleParent: Boolean(item.isSingleParent),
@@ -861,6 +877,32 @@ export default function Household() {
       floodHazardLevel: item.floodHazardLevel || '',
     });
     setModalMode('edit');
+  };
+
+  const setHeadNamePart = (field, value) => {
+    setActiveForm((prev) => {
+      const next = { ...prev, [field]: value };
+      next.head = joinFullName({
+        firstName: next.headFirstName,
+        middleName: next.headMiddleName,
+        lastName: next.headLastName,
+      });
+      return next;
+    });
+  };
+
+  const setMemberNamePart = (index, field, value) => {
+    setActiveForm((prev) => {
+      const members = [...prev.members];
+      const member = { ...members[index], [field]: value };
+      member.name = joinFullName({
+        firstName: member.firstName,
+        middleName: member.middleName,
+        lastName: member.lastName,
+      });
+      members[index] = member;
+      return { ...prev, members };
+    });
   };
 
   const handleSaveHousehold = async (e) => {
@@ -952,7 +994,10 @@ export default function Household() {
   const addMember = () => {
     setActiveForm((p) => ({
       ...p,
-      members: [...p.members, { name: '', age: '', sex: 'Female', vulnerabilities: [] }],
+      members: [...p.members, {
+        name: '', firstName: '', middleName: '', lastName: '',
+        age: '', sex: 'Female', vulnerabilities: [],
+      }],
     }));
   };
 
@@ -1436,14 +1481,14 @@ export default function Household() {
             <form onSubmit={handleSaveHousehold} className="vin-admin-modal-body">
               <div className="vin-admin-form-group">
                 <label className="vin-admin-form-label">HOUSEHOLD HEAD NAME</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Antonio Magno"
-                  className="vin-admin-form-input"
-                  value={activeForm.head}
-                  onChange={(e) => setActiveForm({ ...activeForm, head: e.target.value })}
-                  required
-                />
+                <div className="vin-admin-form-row" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                  <input aria-label="First name" type="text" placeholder="First name" className="vin-admin-form-input"
+                    value={activeForm.headFirstName} onChange={(e) => setHeadNamePart('headFirstName', e.target.value)} required />
+                  <input aria-label="Middle name" type="text" placeholder="Middle name (optional)" className="vin-admin-form-input"
+                    value={activeForm.headMiddleName} onChange={(e) => setHeadNamePart('headMiddleName', e.target.value)} />
+                  <input aria-label="Last name" type="text" placeholder="Last name" className="vin-admin-form-input"
+                    value={activeForm.headLastName} onChange={(e) => setHeadNamePart('headLastName', e.target.value)} required />
+                </div>
               </div>
 
               <div className="vin-admin-form-row">
@@ -1458,15 +1503,15 @@ export default function Household() {
                   />
                 </div>
                 <div className="vin-admin-form-group">
-                  <label className="vin-admin-form-label">SEX</label>
-                  <select
+                  <label className="vin-admin-form-label">GENDER</label>
+                  <button
+                    type="button"
                     className="vin-admin-form-select"
-                    value={activeForm.sex}
-                    onChange={(e) => setActiveForm({ ...activeForm, sex: e.target.value })}
+                    onClick={() => setShowGenderPicker({ target: 'head' })}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}
                   >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
+                    {activeForm.sex || 'Select gender'}<ChevronDown size={16} />
+                  </button>
                 </div>
               </div>
 
@@ -1583,18 +1628,33 @@ export default function Household() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {activeForm.members.map((m, idx) => (
                     <div key={idx} className="vin-admin-member-form-box">
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) auto', gap: 8, alignItems: 'center' }}>
                         <input
                           type="text"
-                          placeholder="Member Name"
+                          aria-label={`Member ${idx + 1} first name`}
+                          placeholder="First name"
                           className="vin-admin-form-input"
-                          style={{ flex: 1, padding: '8px 12px' }}
-                          value={m.name}
-                          onChange={(e) => {
-                            const updated = [...activeForm.members];
-                            updated[idx].name = e.target.value;
-                            setActiveForm({ ...activeForm, members: updated });
-                          }}
+                          style={{ padding: '8px 12px', minWidth: 0 }}
+                          value={m.firstName ?? ''}
+                          onChange={(e) => setMemberNamePart(idx, 'firstName', e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          aria-label={`Member ${idx + 1} middle name`}
+                          placeholder="Middle"
+                          className="vin-admin-form-input"
+                          style={{ padding: '8px 12px', minWidth: 0 }}
+                          value={m.middleName ?? ''}
+                          onChange={(e) => setMemberNamePart(idx, 'middleName', e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          aria-label={`Member ${idx + 1} last name`}
+                          placeholder="Last name"
+                          className="vin-admin-form-input"
+                          style={{ padding: '8px 12px', minWidth: 0 }}
+                          value={m.lastName ?? ''}
+                          onChange={(e) => setMemberNamePart(idx, 'lastName', e.target.value)}
                         />
                         <button
                           type="button"
@@ -1643,19 +1703,14 @@ export default function Household() {
                           <option value="Months">Months</option>
                           <option value="Days">Days</option>
                         </select>
-                        <select
+                        <button
+                          type="button"
                           className="vin-admin-form-select"
-                          style={{ padding: '6px 10px' }}
-                          value={m.sex}
-                          onChange={(e) => {
-                            const updated = [...activeForm.members];
-                            updated[idx].sex = e.target.value;
-                            setActiveForm({ ...activeForm, members: updated });
-                          }}
+                          style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}
+                          onClick={() => setShowGenderPicker({ target: 'member', index: idx })}
                         >
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                        </select>
+                          {m.sex || 'Gender'}<ChevronDown size={14} />
+                        </button>
                         <div
                           className="vin-admin-form-select"
                           style={{
@@ -1758,6 +1813,29 @@ export default function Household() {
             [showFormProfilePicker]: value,
           }))}
           onClose={() => setShowFormProfilePicker(null)}
+        />
+      )}
+      {showGenderPicker && (
+        <GenderSelectSheet
+          selected={showGenderPicker.target === 'member'
+            ? activeForm.members[showGenderPicker.index]?.sex
+            : activeForm.sex}
+          title={showGenderPicker.target === 'member'
+            ? `Gender for ${activeForm.members[showGenderPicker.index]?.name || `Member #${showGenderPicker.index + 1}`}`
+            : 'Select Household Head Gender'}
+          onSelect={(sex) => {
+            if (showGenderPicker.target === 'member') {
+              setActiveForm((prev) => ({
+                ...prev,
+                members: prev.members.map((member, index) =>
+                  index === showGenderPicker.index ? { ...member, sex } : member
+                ),
+              }));
+            } else {
+              setActiveForm((prev) => ({ ...prev, sex }));
+            }
+          }}
+          onClose={() => setShowGenderPicker(null)}
         />
       )}
 

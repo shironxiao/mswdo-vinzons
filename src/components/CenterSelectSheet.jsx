@@ -559,3 +559,49 @@ export function ProfileSelectSheet({
     </div>
   );
 }
+
+export function GenderSelectSheet({ selected, onSelect, onClose, title = 'Select Gender' }) {
+  return (
+    <div className="vin-center-picker-overlay" onClick={onClose}>
+      <div className="vin-center-picker-sheet" style={{ height: 'auto', minHeight: 0, maxHeight: '85vh' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="vin-center-picker-handle" />
+        <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 800, padding: '0 4px' }}>
+          {title}
+        </div>
+        <div className="vin-center-picker-list">
+          {['Male', 'Female'].map((gender) => (
+            <button
+              key={gender}
+              type="button"
+              className={`vin-center-picker-item ${selected === gender ? 'selected' : ''}`}
+              aria-pressed={selected === gender}
+              onClick={() => {
+                onSelect(gender);
+                onClose();
+              }}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                font: 'inherit',
+                color: 'inherit',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              <span className="vin-center-picker-radio">
+                <span className="vin-center-picker-radio-dot" />
+              </span>
+              <span className="vin-center-picker-info">
+                <span className="vin-center-picker-name">{gender}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <button type="button" className="vin-center-picker-submit" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
