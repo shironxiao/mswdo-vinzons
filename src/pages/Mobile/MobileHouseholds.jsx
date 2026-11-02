@@ -844,6 +844,7 @@ export default function MobileHouseholds() {
   const [showFormRoomPicker, setShowFormRoomPicker] = useState(false);
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
   const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
+  const [showMemberAssistancePicker, setShowMemberAssistancePicker] = useState(null);
   const [showGenderPicker, setShowGenderPicker] = useState(null);
   const [showFormChoicePicker, setShowFormChoicePicker] = useState(null);
 
@@ -1113,6 +1114,10 @@ export default function MobileHouseholds() {
         name: '', firstName: '', middleName: '', lastName: '',
         age: '', sex: 'Female', relationship: 'Member',
         occupation: '', vulnerabilities: [],
+        monthlyIncome: '', hasWorkedDole: null, doleEmploymentYear: '',
+        hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
+        governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
+        otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
       }],
     }));
   const removeMember = (idx) =>
@@ -1482,7 +1487,7 @@ export default function MobileHouseholds() {
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <span className="vin-mob-input-label">HOUSEHOLD PROFILE</span>
+                <span className="vin-mob-input-label">HOUSEHOLD HEAD PROFILE</span>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label" htmlFor="mobile-monthly-income">MONTHLY INCOME</label>
                   <input id="mobile-monthly-income" type="number" min="0" max="99999999.99" step="0.01" placeholder="0.00"
@@ -1668,6 +1673,156 @@ export default function MobileHouseholds() {
                       {m.occupation || 'Select occupation'}<ChevronDown size={14} />
                     </button>
                   </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                    <span className="vin-mob-input-label">MEMBER PROFILE</span>
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor={`mobile-member-monthly-income-${idx}`}>MONTHLY INCOME</label>
+                      <input id={`mobile-member-monthly-income-${idx}`} type="number" min="0" max="99999999.99" step="0.01"
+                        placeholder="0.00" className="vin-mob-select" value={m.monthlyIncome ?? ''}
+                        onChange={(e) => setActiveForm((prev) => ({
+                          ...prev,
+                          members: prev.members.map((member, index) =>
+                            index === idx ? { ...member, monthlyIncome: e.target.value } : member
+                          ),
+                        }))} />
+                    </div>
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor={`mobile-member-worked-dole-${idx}`}>WORKED IN DOLE BEFORE?</label>
+                      <select id={`mobile-member-worked-dole-${idx}`} className="vin-mob-select"
+                        value={m.hasWorkedDole == null ? '' : String(m.hasWorkedDole)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setActiveForm((prev) => ({
+                            ...prev,
+                            members: prev.members.map((member, index) => index === idx
+                              ? {
+                                  ...member,
+                                  hasWorkedDole: value === '' ? null : value === 'true',
+                                  ...(value === 'true' ? {} : { doleEmploymentYear: '' }),
+                                }
+                              : member),
+                          }));
+                        }}>
+                        <option value="">Select yes or no</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    {m.hasWorkedDole === true && (
+                      <div className="vin-mob-input-group">
+                        <label className="vin-mob-input-label" htmlFor={`mobile-member-dole-year-${idx}`}>WHEN? (YEAR)</label>
+                        <input id={`mobile-member-dole-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                          step="1" placeholder="Year" className="vin-mob-select" value={m.doleEmploymentYear ?? ''}
+                          onChange={(e) => setActiveForm((prev) => ({
+                            ...prev,
+                            members: prev.members.map((member, index) =>
+                              index === idx ? { ...member, doleEmploymentYear: e.target.value } : member
+                            ),
+                          }))} />
+                      </div>
+                    )}
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor={`mobile-member-government-assistance-${idx}`}>GOVERNMENT ASSISTANCE RECEIVED?</label>
+                      <select id={`mobile-member-government-assistance-${idx}`} className="vin-mob-select"
+                        value={m.hasReceivedGovernmentAssistance == null ? '' : String(m.hasReceivedGovernmentAssistance)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setActiveForm((prev) => ({
+                            ...prev,
+                            members: prev.members.map((member, index) => index === idx
+                              ? {
+                                  ...member,
+                                  hasReceivedGovernmentAssistance: value === '' ? null : value === 'true',
+                                  ...(value === 'true' ? {} : { govAssistanceAvailed: [], governmentAssistanceYear: '' }),
+                                }
+                              : member),
+                          }));
+                        }}>
+                        <option value="">Select yes or no</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    {m.hasReceivedGovernmentAssistance === true && (
+                      <>
+                        <div className="vin-mob-input-group">
+                          <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE</span>
+                          <button type="button" className="vin-mob-select"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                            onClick={() => setShowMemberAssistancePicker(idx)}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {m.govAssistanceAvailed?.length ? m.govAssistanceAvailed.join(', ') : 'Select assistance'}
+                            </span>
+                            <ChevronDown size={14} />
+                          </button>
+                        </div>
+                        <div className="vin-mob-input-group">
+                          <label className="vin-mob-input-label" htmlFor={`mobile-member-assistance-year-${idx}`}>YEAR ACQUIRED</label>
+                          <input id={`mobile-member-assistance-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                            step="1" placeholder="Year" className="vin-mob-select" value={m.governmentAssistanceYear ?? ''}
+                            onChange={(e) => setActiveForm((prev) => ({
+                              ...prev,
+                              members: prev.members.map((member, index) =>
+                                index === idx ? { ...member, governmentAssistanceYear: e.target.value } : member
+                              ),
+                            }))} />
+                        </div>
+                      </>
+                    )}
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor={`mobile-member-relief-assistance-${idx}`}>RECEIVED ANY RELIEF ASSISTANCE?</label>
+                      <select id={`mobile-member-relief-assistance-${idx}`} className="vin-mob-select"
+                        value={m.hasReceivedReliefAssistance == null ? '' : String(m.hasReceivedReliefAssistance)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setActiveForm((prev) => ({
+                            ...prev,
+                            members: prev.members.map((member, index) =>
+                              index === idx ? { ...member, hasReceivedReliefAssistance: value === '' ? null : value === 'true' } : member
+                            ),
+                          }));
+                        }}>
+                        <option value="">Select yes or no</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor={`mobile-member-other-income-${idx}`}>OTHER SOURCE OF INCOME</label>
+                      <input id={`mobile-member-other-income-${idx}`} type="text" maxLength={200}
+                        placeholder="Other source of income" className="vin-mob-select" value={m.otherIncomeSource || ''}
+                        onChange={(e) => setActiveForm((prev) => ({
+                          ...prev,
+                          members: prev.members.map((member, index) =>
+                            index === idx ? { ...member, otherIncomeSource: e.target.value } : member
+                          ),
+                        }))} />
+                    </div>
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor={`mobile-member-flood-depth-${idx}`}>FLOOD DEPTH</label>
+                      <select id={`mobile-member-flood-depth-${idx}`} className="vin-mob-select" value={m.floodDepthLevel || ''}
+                        onChange={(e) => setActiveForm((prev) => ({
+                          ...prev,
+                          members: prev.members.map((member, index) =>
+                            index === idx ? { ...member, floodDepthLevel: e.target.value } : member
+                          ),
+                        }))}>
+                        <option value="">Select flood depth</option>
+                        {HOUSEHOLD_PROFILE_OPTIONS.floodDepthLevel.map((level) => <option key={level} value={level}>{level}</option>)}
+                      </select>
+                    </div>
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor={`mobile-member-characteristics-${idx}`}>CHARACTERISTICS / REMARKS</label>
+                      <textarea id={`mobile-member-characteristics-${idx}`} placeholder="Additional characteristics"
+                        className="vin-mob-select" rows={3} value={m.characteristicsRemarks || ''}
+                        onChange={(e) => setActiveForm((prev) => ({
+                          ...prev,
+                          members: prev.members.map((member, index) =>
+                            index === idx ? { ...member, characteristicsRemarks: e.target.value } : member
+                          ),
+                        }))} />
+                    </div>
+                  </div>
                 </div>
               ))}
               <button type="submit" className="vin-mob-sheet-submit-btn">Save Household</button>
@@ -1749,6 +1904,21 @@ export default function MobileHouseholds() {
             [showFormProfilePicker]: value,
           }))}
           onClose={() => setShowFormProfilePicker(null)}
+        />
+      )}
+      {showMemberAssistancePicker !== null && (
+        <ProfileSelectSheet
+          selected={activeForm.members[showMemberAssistancePicker]?.govAssistanceAvailed || []}
+          options={HOUSEHOLD_PROFILE_OPTIONS.govAssistanceAvailed}
+          multiple
+          title={`Government Assistance for ${activeForm.members[showMemberAssistancePicker]?.name || `Member #${showMemberAssistancePicker + 1}`}`}
+          onSelect={(value) => setActiveForm((prev) => ({
+            ...prev,
+            members: prev.members.map((member, index) =>
+              index === showMemberAssistancePicker ? { ...member, govAssistanceAvailed: value } : member
+            ),
+          }))}
+          onClose={() => setShowMemberAssistancePicker(null)}
         />
       )}
       {showGenderPicker && (

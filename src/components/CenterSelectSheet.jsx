@@ -8,6 +8,7 @@ const HOUSEHOLD_CATEGORIES = [
   { value: 'LACTATING MOTHERS',       label: 'Lactating Mothers',         sub: 'Currently breastfeeding' },
   { value: 'CHILD HEADED FAMILY',     label: 'Child Headed Family',       sub: 'Family headed by a minor' },
   { value: 'SOLO PARENT',             label: 'Solo Parent',               sub: 'Raising children alone' },
+  { value: 'SINGLE PARENT',           label: 'Single Parent',             sub: 'A parent raising a child without a partner' },
   { value: 'PERSONS W/ DISABILITY',   label: 'Persons w/ Disability',     sub: 'Physical or mental disability' },
   { value: 'SENIOR CITIZEN',          label: 'Senior Citizen',            sub: '60 years old and above' },
   { value: 'INDIGENOUS PEOPLE (IPs)', label: 'Indigenous People (IPs)',   sub: 'Indigenous cultural community member' },

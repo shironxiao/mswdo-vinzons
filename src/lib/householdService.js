@@ -91,18 +91,33 @@ export function normalizeHousehold(row, centersList = []) {
 
   const roomName = row.room?.room_name || 'Room 1';
   const members = Array.isArray(row.members)
-    ? row.members.map((m) => ({
-        id: m.id,
-        name: m.full_name,
-        age: m.age,
-        ageValue: m.age_value !== null && m.age_value !== undefined ? m.age_value : m.age,
-        ageUnit: m.age_unit || 'Years',
-        sex: m.sex,
-        relationship: m.relationship_to_head || 'MEMBER',
-        occupation: m.occupation || '',
-        isHead: Boolean(m.is_household_head),
-        vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
-      }))
+    ? row.members.map((m) => {
+        const memberProfile = Array.isArray(m.profile) ? m.profile[0] : m.profile;
+        return {
+          id: m.id,
+          name: m.full_name,
+          age: m.age,
+          ageValue: m.age_value !== null && m.age_value !== undefined ? m.age_value : m.age,
+          ageUnit: m.age_unit || 'Years',
+          sex: m.sex,
+          relationship: m.relationship_to_head || 'MEMBER',
+          occupation: m.occupation || '',
+          isHead: Boolean(m.is_household_head),
+          vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
+          monthlyIncome: memberProfile?.monthly_income ?? '',
+          hasWorkedDole: memberProfile?.has_worked_dole ?? null,
+          doleEmploymentYear: memberProfile?.dole_employment_year ?? '',
+          hasReceivedGovernmentAssistance: memberProfile?.has_received_government_assistance ?? null,
+          govAssistanceAvailed: Array.isArray(memberProfile?.gov_assistance_availed)
+            ? memberProfile.gov_assistance_availed
+            : [],
+          governmentAssistanceYear: memberProfile?.government_assistance_year ?? '',
+          hasReceivedReliefAssistance: memberProfile?.has_received_relief_assistance ?? null,
+          otherIncomeSource: memberProfile?.other_income_source || '',
+          floodDepthLevel: memberProfile?.flood_depth_level || '',
+          characteristicsRemarks: memberProfile?.characteristics_remarks || '',
+        };
+      })
     : [];
 
   return {
@@ -186,7 +201,7 @@ export function useHouseholds(centersList = []) {
           center:evacuation_centers ( id, name, location ),
           room:rooms ( id, room_name ),
           profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
-          members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities )
+          members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
         `)
         .order('created_at', { ascending: false });
 
@@ -351,9 +366,9 @@ export async function createHousehold(formData, centersList = []) {
 
   // 4. Insert members if any
   if (Array.isArray(formData.members) && formData.members.length > 0) {
-    const memberRows = formData.members
+    const membersWithNames = formData.members
       .filter((m) => m && m.name && m.name.trim())
-      .map((m) => ({
+    const memberRows = membersWithNames.map((m) => ({
         household_id: insertedH.id,
         full_name: m.name.trim(),
         age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
@@ -369,8 +384,20 @@ export async function createHousehold(formData, centersList = []) {
       }));
 
     if (memberRows.length > 0) {
-      const { error: mError } = await supabase.from('household_members').insert(memberRows);
-      if (mError) console.warn('Error inserting members:', mError.message);
+      const { data: insertedMembers, error: mError } = await supabase
+        .from('household_members')
+        .insert(memberRows)
+        .select('id');
+      if (mError) throw mError;
+      const memberProfiles = (insertedMembers || []).map((member, index) =>
+        householdMemberProfilePayload(member.id, membersWithNames[index])
+      );
+      if (memberProfiles.length > 0) {
+        const { error: memberProfileError } = await supabase
+          .from('household_member_profiles')
+          .upsert(memberProfiles, { onConflict: 'household_member_id' });
+        if (memberProfileError) throw memberProfileError;
+      }
     }
   }
 
@@ -401,6 +428,25 @@ export async function createHousehold(formData, centersList = []) {
 function householdProfilePayload(householdId, formData) {
   return {
     household_id: householdId,
+    monthly_income: Number(formData.monthlyIncome) || 0,
+    has_worked_dole: formData.hasWorkedDole ?? null,
+    dole_employment_year: Number(formData.doleEmploymentYear) || null,
+    has_received_government_assistance: formData.hasReceivedGovernmentAssistance ?? null,
+    gov_assistance_availed: Array.isArray(formData.govAssistanceAvailed)
+      ? formData.govAssistanceAvailed
+      : [],
+    government_assistance_year: Number(formData.governmentAssistanceYear) || null,
+    has_received_relief_assistance: formData.hasReceivedReliefAssistance ?? null,
+    other_income_source: formData.otherIncomeSource || null,
+    flood_depth_level: formData.floodDepthLevel || null,
+    characteristics_remarks: formData.characteristicsRemarks || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function householdMemberProfilePayload(memberId, formData) {
+  return {
+    household_member_id: memberId,
     monthly_income: Number(formData.monthlyIncome) || 0,
     has_worked_dole: formData.hasWorkedDole ?? null,
     dole_employment_year: Number(formData.doleEmploymentYear) || null,
@@ -492,10 +538,14 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
 
   // Replace members
   if (Array.isArray(formData.members)) {
-    await supabase.from('household_members').delete().eq('household_id', id);
-    const memberRows = formData.members
+    const { error: deleteMembersError } = await supabase
+      .from('household_members')
+      .delete()
+      .eq('household_id', id);
+    if (deleteMembersError) throw deleteMembersError;
+    const membersWithNames = formData.members
       .filter((m) => m && m.name && m.name.trim())
-      .map((m) => ({
+    const memberRows = membersWithNames.map((m) => ({
         household_id: id,
         full_name: m.name.trim(),
         age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
@@ -511,7 +561,20 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
       }));
 
     if (memberRows.length > 0) {
-      await supabase.from('household_members').insert(memberRows);
+      const { data: insertedMembers, error: membersError } = await supabase
+        .from('household_members')
+        .insert(memberRows)
+        .select('id');
+      if (membersError) throw membersError;
+      const memberProfiles = (insertedMembers || []).map((member, index) =>
+        householdMemberProfilePayload(member.id, membersWithNames[index])
+      );
+      if (memberProfiles.length > 0) {
+        const { error: memberProfileError } = await supabase
+          .from('household_member_profiles')
+          .upsert(memberProfiles, { onConflict: 'household_member_id' });
+        if (memberProfileError) throw memberProfileError;
+      }
     }
   }
 }
@@ -739,7 +802,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
         center:evacuation_centers ( id, name, location ),
         room:rooms ( id, room_name ),
         profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
-        members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, vulnerabilities )
+        members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
       `)
       .or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%`)
       .limit(20);

@@ -640,6 +640,7 @@ export default function Household() {
   /* ── Form picker for vulnerabilities ── */
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
   const [showFormProfilePicker, setShowFormProfilePicker] = useState(null);
+  const [showMemberAssistancePicker, setShowMemberAssistancePicker] = useState(null);
   const [showGenderPicker, setShowGenderPicker] = useState(null);
   const [showFormChoicePicker, setShowFormChoicePicker] = useState(null);
 
@@ -1029,6 +1030,10 @@ export default function Household() {
         name: '', firstName: '', middleName: '', lastName: '',
         age: '', sex: 'Female', relationship: 'Member',
         occupation: '', vulnerabilities: [],
+        monthlyIncome: '', hasWorkedDole: null, doleEmploymentYear: '',
+        hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
+        governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
+        otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
       }],
     }));
   };
@@ -1600,7 +1605,7 @@ export default function Household() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <span className="vin-admin-form-label">HOUSEHOLD PROFILE</span>
+                <span className="vin-admin-form-label">HOUSEHOLD HEAD PROFILE</span>
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-monthly-income">MONTHLY INCOME</label>
                   <input id="admin-monthly-income" type="number" min="0" max="99999999.99" step="0.01" placeholder="0.00"
@@ -1857,6 +1862,156 @@ export default function Household() {
                             {m.occupation || 'Select occupation'}<ChevronDown size={14} />
                           </button>
                         </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                          <span className="vin-admin-form-label">MEMBER PROFILE</span>
+                          <div className="vin-admin-form-group">
+                            <label className="vin-admin-form-label" htmlFor={`admin-member-monthly-income-${idx}`}>MONTHLY INCOME</label>
+                            <input id={`admin-member-monthly-income-${idx}`} type="number" min="0" max="99999999.99" step="0.01"
+                              placeholder="0.00" className="vin-admin-form-input" value={m.monthlyIncome ?? ''}
+                              onChange={(e) => setActiveForm((prev) => ({
+                                ...prev,
+                                members: prev.members.map((member, index) =>
+                                  index === idx ? { ...member, monthlyIncome: e.target.value } : member
+                                ),
+                              }))} />
+                          </div>
+                          <div className="vin-admin-form-group">
+                            <label className="vin-admin-form-label" htmlFor={`admin-member-worked-dole-${idx}`}>WORKED IN DOLE BEFORE?</label>
+                            <select id={`admin-member-worked-dole-${idx}`} className="vin-admin-form-select"
+                              value={m.hasWorkedDole == null ? '' : String(m.hasWorkedDole)}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setActiveForm((prev) => ({
+                                  ...prev,
+                                  members: prev.members.map((member, index) => index === idx
+                                    ? {
+                                        ...member,
+                                        hasWorkedDole: value === '' ? null : value === 'true',
+                                        ...(value === 'true' ? {} : { doleEmploymentYear: '' }),
+                                      }
+                                    : member),
+                                }));
+                              }}>
+                              <option value="">Select yes or no</option>
+                              <option value="true">Yes</option>
+                              <option value="false">No</option>
+                            </select>
+                          </div>
+                          {m.hasWorkedDole === true && (
+                            <div className="vin-admin-form-group">
+                              <label className="vin-admin-form-label" htmlFor={`admin-member-dole-year-${idx}`}>WHEN? (YEAR)</label>
+                              <input id={`admin-member-dole-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                                step="1" placeholder="Year" className="vin-admin-form-input" value={m.doleEmploymentYear ?? ''}
+                                onChange={(e) => setActiveForm((prev) => ({
+                                  ...prev,
+                                  members: prev.members.map((member, index) =>
+                                    index === idx ? { ...member, doleEmploymentYear: e.target.value } : member
+                                  ),
+                                }))} />
+                            </div>
+                          )}
+                          <div className="vin-admin-form-group">
+                            <label className="vin-admin-form-label" htmlFor={`admin-member-government-assistance-${idx}`}>GOVERNMENT ASSISTANCE RECEIVED?</label>
+                            <select id={`admin-member-government-assistance-${idx}`} className="vin-admin-form-select"
+                              value={m.hasReceivedGovernmentAssistance == null ? '' : String(m.hasReceivedGovernmentAssistance)}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setActiveForm((prev) => ({
+                                  ...prev,
+                                  members: prev.members.map((member, index) => index === idx
+                                    ? {
+                                        ...member,
+                                        hasReceivedGovernmentAssistance: value === '' ? null : value === 'true',
+                                        ...(value === 'true' ? {} : { govAssistanceAvailed: [], governmentAssistanceYear: '' }),
+                                      }
+                                    : member),
+                                }));
+                              }}>
+                              <option value="">Select yes or no</option>
+                              <option value="true">Yes</option>
+                              <option value="false">No</option>
+                            </select>
+                          </div>
+                          {m.hasReceivedGovernmentAssistance === true && (
+                            <>
+                              <div className="vin-admin-form-group">
+                                <span className="vin-admin-form-label">GOVERNMENT ASSISTANCE</span>
+                                <button type="button" className="vin-admin-form-select"
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}
+                                  onClick={() => setShowMemberAssistancePicker(idx)}>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {m.govAssistanceAvailed?.length ? m.govAssistanceAvailed.join(', ') : 'Select assistance'}
+                                  </span>
+                                  <ChevronDown size={14} />
+                                </button>
+                              </div>
+                              <div className="vin-admin-form-group">
+                                <label className="vin-admin-form-label" htmlFor={`admin-member-assistance-year-${idx}`}>YEAR ACQUIRED</label>
+                                <input id={`admin-member-assistance-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                                  step="1" placeholder="Year" className="vin-admin-form-input" value={m.governmentAssistanceYear ?? ''}
+                                  onChange={(e) => setActiveForm((prev) => ({
+                                    ...prev,
+                                    members: prev.members.map((member, index) =>
+                                      index === idx ? { ...member, governmentAssistanceYear: e.target.value } : member
+                                    ),
+                                  }))} />
+                              </div>
+                            </>
+                          )}
+                          <div className="vin-admin-form-group">
+                            <label className="vin-admin-form-label" htmlFor={`admin-member-relief-assistance-${idx}`}>RECEIVED ANY RELIEF ASSISTANCE?</label>
+                            <select id={`admin-member-relief-assistance-${idx}`} className="vin-admin-form-select"
+                              value={m.hasReceivedReliefAssistance == null ? '' : String(m.hasReceivedReliefAssistance)}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setActiveForm((prev) => ({
+                                  ...prev,
+                                  members: prev.members.map((member, index) =>
+                                    index === idx ? { ...member, hasReceivedReliefAssistance: value === '' ? null : value === 'true' } : member
+                                  ),
+                                }));
+                              }}>
+                              <option value="">Select yes or no</option>
+                              <option value="true">Yes</option>
+                              <option value="false">No</option>
+                            </select>
+                          </div>
+                          <div className="vin-admin-form-group">
+                            <label className="vin-admin-form-label" htmlFor={`admin-member-other-income-${idx}`}>OTHER SOURCE OF INCOME</label>
+                            <input id={`admin-member-other-income-${idx}`} type="text" maxLength={200}
+                              placeholder="Other source of income" className="vin-admin-form-input" value={m.otherIncomeSource || ''}
+                              onChange={(e) => setActiveForm((prev) => ({
+                                ...prev,
+                                members: prev.members.map((member, index) =>
+                                  index === idx ? { ...member, otherIncomeSource: e.target.value } : member
+                                ),
+                              }))} />
+                          </div>
+                          <div className="vin-admin-form-group">
+                            <label className="vin-admin-form-label" htmlFor={`admin-member-flood-depth-${idx}`}>FLOOD DEPTH</label>
+                            <select id={`admin-member-flood-depth-${idx}`} className="vin-admin-form-select" value={m.floodDepthLevel || ''}
+                              onChange={(e) => setActiveForm((prev) => ({
+                                ...prev,
+                                members: prev.members.map((member, index) =>
+                                  index === idx ? { ...member, floodDepthLevel: e.target.value } : member
+                                ),
+                              }))}>
+                              <option value="">Select flood depth</option>
+                              {HOUSEHOLD_PROFILE_OPTIONS.floodDepthLevel.map((level) => <option key={level} value={level}>{level}</option>)}
+                            </select>
+                          </div>
+                          <div className="vin-admin-form-group">
+                            <label className="vin-admin-form-label" htmlFor={`admin-member-characteristics-${idx}`}>CHARACTERISTICS / REMARKS</label>
+                            <textarea id={`admin-member-characteristics-${idx}`} placeholder="Additional characteristics"
+                              className="vin-admin-form-input" rows={3} value={m.characteristicsRemarks || ''}
+                              onChange={(e) => setActiveForm((prev) => ({
+                                ...prev,
+                                members: prev.members.map((member, index) =>
+                                  index === idx ? { ...member, characteristicsRemarks: e.target.value } : member
+                                ),
+                              }))} />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1935,6 +2090,21 @@ export default function Household() {
             [showFormProfilePicker]: value,
           }))}
           onClose={() => setShowFormProfilePicker(null)}
+        />
+      )}
+      {showMemberAssistancePicker !== null && (
+        <ProfileSelectSheet
+          selected={activeForm.members[showMemberAssistancePicker]?.govAssistanceAvailed || []}
+          options={HOUSEHOLD_PROFILE_OPTIONS.govAssistanceAvailed}
+          multiple
+          title={`Government Assistance for ${activeForm.members[showMemberAssistancePicker]?.name || `Member #${showMemberAssistancePicker + 1}`}`}
+          onSelect={(value) => setActiveForm((prev) => ({
+            ...prev,
+            members: prev.members.map((member, index) =>
+              index === showMemberAssistancePicker ? { ...member, govAssistanceAvailed: value } : member
+            ),
+          }))}
+          onClose={() => setShowMemberAssistancePicker(null)}
         />
       )}
       {showGenderPicker && (

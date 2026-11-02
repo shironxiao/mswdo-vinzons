@@ -54,7 +54,10 @@ function personDromicRow(person, household, isHead) {
   if (isFemale && hasVulnerability(vulnerabilities, 'LACTAT')) row[16] = 1;
   if (isHead && years < 18) row[17 + sexOffset] = 1;
   if (isHead && hasVulnerability(vulnerabilities, 'SINGLEHEADED')) row[19 + sexOffset] = 1;
-  if (isHead && hasVulnerability(vulnerabilities, 'SOLOPARENT')) row[21] = 1;
+  if (isHead && (
+    hasVulnerability(vulnerabilities, 'SOLOPARENT') ||
+    hasVulnerability(vulnerabilities, 'SINGLEPARENT')
+  )) row[21] = 1;
   if (hasVulnerability(vulnerabilities, 'DISABIL') || hasVulnerability(vulnerabilities, 'PWD')) {
     row[22 + sexOffset] = 1;
   }
