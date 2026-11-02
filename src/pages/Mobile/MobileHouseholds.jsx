@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2,
-  AlertTriangle, Ticket, ChevronDown, Building,
+  AlertTriangle, ChevronDown, Building,
   ChevronLeft, ChevronRight, CheckCircle2, SlidersHorizontal, LogOut,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -358,37 +358,6 @@ function StubIssuancePanel({ household, households, onClose }) {
                 : 'Present this QR code at the Evacuee Monitoring / Relief desk to claim assistance.'}
             </div>
           </div>
-        </div>
-
-        {/* Status notice */}
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            background: alreadyIssued ? '#f3e8ff' : '#f8fafc',
-            border: `1px solid ${alreadyIssued ? '#ddd6fe' : '#e2e8f0'}`,
-            color: alreadyIssued ? '#6b21a8' : '#64748b',
-            fontWeight: 700,
-            textAlign: 'center',
-            fontSize: '0.88rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            marginTop: 10,
-          }}
-        >
-          {alreadyIssued ? (
-            <>
-              <CheckCircle2 size={18} />
-              Relief Stub Verified &amp; Issued
-            </>
-          ) : (
-            <>
-              <Ticket size={18} />
-              Relief Distribution via Monitor Scan
-            </>
-          )}
         </div>
 
         {isDecamped && (
