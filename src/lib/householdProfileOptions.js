@@ -1,21 +1,22 @@
 export const HOUSEHOLD_PROFILE_OPTIONS = {
-  housingType: [
-    'Owned',
-    'Rented',
-    'Shared with relatives',
-    'Informal settler',
-    'Provided by employer',
-  ],
   govAssistanceAvailed: [
     '4Ps (Pantawid Pamilyang Pilipino Program)',
     'AICS (Assistance to Individuals in Crisis Situation)',
+    'DOLE Assistance',
     'Social Pension',
     'TUPAD',
     'Educational Assistance',
     'Food Assistance',
     'Livelihood Assistance',
   ],
-  floodHazardLevel: ['Low', 'Moderate', 'High', 'Very High', 'Not Assessed'],
+  floodDepthLevel: [
+    'No flooding',
+    'Ankle-deep',
+    'Knee-deep',
+    'Waist-deep',
+    'Chest-deep',
+    'Head-deep',
+  ],
 };
 
 export const HOUSEHOLD_RELATIONSHIPS = [

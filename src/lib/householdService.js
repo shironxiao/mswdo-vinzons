@@ -123,13 +123,18 @@ export function normalizeHousehold(row, centersList = []) {
     familyCount: 1 + members.length,
     members,
     monthlyIncome: profile?.monthly_income ?? 0,
-    housingType: profile?.housing_type || '',
     isSingleParent: Boolean(profile?.is_single_parent),
+    hasWorkedDole: profile?.has_worked_dole ?? null,
+    doleEmploymentYear: profile?.dole_employment_year ?? '',
+    hasReceivedGovernmentAssistance: profile?.has_received_government_assistance ?? null,
     govAssistanceAvailed: Array.isArray(profile?.gov_assistance_availed)
       ? profile.gov_assistance_availed
       : [],
+    governmentAssistanceYear: profile?.government_assistance_year ?? '',
+    hasReceivedReliefAssistance: profile?.has_received_relief_assistance ?? null,
+    otherIncomeSource: profile?.other_income_source || '',
+    floodDepthLevel: profile?.flood_depth_level || '',
     characteristicsRemarks: profile?.characteristics_remarks || '',
-    floodHazardLevel: profile?.flood_hazard_level || '',
     stubCode: row.stub_code,
     stubIssued: Boolean(row.stub_issued),
     stubIssuedAt: row.stub_issued_at || null,
@@ -181,7 +186,7 @@ export function useHouseholds(centersList = []) {
           created_at,
           center:evacuation_centers ( id, name, location ),
           room:rooms ( id, room_name ),
-          profile:household_profiles ( monthly_income, housing_type, is_single_parent, gov_assistance_availed, characteristics_remarks, flood_hazard_level ),
+          profile:household_profiles ( monthly_income, is_single_parent, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
           members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities )
         `)
         .order('created_at', { ascending: false });
@@ -398,13 +403,18 @@ function householdProfilePayload(householdId, formData) {
   return {
     household_id: householdId,
     monthly_income: Number(formData.monthlyIncome) || 0,
-    housing_type: formData.housingType || null,
     is_single_parent: Boolean(formData.isSingleParent),
+    has_worked_dole: formData.hasWorkedDole ?? null,
+    dole_employment_year: Number(formData.doleEmploymentYear) || null,
+    has_received_government_assistance: formData.hasReceivedGovernmentAssistance ?? null,
     gov_assistance_availed: Array.isArray(formData.govAssistanceAvailed)
       ? formData.govAssistanceAvailed
       : [],
+    government_assistance_year: Number(formData.governmentAssistanceYear) || null,
+    has_received_relief_assistance: formData.hasReceivedReliefAssistance ?? null,
+    other_income_source: formData.otherIncomeSource || null,
+    flood_depth_level: formData.floodDepthLevel || null,
     characteristics_remarks: formData.characteristicsRemarks || null,
-    flood_hazard_level: formData.floodHazardLevel || null,
     updated_at: new Date().toISOString(),
   };
 }
@@ -464,11 +474,16 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
 
   const hasProfileFields = [
     'monthlyIncome',
-    'housingType',
     'isSingleParent',
+    'hasWorkedDole',
+    'doleEmploymentYear',
+    'hasReceivedGovernmentAssistance',
     'govAssistanceAvailed',
+    'governmentAssistanceYear',
+    'hasReceivedReliefAssistance',
+    'otherIncomeSource',
+    'floodDepthLevel',
     'characteristicsRemarks',
-    'floodHazardLevel',
   ].some((field) => Object.prototype.hasOwnProperty.call(formData, field));
   if (hasProfileFields) {
     const { error: profileError } = await supabase.from('household_profiles').upsert(
@@ -726,7 +741,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
         created_at,
         center:evacuation_centers ( id, name, location ),
         room:rooms ( id, room_name ),
-        profile:household_profiles ( monthly_income, housing_type, is_single_parent, gov_assistance_availed, characteristics_remarks, flood_hazard_level ),
+        profile:household_profiles ( monthly_income, is_single_parent, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
         members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, vulnerabilities )
       `)
       .or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%`)

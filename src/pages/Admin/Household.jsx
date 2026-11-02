@@ -659,11 +659,16 @@ export default function Household() {
     vulnerabilities: [],
     members: [],
     monthlyIncome: '',
-    housingType: '',
     isSingleParent: false,
+    hasWorkedDole: null,
+    doleEmploymentYear: '',
+    hasReceivedGovernmentAssistance: null,
     govAssistanceAvailed: [],
+    governmentAssistanceYear: '',
+    hasReceivedReliefAssistance: null,
+    otherIncomeSource: '',
+    floodDepthLevel: '',
     characteristicsRemarks: '',
-    floodHazardLevel: '',
   });
 
   const currentEventPlacements = useMemo(
@@ -848,11 +853,16 @@ export default function Household() {
       vulnerabilities: [],
       members: [],
       monthlyIncome: '',
-      housingType: '',
       isSingleParent: false,
+      hasWorkedDole: null,
+      doleEmploymentYear: '',
+      hasReceivedGovernmentAssistance: null,
       govAssistanceAvailed: [],
+      governmentAssistanceYear: '',
+      hasReceivedReliefAssistance: null,
+      otherIncomeSource: '',
+      floodDepthLevel: '',
       characteristicsRemarks: '',
-      floodHazardLevel: '',
     });
     setModalMode('register');
   };
@@ -880,11 +890,16 @@ export default function Household() {
         occupationEnabled: Boolean(member.occupation),
       })),
       monthlyIncome: item.monthlyIncome ?? '',
-      housingType: item.housingType || '',
       isSingleParent: Boolean(item.isSingleParent),
+      hasWorkedDole: item.hasWorkedDole ?? null,
+      doleEmploymentYear: item.doleEmploymentYear ?? '',
+      hasReceivedGovernmentAssistance: item.hasReceivedGovernmentAssistance ?? null,
       govAssistanceAvailed: Array.isArray(item.govAssistanceAvailed) ? item.govAssistanceAvailed : [],
+      governmentAssistanceYear: item.governmentAssistanceYear ?? '',
+      hasReceivedReliefAssistance: item.hasReceivedReliefAssistance ?? null,
+      otherIncomeSource: item.otherIncomeSource || '',
+      floodDepthLevel: item.floodDepthLevel || '',
       characteristicsRemarks: item.characteristicsRemarks || '',
-      floodHazardLevel: item.floodHazardLevel || '',
     });
     setModalMode('edit');
   };
@@ -937,11 +952,16 @@ export default function Household() {
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
         monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-        housingType: activeForm.housingType,
         isSingleParent: activeForm.isSingleParent,
+        hasWorkedDole: activeForm.hasWorkedDole,
+        doleEmploymentYear: activeForm.doleEmploymentYear,
+        hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
         govAssistanceAvailed: activeForm.govAssistanceAvailed,
+        governmentAssistanceYear: activeForm.governmentAssistanceYear,
+        hasReceivedReliefAssistance: activeForm.hasReceivedReliefAssistance,
+        otherIncomeSource: activeForm.otherIncomeSource,
+        floodDepthLevel: activeForm.floodDepthLevel,
         characteristicsRemarks: activeForm.characteristicsRemarks,
-        floodHazardLevel: activeForm.floodHazardLevel,
         stubCode: generatedCode,
         stubIssued: false,
       };
@@ -982,11 +1002,16 @@ export default function Household() {
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
                 monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-                housingType: activeForm.housingType,
                 isSingleParent: activeForm.isSingleParent,
+                hasWorkedDole: activeForm.hasWorkedDole,
+                doleEmploymentYear: activeForm.doleEmploymentYear,
+                hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
                 govAssistanceAvailed: activeForm.govAssistanceAvailed,
+                governmentAssistanceYear: activeForm.governmentAssistanceYear,
+                hasReceivedReliefAssistance: activeForm.hasReceivedReliefAssistance,
+                otherIncomeSource: activeForm.otherIncomeSource,
+                floodDepthLevel: activeForm.floodDepthLevel,
                 characteristicsRemarks: activeForm.characteristicsRemarks,
-                floodHazardLevel: activeForm.floodHazardLevel,
               }
             : h
         )
@@ -1588,33 +1613,110 @@ export default function Household() {
                     className="vin-admin-form-input" value={activeForm.monthlyIncome}
                     onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
                 </div>
-                <div className="vin-admin-form-group">
-                  <span className="vin-admin-form-label">HOUSING TYPE</span>
-                  <div id="admin-housing-type" className="vin-admin-form-select"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                    onClick={() => setShowFormProfilePicker('housingType')} role="button" tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('housingType')}>
-                    <span>{activeForm.housingType || 'Select housing type'}</span>
-                    <ChevronDown size={16} />
-                  </div>
-                </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>
                   <input type="checkbox" checked={activeForm.isSingleParent}
                     onChange={(e) => setActiveForm({ ...activeForm, isSingleParent: e.target.checked })} />
                   Single-parent household
                 </label>
                 <div className="vin-admin-form-group">
-                  <span className="vin-admin-form-label">GOVERNMENT ASSISTANCE AVAILED</span>
-                  <div id="admin-gov-assistance" className="vin-admin-form-select"
+                  <label className="vin-admin-form-label" htmlFor="admin-worked-dole">WORKED IN DOLE BEFORE?</label>
+                  <select id="admin-worked-dole" className="vin-admin-form-select"
+                    value={activeForm.hasWorkedDole == null ? '' : String(activeForm.hasWorkedDole)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setActiveForm((prev) => ({
+                        ...prev,
+                        hasWorkedDole: value === '' ? null : value === 'true',
+                        ...(value === 'true' ? {} : { doleEmploymentYear: '' }),
+                      }));
+                    }}>
+                    <option value="">Select yes or no</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </div>
+                {activeForm.hasWorkedDole === true && (
+                  <div className="vin-admin-form-group">
+                    <label className="vin-admin-form-label" htmlFor="admin-dole-year">WHEN? (YEAR)</label>
+                    <input id="admin-dole-year" type="number" min="1900" max={new Date().getFullYear()}
+                      step="1" placeholder="Year" className="vin-admin-form-input"
+                      value={activeForm.doleEmploymentYear}
+                      onChange={(e) => setActiveForm((prev) => ({ ...prev, doleEmploymentYear: e.target.value }))} />
+                  </div>
+                )}
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-government-assistance">GOVERNMENT ASSISTANCE RECEIVED?</label>
+                  <select id="admin-government-assistance" className="vin-admin-form-select"
+                    value={activeForm.hasReceivedGovernmentAssistance == null ? '' : String(activeForm.hasReceivedGovernmentAssistance)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setActiveForm((prev) => ({
+                        ...prev,
+                        hasReceivedGovernmentAssistance: value === '' ? null : value === 'true',
+                        ...(value === 'true' ? {} : { govAssistanceAvailed: [], governmentAssistanceYear: '' }),
+                      }));
+                    }}>
+                    <option value="">Select yes or no</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </div>
+                {activeForm.hasReceivedGovernmentAssistance === true && (
+                  <>
+                    <div className="vin-admin-form-group">
+                      <span className="vin-admin-form-label">AVAILABLE GOVERNMENT ASSISTANCE</span>
+                      <div id="admin-gov-assistance" className="vin-admin-form-select"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                        onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {activeForm.govAssistanceAvailed.length
+                            ? activeForm.govAssistanceAvailed.join(', ')
+                            : 'Select assistance'}
+                        </span>
+                        <ChevronDown size={16} style={{ flexShrink: 0 }} />
+                      </div>
+                    </div>
+                    <div className="vin-admin-form-group">
+                      <label className="vin-admin-form-label" htmlFor="admin-assistance-year">YEAR ACQUIRED</label>
+                      <input id="admin-assistance-year" type="number" min="1900" max={new Date().getFullYear()}
+                        step="1" placeholder="Year" className="vin-admin-form-input"
+                        value={activeForm.governmentAssistanceYear}
+                        onChange={(e) => setActiveForm((prev) => ({ ...prev, governmentAssistanceYear: e.target.value }))} />
+                    </div>
+                  </>
+                )}
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-relief-assistance">RECEIVED ANY RELIEF ASSISTANCE?</label>
+                  <select id="admin-relief-assistance" className="vin-admin-form-select"
+                    value={activeForm.hasReceivedReliefAssistance == null ? '' : String(activeForm.hasReceivedReliefAssistance)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setActiveForm((prev) => ({
+                        ...prev,
+                        hasReceivedReliefAssistance: value === '' ? null : value === 'true',
+                      }));
+                    }}>
+                    <option value="">Select yes or no</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </div>
+                <div className="vin-admin-form-group">
+                  <label className="vin-admin-form-label" htmlFor="admin-other-income-source">OTHER SOURCE OF INCOME</label>
+                  <input id="admin-other-income-source" type="text" maxLength={200}
+                    placeholder="Other source of income" className="vin-admin-form-input"
+                    value={activeForm.otherIncomeSource}
+                    onChange={(e) => setActiveForm({ ...activeForm, otherIncomeSource: e.target.value })} />
+                </div>
+                <div className="vin-admin-form-group">
+                  <span className="vin-admin-form-label">FLOOD DEPTH</span>
+                  <div id="admin-flood-depth" className="vin-admin-form-select"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                    onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {activeForm.govAssistanceAvailed.length
-                        ? activeForm.govAssistanceAvailed.join(', ')
-                        : 'Select assistance'}
-                    </span>
-                    <ChevronDown size={16} style={{ flexShrink: 0 }} />
+                    onClick={() => setShowFormProfilePicker('floodDepthLevel')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('floodDepthLevel')}>
+                    <span>{activeForm.floodDepthLevel || 'Select flood depth'}</span>
+                    <ChevronDown size={16} />
                   </div>
                 </div>
                 <div className="vin-admin-form-group">
@@ -1622,16 +1724,6 @@ export default function Household() {
                   <textarea id="admin-characteristics-remarks" placeholder="Additional household characteristics"
                     className="vin-admin-form-input" rows={3} value={activeForm.characteristicsRemarks}
                     onChange={(e) => setActiveForm({ ...activeForm, characteristicsRemarks: e.target.value })} />
-                </div>
-                <div className="vin-admin-form-group">
-                  <span className="vin-admin-form-label">FLOOD HAZARD LEVEL</span>
-                  <div id="admin-flood-hazard-level" className="vin-admin-form-select"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                    onClick={() => setShowFormProfilePicker('floodHazardLevel')} role="button" tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('floodHazardLevel')}>
-                    <span>{activeForm.floodHazardLevel || 'Select flood hazard level'}</span>
-                    <ChevronDown size={16} />
-                  </div>
                 </div>
               </div>
 
@@ -1869,11 +1961,10 @@ export default function Household() {
           options={HOUSEHOLD_PROFILE_OPTIONS[showFormProfilePicker]}
           multiple={showFormProfilePicker === 'govAssistanceAvailed'}
           title={{
-            housingType: 'Select Housing Type',
             govAssistanceAvailed: 'Select Government Assistance',
-            floodHazardLevel: 'Select Flood Hazard Level',
+            floodDepthLevel: 'Select Flood Depth',
           }[showFormProfilePicker]}
-          otherMaxLength={showFormProfilePicker === 'floodHazardLevel' ? 50 : 100}
+          otherMaxLength={showFormProfilePicker === 'floodDepthLevel' ? 50 : 100}
           onSelect={(value) => setActiveForm((prev) => ({
             ...prev,
             [showFormProfilePicker]: value,

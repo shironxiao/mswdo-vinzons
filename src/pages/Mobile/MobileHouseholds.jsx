@@ -852,8 +852,11 @@ export default function MobileHouseholds() {
     barangay: '', purok: '', headOccupation: '',
     center: 'LGU EC (Mangcaway)',
     room: 'Room 1', vulnerabilities: [], members: [],
-    monthlyIncome: '', housingType: '', isSingleParent: false,
-    govAssistanceAvailed: [], characteristicsRemarks: '', floodHazardLevel: '',
+    monthlyIncome: '', isSingleParent: false,
+    hasWorkedDole: null, doleEmploymentYear: '',
+    hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
+    governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
+    otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
   });
 
   /* ── Filter + search ── */
@@ -942,9 +945,11 @@ export default function MobileHouseholds() {
       head: '', headFirstName: '', headMiddleName: '', headLastName: '',
       age: '', sex: 'Male', barangay: '', purok: '', headOccupation: '',
       center: defaultCenter, room: 'Room 1',
-      vulnerabilities: [], members: [], monthlyIncome: '', housingType: '',
-      isSingleParent: false, govAssistanceAvailed: [],
-      characteristicsRemarks: '', floodHazardLevel: '',
+      vulnerabilities: [], members: [], monthlyIncome: '',
+      isSingleParent: false, hasWorkedDole: null, doleEmploymentYear: '',
+      hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
+      governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
+      otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
     });
     setModalMode('register');
   };
@@ -966,10 +971,16 @@ export default function MobileHouseholds() {
         occupationEnabled: Boolean(member.occupation),
       })),
       monthlyIncome: item.monthlyIncome ?? '',
-      housingType: item.housingType || '', isSingleParent: Boolean(item.isSingleParent),
+      isSingleParent: Boolean(item.isSingleParent),
+      hasWorkedDole: item.hasWorkedDole ?? null,
+      doleEmploymentYear: item.doleEmploymentYear ?? '',
+      hasReceivedGovernmentAssistance: item.hasReceivedGovernmentAssistance ?? null,
       govAssistanceAvailed: Array.isArray(item.govAssistanceAvailed) ? item.govAssistanceAvailed : [],
+      governmentAssistanceYear: item.governmentAssistanceYear ?? '',
+      hasReceivedReliefAssistance: item.hasReceivedReliefAssistance ?? null,
+      otherIncomeSource: item.otherIncomeSource || '',
+      floodDepthLevel: item.floodDepthLevel || '',
       characteristicsRemarks: item.characteristicsRemarks || '',
-      floodHazardLevel: item.floodHazardLevel || '',
     });
     setModalMode('edit');
   };
@@ -1018,11 +1029,16 @@ export default function MobileHouseholds() {
         familyCount: 1 + activeForm.members.length,
         members: activeForm.members,
         monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-        housingType: activeForm.housingType,
         isSingleParent: activeForm.isSingleParent,
+        hasWorkedDole: activeForm.hasWorkedDole,
+        doleEmploymentYear: activeForm.doleEmploymentYear,
+        hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
         govAssistanceAvailed: activeForm.govAssistanceAvailed,
+        governmentAssistanceYear: activeForm.governmentAssistanceYear,
+        hasReceivedReliefAssistance: activeForm.hasReceivedReliefAssistance,
+        otherIncomeSource: activeForm.otherIncomeSource,
+        floodDepthLevel: activeForm.floodDepthLevel,
         characteristicsRemarks: activeForm.characteristicsRemarks,
-        floodHazardLevel: activeForm.floodHazardLevel,
         stubCode: generatedCode,
         stubIssued: false,
       };
@@ -1066,11 +1082,16 @@ export default function MobileHouseholds() {
                 familyCount: 1 + activeForm.members.length,
                 members: activeForm.members,
                 monthlyIncome: Number(activeForm.monthlyIncome) || 0,
-                housingType: activeForm.housingType,
                 isSingleParent: activeForm.isSingleParent,
+                hasWorkedDole: activeForm.hasWorkedDole,
+                doleEmploymentYear: activeForm.doleEmploymentYear,
+                hasReceivedGovernmentAssistance: activeForm.hasReceivedGovernmentAssistance,
                 govAssistanceAvailed: activeForm.govAssistanceAvailed,
+                governmentAssistanceYear: activeForm.governmentAssistanceYear,
+                hasReceivedReliefAssistance: activeForm.hasReceivedReliefAssistance,
+                otherIncomeSource: activeForm.otherIncomeSource,
+                floodDepthLevel: activeForm.floodDepthLevel,
                 characteristicsRemarks: activeForm.characteristicsRemarks,
-                floodHazardLevel: activeForm.floodHazardLevel,
               }
             : h
         )
@@ -1472,33 +1493,110 @@ export default function MobileHouseholds() {
                     className="vin-mob-select" value={activeForm.monthlyIncome}
                     onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
                 </div>
-                <div className="vin-mob-input-group">
-                  <span className="vin-mob-input-label">HOUSING TYPE</span>
-                  <div id="mobile-housing-type" className="vin-mob-select"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                    onClick={() => setShowFormProfilePicker('housingType')} role="button" tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('housingType')}>
-                    <span>{activeForm.housingType || 'Select housing type'}</span>
-                    <ChevronDown size={16} />
-                  </div>
-                </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155', fontSize: '0.9rem', fontWeight: 600 }}>
                   <input type="checkbox" checked={activeForm.isSingleParent}
                     onChange={(e) => setActiveForm({ ...activeForm, isSingleParent: e.target.checked })} />
                   Single-parent household
                 </label>
                 <div className="vin-mob-input-group">
-                  <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE AVAILED</span>
-                  <div id="mobile-gov-assistance" className="vin-mob-select"
+                  <label className="vin-mob-input-label" htmlFor="mobile-worked-dole">WORKED IN DOLE BEFORE?</label>
+                  <select id="mobile-worked-dole" className="vin-mob-select"
+                    value={activeForm.hasWorkedDole == null ? '' : String(activeForm.hasWorkedDole)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setActiveForm((prev) => ({
+                        ...prev,
+                        hasWorkedDole: value === '' ? null : value === 'true',
+                        ...(value === 'true' ? {} : { doleEmploymentYear: '' }),
+                      }));
+                    }}>
+                    <option value="">Select yes or no</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </div>
+                {activeForm.hasWorkedDole === true && (
+                  <div className="vin-mob-input-group">
+                    <label className="vin-mob-input-label" htmlFor="mobile-dole-year">WHEN? (YEAR)</label>
+                    <input id="mobile-dole-year" type="number" min="1900" max={new Date().getFullYear()}
+                      step="1" placeholder="Year" className="vin-mob-select"
+                      value={activeForm.doleEmploymentYear}
+                      onChange={(e) => setActiveForm((prev) => ({ ...prev, doleEmploymentYear: e.target.value }))} />
+                  </div>
+                )}
+                <div className="vin-mob-input-group">
+                  <label className="vin-mob-input-label" htmlFor="mobile-government-assistance">GOVERNMENT ASSISTANCE RECEIVED?</label>
+                  <select id="mobile-government-assistance" className="vin-mob-select"
+                    value={activeForm.hasReceivedGovernmentAssistance == null ? '' : String(activeForm.hasReceivedGovernmentAssistance)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setActiveForm((prev) => ({
+                        ...prev,
+                        hasReceivedGovernmentAssistance: value === '' ? null : value === 'true',
+                        ...(value === 'true' ? {} : { govAssistanceAvailed: [], governmentAssistanceYear: '' }),
+                      }));
+                    }}>
+                    <option value="">Select yes or no</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </div>
+                {activeForm.hasReceivedGovernmentAssistance === true && (
+                  <>
+                    <div className="vin-mob-input-group">
+                      <span className="vin-mob-input-label">AVAILABLE GOVERNMENT ASSISTANCE</span>
+                      <div id="mobile-gov-assistance" className="vin-mob-select"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                        onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {activeForm.govAssistanceAvailed.length
+                            ? activeForm.govAssistanceAvailed.join(', ')
+                            : 'Select assistance'}
+                        </span>
+                        <ChevronDown size={16} style={{ flexShrink: 0 }} />
+                      </div>
+                    </div>
+                    <div className="vin-mob-input-group">
+                      <label className="vin-mob-input-label" htmlFor="mobile-assistance-year">YEAR ACQUIRED</label>
+                      <input id="mobile-assistance-year" type="number" min="1900" max={new Date().getFullYear()}
+                        step="1" placeholder="Year" className="vin-mob-select"
+                        value={activeForm.governmentAssistanceYear}
+                        onChange={(e) => setActiveForm((prev) => ({ ...prev, governmentAssistanceYear: e.target.value }))} />
+                    </div>
+                  </>
+                )}
+                <div className="vin-mob-input-group">
+                  <label className="vin-mob-input-label" htmlFor="mobile-relief-assistance">RECEIVED ANY RELIEF ASSISTANCE?</label>
+                  <select id="mobile-relief-assistance" className="vin-mob-select"
+                    value={activeForm.hasReceivedReliefAssistance == null ? '' : String(activeForm.hasReceivedReliefAssistance)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setActiveForm((prev) => ({
+                        ...prev,
+                        hasReceivedReliefAssistance: value === '' ? null : value === 'true',
+                      }));
+                    }}>
+                    <option value="">Select yes or no</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </div>
+                <div className="vin-mob-input-group">
+                  <label className="vin-mob-input-label" htmlFor="mobile-other-income-source">OTHER SOURCE OF INCOME</label>
+                  <input id="mobile-other-income-source" type="text" maxLength={200}
+                    placeholder="Other source of income" className="vin-mob-select"
+                    value={activeForm.otherIncomeSource}
+                    onChange={(e) => setActiveForm({ ...activeForm, otherIncomeSource: e.target.value })} />
+                </div>
+                <div className="vin-mob-input-group">
+                  <span className="vin-mob-input-label">FLOOD DEPTH</span>
+                  <div id="mobile-flood-depth" className="vin-mob-select"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                    onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {activeForm.govAssistanceAvailed.length
-                        ? activeForm.govAssistanceAvailed.join(', ')
-                        : 'Select assistance'}
-                    </span>
-                    <ChevronDown size={16} style={{ flexShrink: 0 }} />
+                    onClick={() => setShowFormProfilePicker('floodDepthLevel')} role="button" tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('floodDepthLevel')}>
+                    <span>{activeForm.floodDepthLevel || 'Select flood depth'}</span>
+                    <ChevronDown size={16} />
                   </div>
                 </div>
                 <div className="vin-mob-input-group">
@@ -1506,16 +1604,6 @@ export default function MobileHouseholds() {
                   <textarea id="mobile-characteristics-remarks" placeholder="Additional household characteristics"
                     className="vin-mob-select" rows={3} value={activeForm.characteristicsRemarks}
                     onChange={(e) => setActiveForm({ ...activeForm, characteristicsRemarks: e.target.value })} />
-                </div>
-                <div className="vin-mob-input-group">
-                  <span className="vin-mob-input-label">FLOOD HAZARD LEVEL</span>
-                  <div id="mobile-flood-hazard-level" className="vin-mob-select"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                    onClick={() => setShowFormProfilePicker('floodHazardLevel')} role="button" tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('floodHazardLevel')}>
-                    <span>{activeForm.floodHazardLevel || 'Select flood hazard level'}</span>
-                    <ChevronDown size={16} />
-                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1685,11 +1773,10 @@ export default function MobileHouseholds() {
           options={HOUSEHOLD_PROFILE_OPTIONS[showFormProfilePicker]}
           multiple={showFormProfilePicker === 'govAssistanceAvailed'}
           title={{
-            housingType: 'Select Housing Type',
             govAssistanceAvailed: 'Select Government Assistance',
-            floodHazardLevel: 'Select Flood Hazard Level',
+            floodDepthLevel: 'Select Flood Depth',
           }[showFormProfilePicker]}
-          otherMaxLength={showFormProfilePicker === 'floodHazardLevel' ? 50 : 100}
+          otherMaxLength={showFormProfilePicker === 'floodDepthLevel' ? 50 : 100}
           onSelect={(value) => setActiveForm((prev) => ({
             ...prev,
             [showFormProfilePicker]: value,
