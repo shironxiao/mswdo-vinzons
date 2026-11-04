@@ -18,6 +18,7 @@
   background: #ffffff;
   border: 1.5px solid #7c3aed;
   border-radius: 9999px;
+  min-height: 42px;
   padding: 6px 15px;
   font-size: 0.82rem;
   font-weight: 700;

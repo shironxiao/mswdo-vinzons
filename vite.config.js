@@ -13,16 +13,22 @@ export default defineConfig({
         name: 'MSWDO Vinzons - Evacuee Management System',
         short_name: 'MSWDO Vinzons',
         description: 'Vinzons Evacuee Management & Relief Operations System',
-        theme_color: '#17422d',
+        theme_color: '#581c87',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
         icons: [
           {
-            src: '/favicon.svg',
-            sizes: '192x192 512x512',
-            type: 'image/svg+xml',
+            src: '/mswdo-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/mswdo-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any maskable'
           }
         ]

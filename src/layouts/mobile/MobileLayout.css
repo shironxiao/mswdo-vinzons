@@ -101,6 +101,8 @@
 
 /* Hamburger button */
 .vin-mobile-hamburger-btn {
+  min-width: 44px;
+  min-height: 44px;
   background: transparent;
   border: none;
   color: #ffffff;
