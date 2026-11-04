@@ -36,6 +36,68 @@ import {
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 
+const MOBILE_HOUSEHOLD_DRAFT_KEY = 'mswdo.mobile.household-registration-draft';
+const REGISTRATION_YES_NO_FIELDS = [
+  ['hasWorkedDole', 'Worked in DOLE before?'],
+  ['hasReceivedGovernmentAssistance', 'Government assistance received?'],
+  ['hasReceivedReliefAssistance', 'Received any relief assistance?'],
+];
+
+function validateHouseholdRegistration(form) {
+  const errors = [];
+  const currentYear = new Date().getFullYear();
+  const validateAge = (age, label) => {
+    if (age === '' || age == null) {
+      errors.push(`${label}: enter an age.`);
+    } else if (!Number.isFinite(Number(age)) || Number(age) < 0 || Number(age) > 120) {
+      errors.push(`${label}: age must be between 0 and 120.`);
+    }
+  };
+  const validateIncome = (income, label) => {
+    if (income !== '' && income != null &&
+      (!Number.isFinite(Number(income)) || Number(income) < 0 || Number(income) > 99999999.99)) {
+      errors.push(`${label}: income must be between 0 and 99,999,999.99.`);
+    }
+  };
+  const validateYear = (year, label) => {
+    if (!year || !Number.isInteger(Number(year)) || Number(year) < 1900 || Number(year) > currentYear) {
+      errors.push(`${label}: enter a year between 1900 and ${currentYear}.`);
+    }
+  };
+  const validateProfile = (profile, label) => {
+    REGISTRATION_YES_NO_FIELDS.forEach(([field, question]) => {
+      if (profile[field] == null) errors.push(`${label}: answer "${question}".`);
+    });
+
+    if (profile.hasWorkedDole === true) {
+      validateYear(profile.doleEmploymentYear, `${label}: DOLE employment year`);
+    }
+    if (profile.hasReceivedGovernmentAssistance === true) {
+      if (!profile.govAssistanceAvailed?.length) {
+        errors.push(`${label}: select at least one government assistance type.`);
+      }
+      validateYear(profile.governmentAssistanceYear, `${label}: government assistance year`);
+    }
+  };
+
+  if (!form.headFirstName?.trim()) errors.push('Household head: enter a first name.');
+  if (!form.headLastName?.trim()) errors.push('Household head: enter a last name.');
+  validateAge(form.age, 'Household head');
+  validateIncome(form.monthlyIncome, 'Household head');
+  validateProfile(form, 'Household head profile');
+
+  form.members.forEach((member, index) => {
+    const label = `Family member ${index + 1}`;
+    if (!member.firstName?.trim()) errors.push(`${label}: enter a first name.`);
+    if (!member.lastName?.trim()) errors.push(`${label}: enter a last name.`);
+    validateAge(member.age, label);
+    validateIncome(member.monthlyIncome, label);
+    validateProfile(member, `${label} profile`);
+  });
+
+  return errors;
+}
+
 /* ──────────────────────────────────────────────
    Seed data – replace with Dexie in production
    ────────────────────────────────────────────── */
@@ -807,6 +869,11 @@ export default function MobileHouseholds() {
   const [centerRooms, setCenterRooms] = useState(DEFAULT_CENTER_ROOMS);
   const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [registrationSaveError, setRegistrationSaveError] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [draftStorageError, setDraftStorageError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   /* ── Form pickers for register/edit ── */
   const [showFormCenterPicker, setShowFormCenterPicker] = useState(false);
@@ -829,6 +896,39 @@ export default function MobileHouseholds() {
     governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
     otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
   });
+
+  useEffect(() => {
+    if (modalMode !== 'register') return;
+
+    const hasDraftContent = Boolean(
+      activeForm.headFirstName?.trim() ||
+      activeForm.headMiddleName?.trim() ||
+      activeForm.headLastName?.trim() ||
+      activeForm.age ||
+      activeForm.barangay?.trim() ||
+      activeForm.purok?.trim() ||
+      activeForm.headOccupation ||
+      activeForm.vulnerabilities?.length ||
+      activeForm.members?.length ||
+      activeForm.monthlyIncome ||
+      activeForm.hasWorkedDole != null ||
+      activeForm.hasReceivedGovernmentAssistance != null ||
+      activeForm.hasReceivedReliefAssistance != null ||
+      activeForm.otherIncomeSource?.trim() ||
+      activeForm.floodDepthLevel ||
+      activeForm.characteristicsRemarks?.trim()
+    );
+
+    try {
+      if (hasDraftContent) {
+        window.sessionStorage.setItem(MOBILE_HOUSEHOLD_DRAFT_KEY, JSON.stringify(activeForm));
+      } else {
+        window.sessionStorage.removeItem(MOBILE_HOUSEHOLD_DRAFT_KEY);
+      }
+    } catch (error) {
+      console.error('Could not save the mobile household registration draft:', error);
+    }
+  }, [activeForm, modalMode]);
 
   /* ── Filter + search ── */
   const filtered = households.filter((h) => {
@@ -915,7 +1015,7 @@ export default function MobileHouseholds() {
   /* ── Register / Edit ── */
   const openRegister = () => {
     const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
-    setActiveForm({
+    const emptyForm = {
       head: '', headFirstName: '', headMiddleName: '', headLastName: '',
       age: '', sex: 'Male', barangay: '', purok: '', headOccupation: '',
       center: defaultCenter, room: 'Room 1',
@@ -924,11 +1024,39 @@ export default function MobileHouseholds() {
       hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
       governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
       otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
+    };
+    let restoredForm = null;
+    setDraftRestored(false);
+    setValidationErrors([]);
+    setRegistrationSaveError('');
+    try {
+      const savedDraft = window.sessionStorage.getItem(MOBILE_HOUSEHOLD_DRAFT_KEY);
+      if (savedDraft) {
+        const parsedDraft = JSON.parse(savedDraft);
+        if (parsedDraft && typeof parsedDraft === 'object' && !Array.isArray(parsedDraft)) {
+          restoredForm = parsedDraft;
+          setDraftRestored(true);
+        } else {
+          window.sessionStorage.removeItem(MOBILE_HOUSEHOLD_DRAFT_KEY);
+        }
+      }
+      setDraftStorageError(false);
+    } catch (error) {
+      console.error('Could not restore the mobile household registration draft:', error);
+      setDraftStorageError(true);
+    }
+    setActiveForm({
+      ...emptyForm,
+      ...restoredForm,
+      members: Array.isArray(restoredForm?.members) ? restoredForm.members : [],
     });
     setModalMode('register');
   };
   const openEdit = (item, e) => {
     e.stopPropagation();
+    setDraftRestored(false);
+    setValidationErrors([]);
+    setRegistrationSaveError('');
     const headNameParts = splitFullName(item.name || '');
     setActiveForm({
       id: item.id, head: item.name,
@@ -982,9 +1110,21 @@ export default function MobileHouseholds() {
   };
   const handleSaveHousehold = async (e) => {
     e.preventDefault();
-    if (!activeForm.head) return;
+    if (modalMode === 'register') {
+      const errors = validateHouseholdRegistration(activeForm);
+      setValidationErrors(errors);
+      if (errors.length > 0) return;
+    } else {
+      const errors = [];
+      if (!activeForm.headFirstName?.trim()) errors.push('Household head: enter a first name.');
+      if (!activeForm.headLastName?.trim()) errors.push('Household head: enter a last name.');
+      setValidationErrors(errors);
+      if (errors.length > 0) return;
+    }
 
     if (modalMode === 'register') {
+      setIsSaving(true);
+      setRegistrationSaveError('');
       const generatedCode = genStubCode();
       const tempId = `temp-${Date.now()}`;
       const newHousehold = {
@@ -1015,9 +1155,7 @@ export default function MobileHouseholds() {
       };
 
       // Optimistic UI update
-      setHouseholds([newHousehold, ...households]);
-      setToastMsg(`✓ Registered ${activeForm.head} with QR code ${generatedCode}!`);
-      setTimeout(() => setToastMsg(''), 4000);
+      setHouseholds((prev) => [newHousehold, ...prev]);
       setModalMode(null);
 
       // Async save to Supabase
@@ -1030,9 +1168,27 @@ export default function MobileHouseholds() {
           },
           centers
         );
+        try {
+          window.sessionStorage.removeItem(MOBILE_HOUSEHOLD_DRAFT_KEY);
+          setDraftStorageError(false);
+        } catch (error) {
+          console.error('Household was saved, but its registration draft could not be cleared:', error);
+          setDraftStorageError(true);
+        }
+        setDraftRestored(false);
+        setToastMsg(`✓ Registered ${activeForm.head} with QR code ${generatedCode}!`);
+        setTimeout(() => setToastMsg(''), 4000);
         refreshHouseholds();
       } catch (err) {
-        console.warn('Could not save household to Supabase:', err);
+        console.error('Could not save household to Supabase:', err);
+        setHouseholds((prev) => prev.filter((household) => household.id !== tempId));
+        setActiveForm(activeForm);
+        setModalMode('register');
+        setDraftRestored(true);
+        setRegistrationSaveError('Could not save the household. Your draft has been kept; check your connection and try again.');
+        setToastMsg('Could not save the household. Your registration draft has been kept; please try again.');
+      } finally {
+        setIsSaving(false);
       }
     } else if (modalMode === 'edit') {
       // Optimistic UI update
@@ -1395,7 +1551,64 @@ export default function MobileHouseholds() {
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleSaveHousehold} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form noValidate onSubmit={handleSaveHousehold} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {modalMode === 'register' && (
+                <div style={{ color: '#475569', fontSize: '0.82rem' }}>
+                  Required: the household head&apos;s first name, last name, age, and profile Yes/No answers. Added members also need a first name, last name, age, and profile answers. A Yes answer also requires its year and, for government assistance, an assistance type.
+                </div>
+              )}
+              {modalMode === 'register' && draftRestored && (
+                <div role="status" style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#1e40af',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                }}>
+                  Your unfinished registration was restored. It will remain saved until the household is registered.
+                </div>
+              )}
+              {modalMode === 'register' && draftStorageError && (
+                <div role="alert" style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: '#fff7ed',
+                  border: '1px solid #fed7aa',
+                  color: '#9a3412',
+                  fontSize: '0.85rem',
+                }}>
+                  This browser could not save the form draft. Keep this page open to avoid losing your entries.
+                </div>
+              )}
+              {modalMode === 'register' && registrationSaveError && (
+                <div role="alert" style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  fontSize: '0.85rem',
+                }}>
+                  {registrationSaveError}
+                </div>
+              )}
+              {validationErrors.length > 0 && (
+                <div role="alert" style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  fontSize: '0.84rem',
+                }}>
+                  <strong>Please review these required or invalid fields:</strong>
+                  <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+                    {validationErrors.map((error) => <li key={error}>{error}</li>)}
+                  </ul>
+                </div>
+              )}
               <div className="vin-mob-input-group">
                 <label className="vin-mob-input-label">HOUSEHOLD HEAD</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
@@ -1777,7 +1990,9 @@ export default function MobileHouseholds() {
                   </div>
                 </div>
               ))}
-              <button type="submit" className="vin-mob-sheet-submit-btn">Save Household</button>
+              <button type="submit" className="vin-mob-sheet-submit-btn" disabled={isSaving}>
+                {isSaving ? 'Saving household...' : 'Save Household'}
+              </button>
             </form>
           </div>
         </div>

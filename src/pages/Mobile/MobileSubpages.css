@@ -335,6 +335,10 @@
   cursor: pointer;
   margin-top: 10px;
 }
+.vin-mob-sheet-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
 
 .vin-mob-sheet-blue-btn {
   width: 100%;

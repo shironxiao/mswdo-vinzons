@@ -711,6 +711,38 @@
   gap: 18px;
 }
 
+.vin-admin-registration-reminder,
+.vin-admin-registration-notice,
+.vin-admin-registration-error {
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+
+.vin-admin-registration-reminder {
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.vin-admin-registration-notice {
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  font-weight: 600;
+}
+
+.vin-admin-registration-error {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.vin-admin-registration-error ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
 /* Stub Panel Cards inside modal */
 .vin-admin-stub-profile-card {
   background: #f8fafc;
@@ -928,6 +960,11 @@
 
 .vin-admin-modal-submit-btn:hover {
   background: linear-gradient(135deg, #6d28d9 0%, #581c87 100%);
+}
+
+.vin-admin-modal-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 /* QR Camera Scanner Box */
