@@ -816,6 +816,7 @@ export default function MobileHouseholds() {
   const [showMemberAssistancePicker, setShowMemberAssistancePicker] = useState(null);
   const [showGenderPicker, setShowGenderPicker] = useState(null);
   const [showFormChoicePicker, setShowFormChoicePicker] = useState(null);
+  const [showYesNoPicker, setShowYesNoPicker] = useState(null);
 
   const [activeForm, setActiveForm] = useState({
     head: '', headFirstName: '', headMiddleName: '', headLastName: '', age: '', sex: 'Male',
@@ -1094,6 +1095,37 @@ export default function MobileHouseholds() {
     }));
   const removeMember = (idx) =>
     setActiveForm((p) => ({ ...p, members: p.members.filter((_, i) => i !== idx) }));
+  const setYesNoValue = (target, index, field, choice) => {
+    const value = choice === '' ? null : choice === 'Yes';
+    const clearedFields = value === true
+      ? {}
+      : field === 'hasWorkedDole'
+        ? { doleEmploymentYear: '' }
+        : field === 'hasReceivedGovernmentAssistance'
+          ? { govAssistanceAvailed: [], governmentAssistanceYear: '' }
+          : {};
+
+    setActiveForm((prev) => {
+      if (target === 'head') {
+        return { ...prev, [field]: value, ...clearedFields };
+      }
+
+      return {
+        ...prev,
+        members: prev.members.map((member, memberIndex) =>
+          memberIndex === index
+            ? { ...member, [field]: value, ...clearedFields }
+            : member
+        ),
+      };
+    });
+  };
+  const getYesNoChoice = ({ target, index, field }) => {
+    const value = target === 'head'
+      ? activeForm[field]
+      : activeForm.members[index]?.[field];
+    return value == null ? '' : value ? 'Yes' : 'No';
+  };
 
   /* ── RENDER ── */
   return (
@@ -1467,21 +1499,14 @@ export default function MobileHouseholds() {
                     onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
                 </div>
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label" htmlFor="mobile-worked-dole">WORKED IN DOLE BEFORE?</label>
-                  <select id="mobile-worked-dole" className="vin-mob-select"
-                    value={activeForm.hasWorkedDole == null ? '' : String(activeForm.hasWorkedDole)}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setActiveForm((prev) => ({
-                        ...prev,
-                        hasWorkedDole: value === '' ? null : value === 'true',
-                        ...(value === 'true' ? {} : { doleEmploymentYear: '' }),
-                      }));
-                    }}>
-                    <option value="">Select yes or no</option>
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
+                  <span className="vin-mob-input-label">WORKED IN DOLE BEFORE?</span>
+                  <button id="mobile-worked-dole" type="button" className="vin-mob-select"
+                    aria-haspopup="dialog"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                    onClick={() => setShowYesNoPicker({ target: 'head', field: 'hasWorkedDole', title: 'Worked in DOLE before?' })}>
+                    {activeForm.hasWorkedDole == null ? 'Select yes or no' : activeForm.hasWorkedDole ? 'Yes' : 'No'}
+                    <ChevronDown size={16} />
+                  </button>
                 </div>
                 {activeForm.hasWorkedDole === true && (
                   <div className="vin-mob-input-group">
@@ -1493,21 +1518,14 @@ export default function MobileHouseholds() {
                   </div>
                 )}
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label" htmlFor="mobile-government-assistance">GOVERNMENT ASSISTANCE RECEIVED?</label>
-                  <select id="mobile-government-assistance" className="vin-mob-select"
-                    value={activeForm.hasReceivedGovernmentAssistance == null ? '' : String(activeForm.hasReceivedGovernmentAssistance)}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setActiveForm((prev) => ({
-                        ...prev,
-                        hasReceivedGovernmentAssistance: value === '' ? null : value === 'true',
-                        ...(value === 'true' ? {} : { govAssistanceAvailed: [], governmentAssistanceYear: '' }),
-                      }));
-                    }}>
-                    <option value="">Select yes or no</option>
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
+                  <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE RECEIVED?</span>
+                  <button id="mobile-government-assistance" type="button" className="vin-mob-select"
+                    aria-haspopup="dialog"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                    onClick={() => setShowYesNoPicker({ target: 'head', field: 'hasReceivedGovernmentAssistance', title: 'Government assistance received?' })}>
+                    {activeForm.hasReceivedGovernmentAssistance == null ? 'Select yes or no' : activeForm.hasReceivedGovernmentAssistance ? 'Yes' : 'No'}
+                    <ChevronDown size={16} />
+                  </button>
                 </div>
                 {activeForm.hasReceivedGovernmentAssistance === true && (
                   <>
@@ -1535,20 +1553,14 @@ export default function MobileHouseholds() {
                   </>
                 )}
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label" htmlFor="mobile-relief-assistance">RECEIVED ANY RELIEF ASSISTANCE?</label>
-                  <select id="mobile-relief-assistance" className="vin-mob-select"
-                    value={activeForm.hasReceivedReliefAssistance == null ? '' : String(activeForm.hasReceivedReliefAssistance)}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setActiveForm((prev) => ({
-                        ...prev,
-                        hasReceivedReliefAssistance: value === '' ? null : value === 'true',
-                      }));
-                    }}>
-                    <option value="">Select yes or no</option>
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
+                  <span className="vin-mob-input-label">RECEIVED ANY RELIEF ASSISTANCE?</span>
+                  <button id="mobile-relief-assistance" type="button" className="vin-mob-select"
+                    aria-haspopup="dialog"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                    onClick={() => setShowYesNoPicker({ target: 'head', field: 'hasReceivedReliefAssistance', title: 'Received any relief assistance?' })}>
+                    {activeForm.hasReceivedReliefAssistance == null ? 'Select yes or no' : activeForm.hasReceivedReliefAssistance ? 'Yes' : 'No'}
+                    <ChevronDown size={16} />
+                  </button>
                 </div>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label" htmlFor="mobile-other-income-source">OTHER SOURCE OF INCOME</label>
@@ -1659,26 +1671,14 @@ export default function MobileHouseholds() {
                         }))} />
                     </div>
                     <div className="vin-mob-input-group">
-                      <label className="vin-mob-input-label" htmlFor={`mobile-member-worked-dole-${idx}`}>WORKED IN DOLE BEFORE?</label>
-                      <select id={`mobile-member-worked-dole-${idx}`} className="vin-mob-select"
-                        value={m.hasWorkedDole == null ? '' : String(m.hasWorkedDole)}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setActiveForm((prev) => ({
-                            ...prev,
-                            members: prev.members.map((member, index) => index === idx
-                              ? {
-                                  ...member,
-                                  hasWorkedDole: value === '' ? null : value === 'true',
-                                  ...(value === 'true' ? {} : { doleEmploymentYear: '' }),
-                                }
-                              : member),
-                          }));
-                        }}>
-                        <option value="">Select yes or no</option>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                      </select>
+                      <span className="vin-mob-input-label">WORKED IN DOLE BEFORE?</span>
+                      <button id={`mobile-member-worked-dole-${idx}`} type="button" className="vin-mob-select"
+                        aria-haspopup="dialog"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                        onClick={() => setShowYesNoPicker({ target: 'member', index: idx, field: 'hasWorkedDole', title: `Worked in DOLE before? — Member #${idx + 1}` })}>
+                        {m.hasWorkedDole == null ? 'Select yes or no' : m.hasWorkedDole ? 'Yes' : 'No'}
+                        <ChevronDown size={16} />
+                      </button>
                     </div>
                     {m.hasWorkedDole === true && (
                       <div className="vin-mob-input-group">
@@ -1694,26 +1694,14 @@ export default function MobileHouseholds() {
                       </div>
                     )}
                     <div className="vin-mob-input-group">
-                      <label className="vin-mob-input-label" htmlFor={`mobile-member-government-assistance-${idx}`}>GOVERNMENT ASSISTANCE RECEIVED?</label>
-                      <select id={`mobile-member-government-assistance-${idx}`} className="vin-mob-select"
-                        value={m.hasReceivedGovernmentAssistance == null ? '' : String(m.hasReceivedGovernmentAssistance)}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setActiveForm((prev) => ({
-                            ...prev,
-                            members: prev.members.map((member, index) => index === idx
-                              ? {
-                                  ...member,
-                                  hasReceivedGovernmentAssistance: value === '' ? null : value === 'true',
-                                  ...(value === 'true' ? {} : { govAssistanceAvailed: [], governmentAssistanceYear: '' }),
-                                }
-                              : member),
-                          }));
-                        }}>
-                        <option value="">Select yes or no</option>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                      </select>
+                      <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE RECEIVED?</span>
+                      <button id={`mobile-member-government-assistance-${idx}`} type="button" className="vin-mob-select"
+                        aria-haspopup="dialog"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                        onClick={() => setShowYesNoPicker({ target: 'member', index: idx, field: 'hasReceivedGovernmentAssistance', title: `Government assistance received? — Member #${idx + 1}` })}>
+                        {m.hasReceivedGovernmentAssistance == null ? 'Select yes or no' : m.hasReceivedGovernmentAssistance ? 'Yes' : 'No'}
+                        <ChevronDown size={16} />
+                      </button>
                     </div>
                     {m.hasReceivedGovernmentAssistance === true && (
                       <>
@@ -1742,22 +1730,14 @@ export default function MobileHouseholds() {
                       </>
                     )}
                     <div className="vin-mob-input-group">
-                      <label className="vin-mob-input-label" htmlFor={`mobile-member-relief-assistance-${idx}`}>RECEIVED ANY RELIEF ASSISTANCE?</label>
-                      <select id={`mobile-member-relief-assistance-${idx}`} className="vin-mob-select"
-                        value={m.hasReceivedReliefAssistance == null ? '' : String(m.hasReceivedReliefAssistance)}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setActiveForm((prev) => ({
-                            ...prev,
-                            members: prev.members.map((member, index) =>
-                              index === idx ? { ...member, hasReceivedReliefAssistance: value === '' ? null : value === 'true' } : member
-                            ),
-                          }));
-                        }}>
-                        <option value="">Select yes or no</option>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                      </select>
+                      <span className="vin-mob-input-label">RECEIVED ANY RELIEF ASSISTANCE?</span>
+                      <button id={`mobile-member-relief-assistance-${idx}`} type="button" className="vin-mob-select"
+                        aria-haspopup="dialog"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                        onClick={() => setShowYesNoPicker({ target: 'member', index: idx, field: 'hasReceivedReliefAssistance', title: `Received any relief assistance? — Member #${idx + 1}` })}>
+                        {m.hasReceivedReliefAssistance == null ? 'Select yes or no' : m.hasReceivedReliefAssistance ? 'Yes' : 'No'}
+                        <ChevronDown size={16} />
+                      </button>
                     </div>
                     <div className="vin-mob-input-group">
                       <label className="vin-mob-input-label" htmlFor={`mobile-member-other-income-${idx}`}>OTHER SOURCE OF INCOME</label>
@@ -1914,6 +1894,20 @@ export default function MobileHouseholds() {
             }
           }}
           onClose={() => setShowGenderPicker(null)}
+        />
+      )}
+      {showYesNoPicker && (
+        <ChoiceSelectSheet
+          selected={getYesNoChoice(showYesNoPicker)}
+          options={['Yes', 'No']}
+          title={showYesNoPicker.title}
+          onSelect={(choice) => setYesNoValue(
+            showYesNoPicker.target,
+            showYesNoPicker.index,
+            showYesNoPicker.field,
+            choice
+          )}
+          onClose={() => setShowYesNoPicker(null)}
         />
       )}
       {showFormChoicePicker && (
