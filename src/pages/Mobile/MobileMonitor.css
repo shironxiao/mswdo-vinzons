@@ -45,9 +45,11 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.vin-mon-filter-dot.present { background: #7c3aed; }
-.vin-mon-filter-dot.absent  { background: #9c4444; }
-.vin-mon-filter-dot.all     { background: linear-gradient(90deg, #7c3aed 50%, #9c4444 50%); }
+.vin-mon-filter-dot.present { background: #15803d; }
+.vin-mon-filter-dot.absent  { background: #b91c1c; }
+.vin-mon-filter-dot.all     { background: linear-gradient(90deg, #15803d 50%, #b91c1c 50%); }
+.vin-mon-filter-btn.active .vin-mon-filter-dot.present { background: #86efac; }
+.vin-mon-filter-btn.active .vin-mon-filter-dot.absent { background: #fca5a5; }
 
 .vin-mon-filter-dropdown {
   position: absolute;
@@ -140,17 +142,17 @@
 .vin-mon-tile:active { transform: scale(0.97); }
 
 .mon-tile-present {
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border-color: #ddd6fe;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
 }
 .mon-tile-absent {
-  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
-  border-color: #ebd3d3;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
 }
 
 .vin-mon-tile-icon { margin-bottom: 2px; }
-.mon-tile-present .vin-mon-tile-icon { color: #7c3aed; }
-.mon-tile-absent  .vin-mon-tile-icon { color: #9c4444; }
+.mon-tile-present .vin-mon-tile-icon { color: #15803d; }
+.mon-tile-absent  .vin-mon-tile-icon { color: #b91c1c; }
 
 .vin-mon-tile-name {
   font-size: 0.88rem;
@@ -171,8 +173,8 @@
   letter-spacing: 0.5px;
   margin-top: 2px;
 }
-.mon-tile-present .vin-mon-tile-ratio { color: #6b21a8; }
-.mon-tile-absent  .vin-mon-tile-ratio { color: #843232; }
+.mon-tile-present .vin-mon-tile-ratio { color: #166534; }
+.mon-tile-absent  .vin-mon-tile-ratio { color: #991b1b; }
 
 .vin-mon-tile-badge {
   display: inline-flex;
@@ -185,38 +187,38 @@
   margin-top: 2px;
 }
 .badge-present {
-  background: #f3e8ff;
-  color: #6b21a8;
-  border: 1px solid #ddd6fe;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
 }
 .badge-absent {
-  background: #f7eded;
-  color: #843232;
-  border: 1px solid #ebd3d3;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
 }
 .badge-followup {
   background: #fef3c7;
   color: #92400e;
-  border: 1px solid #fde68a;
+  border: 1px solid #fbbf24;
 }
 .badge-transferred {
   background: #e0f2fe;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
+  color: #075985;
+  border: 1px solid #7dd3fc;
 }
 .badge-decamped {
   background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  color: #334155;
+  border: 1px solid #94a3b8;
 }
 
 .mon-tile-followup {
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-  border-color: #fde68a;
+  border-color: #fbbf24;
 }
 .mon-tile-transferred {
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-color: #bae6fd;
+  border-color: #7dd3fc;
 }
 
 .vin-mon-tile-time {
@@ -226,14 +228,14 @@
 }
 
 .vin-mon-table-icon.followup {
-  color: #b45309;
+  color: #92400e;
   background: #fef3c7;
 }
 .vin-mon-table-icon.transferred {
-  color: #0369a1;
+  color: #075985;
   background: #e0f2fe;
 }
 .vin-mon-table-icon.decamped {
-  color: #475569;
+  color: #334155;
   background: #f1f5f9;
 }

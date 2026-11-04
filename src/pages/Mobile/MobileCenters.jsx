@@ -263,7 +263,7 @@ function RoomsSheet({ center, onClose }) {
           </div>
           <div className="vin-ctr-summary-item">
             <span className="vin-mob-field-label">STATUS</span>
-            <div>{center.status}</div>
+            <div className={center.status === 'Active' ? 'vin-ctr-status-active' : ''}>{center.status}</div>
           </div>
         </div>
 

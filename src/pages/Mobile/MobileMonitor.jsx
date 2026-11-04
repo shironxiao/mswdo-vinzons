@@ -626,13 +626,13 @@ export default function MobileMonitor() {
       {/* Legend */}
       <div className="vin-mon-legend" style={{ flexWrap: 'wrap', gap: 10 }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <CheckCircle2 size={14} color="#7c3aed" /> Present
+          <CheckCircle2 size={14} color="#15803d" /> Present
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <AlertTriangle size={14} color="#b45309" /> For Follow-up
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <XCircle size={14} color="#9c4444" /> Absent
+          <XCircle size={14} color="#b91c1c" /> Absent
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
           <img src={checkIcon} alt="" style={{ width: 14, height: 14 }} /> Relief Issued

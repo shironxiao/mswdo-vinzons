@@ -131,9 +131,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.vin-hh-filter-dot.issued    { background: #7c3aed; }
-.vin-hh-filter-dot.notissued { background: #9c4444; }
-.vin-hh-filter-dot.all       { background: linear-gradient(90deg, #7c3aed 50%, #9c4444 50%); }
+.vin-hh-filter-dot.issued    { background: #15803d; }
+.vin-hh-filter-dot.notissued { background: #b91c1c; }
+.vin-hh-filter-dot.all       { background: linear-gradient(90deg, #15803d 50%, #b91c1c 50%); }
 
 .vin-hh-filter-clear {
   margin-top: 6px;
@@ -231,8 +231,8 @@
   border-radius: 50%;
   margin-right: 4px;
 }
-.vin-hh-legend-dot.issued    { background: #7c3aed; }
-.vin-hh-legend-dot.notissued { background: #9c4444; }
+.vin-hh-legend-dot.issued    { background: #15803d; }
+.vin-hh-legend-dot.notissued { background: #b91c1c; }
 
 /* ── Grid of tiles ── */
 .vin-hh-grid {
@@ -256,12 +256,12 @@
 .vin-hh-tile:active { transform: scale(0.97); }
 
 .vin-hh-tile--issued {
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border-color: #ddd6fe;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
 }
 .vin-hh-tile--notissued {
-  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
-  border-color: #ebd3d3;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
 }
 
 .vin-hh-tile-top {
@@ -308,17 +308,17 @@
 .vin-hh-list-item {
   border-left: 4px solid transparent;
 }
-.vin-hh-list-item.list-issued    { border-left-color: #7c3aed; }
-.vin-hh-list-item.list-notissued { border-left-color: #9c4444; }
+.vin-hh-list-item.list-issued    { border-left-color: #15803d; }
+.vin-hh-list-item.list-notissued { border-left-color: #b91c1c; }
 
 /* ── Badges ── */
 .vin-hh-badge-issued {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: #f3e8ff;
-  color: #6b21a8;
-  border: 1px solid #ddd6fe;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
   border-radius: 20px;
   padding: 3px 9px;
   font-size: 0.72rem;
@@ -329,9 +329,9 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: #f7eded;
-  color: #843232;
-  border: 1px solid #ebd3d3;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
   border-radius: 20px;
   padding: 3px 9px;
   font-size: 0.72rem;
@@ -723,8 +723,8 @@
 }
 
 .vin-room-card-box.current {
-  background: #f5f3ff;
-  border-color: #c4b5fd;
+  background: #f0fdf4;
+  border-color: #86efac;
 }
 
 .vin-room-card-box.insufficient {
@@ -769,27 +769,27 @@
 }
 
 .vin-room-status-chip.available {
-  background: #f3e8ff;
-  color: #7c3aed;
-  border: 1px solid #ddd6fe;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
 }
 
 .vin-room-status-chip.low {
   background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
+  color: #92400e;
+  border: 1px solid #fbbf24;
 }
 
 .vin-room-status-chip.full {
   background: #fee2e2;
-  color: #b91c1c;
+  color: #991b1b;
   border: 1px solid #fca5a5;
 }
 
 .vin-room-status-chip.current {
-  background: #ede9fe;
-  color: #6b21a8;
-  border: 1px solid #c4b5fd;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
 }
 
 /* Progress Track */
@@ -808,15 +808,15 @@
 }
 
 .vin-room-progress-bar.ok {
-  background: #7c3aed;
+  background: #16a34a;
 }
 
 .vin-room-progress-bar.warn {
-  background: #eab308;
+  background: #d97706;
 }
 
 .vin-room-progress-bar.full {
-  background: #ef4444;
+  background: #dc2626;
 }
 
 /* Room Stats Row */
@@ -829,17 +829,17 @@
 }
 
 .vin-badge-green-txt {
-  color: #7c3aed;
+  color: #15803d;
   font-weight: 700;
 }
 
 .vin-badge-amber-txt {
-  color: #b45309;
+  color: #92400e;
   font-weight: 700;
 }
 
 .vin-badge-red-txt {
-  color: #b91c1c;
+  color: #991b1b;
   font-weight: 700;
 }
 

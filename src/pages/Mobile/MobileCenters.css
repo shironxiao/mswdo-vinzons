@@ -19,9 +19,9 @@
   margin-right: 4px;
   flex-shrink: 0;
 }
-.vin-ctr-dot.green { background: #7c3aed; }
-.vin-ctr-dot.red   { background: #9c4444; }
-.vin-ctr-dot.gray  { background: #94a3b8; }
+.vin-ctr-dot.green { background: #15803d; }
+.vin-ctr-dot.red   { background: #b91c1c; }
+.vin-ctr-dot.gray  { background: #64748b; }
 
 /* ──────────────────────────────────────────────
    Status Filter Pills Row (Dynamically adjustable, no cut-off)
@@ -78,14 +78,14 @@
   flex-shrink: 0;
 }
 .vin-ctr-status-pill.active .vin-ctr-pill-dot { opacity: 0.9; }
-.vin-ctr-pill-dot.green { background: #c4b5fd; }
-.vin-ctr-pill-dot.red   { background: #f87171; }
+.vin-ctr-pill-dot.green { background: #86efac; }
+.vin-ctr-pill-dot.red   { background: #fca5a5; }
 .vin-ctr-pill-dot.gray  { background: #cbd5e1; }
 
 /* Non-active pill keeps its original dot color */
-.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.green { background: #7c3aed; }
-.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.red   { background: #9c4444; }
-.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.gray  { background: #94a3b8; }
+.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.green { background: #15803d; }
+.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.red   { background: #b91c1c; }
+.vin-ctr-status-pill:not(.active) .vin-ctr-pill-dot.gray  { background: #64748b; }
 
 .vin-ctr-pill-label {
   line-height: 1;
@@ -136,20 +136,20 @@
 
 /* Color variants - softened, less vibrant tones */
 .ctr-tile--available {
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border-color: #ddd6fe;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
 }
 .ctr-tile--occupied {
-  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
-  border-color: #ebd3d3;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
 }
 .ctr-tile--full {
-  background: linear-gradient(135deg, #fdf8f8 0%, #f7eded 100%);
-  border-color: #ebd3d3;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
 }
 .ctr-tile--empty {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-color: #cbd5e1;
+  border-color: #94a3b8;
 }
 
 /* Top Row: Icon left, Status badge top right */
@@ -165,10 +165,10 @@
   align-items: center;
   justify-content: center;
 }
-.ctr-tile--available .vin-ctr-tile-icon { color: #7c3aed; }
-.ctr-tile--occupied  .vin-ctr-tile-icon { color: #9c4444; }
-.ctr-tile--full      .vin-ctr-tile-icon { color: #9c4444; }
-.ctr-tile--empty     .vin-ctr-tile-icon { color: #94a3b8; }
+.ctr-tile--available .vin-ctr-tile-icon { color: #15803d; }
+.ctr-tile--occupied  .vin-ctr-tile-icon { color: #b91c1c; }
+.ctr-tile--full      .vin-ctr-tile-icon { color: #b91c1c; }
+.ctr-tile--empty     .vin-ctr-tile-icon { color: #64748b; }
 
 /* Status badge (top right corner) */
 .vin-ctr-status-badge {
@@ -182,24 +182,24 @@
   letter-spacing: 0.02em;
 }
 .badge-available {
-  background: #f3e8ff;
-  color: #6b21a8;
-  border-color: #ddd6fe;
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
 }
 .badge-occupied {
-  background: #f7eded;
-  color: #843232;
-  border-color: #ebd3d3;
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
 }
 .badge-full {
-  background: #f7eded;
-  color: #843232;
-  border-color: #ebd3d3;
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
 }
 .badge-empty {
   background: #f1f5f9;
-  color: #64748b;
-  border-color: #cbd5e1;
+  color: #475569;
+  border-color: #94a3b8;
 }
 
 /* Body: Content section evenly arranged */
@@ -277,9 +277,9 @@
 .vin-ctr-room-occ   { font-size: 0.78rem; font-weight: 600; }
 .vin-ctr-room-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
-.room-green { background: #f5f3ff; border: 1.5px solid #ddd6fe; color: #6b21a8; }
-.room-red   { background: #fdf8f8; border: 1.5px solid #ebd3d3; color: #843232; }
-.room-gray  { background: #f1f5f9; border: 1.5px solid #cbd5e1; color: #64748b; }
+.room-green { background: #dcfce7; border: 1.5px solid #86efac; color: #166534; }
+.room-red   { background: #fee2e2; border: 1.5px solid #fca5a5; color: #991b1b; }
+.room-gray  { background: #f1f5f9; border: 1.5px solid #94a3b8; color: #475569; }
 
 /* ── Summary row in room sheet ── */
 .vin-ctr-summary-row {
@@ -301,6 +301,9 @@
   font-size: 0.92rem;
   color: #0f172a;
 }
+.vin-ctr-summary-item > .vin-ctr-status-active {
+  color: #15803d;
+}
 
 /* ══════════════════════════════════════
    CENTER TABLE — avatar icon color
@@ -310,15 +313,15 @@
   color: #64748b;
 }
 .vin-ctr-table-icon.ctr-tile--available {
-  background: #f3e8ff;
-  color: #7c3aed;
+  background: #dcfce7;
+  color: #15803d;
 }
 .vin-ctr-table-icon.ctr-tile--occupied,
 .vin-ctr-table-icon.ctr-tile--full {
-  background: #f7eded;
-  color: #9c4444;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 .vin-ctr-table-icon.ctr-tile--empty {
   background: #f1f5f9;
-  color: #94a3b8;
+  color: #64748b;
 }
