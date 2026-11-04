@@ -199,6 +199,50 @@
   font-weight: 600;
 }
 
+.vin-mob-validated-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+}
+
+.vin-mob-validated-field > .vin-mob-select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vin-mob-field-error {
+  color: #dc2626;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.vin-mob-select.vin-mob-field-invalid {
+  border-color: #dc2626;
+  background-color: #fff7f7;
+}
+
+.vin-mob-select.vin-mob-field-invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+}
+
+.vin-mob-household-name-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .vin-mob-household-name-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vin-mob-member-top {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto !important;
+  }
+}
 
 .vin-hh-scan-error {
   margin: 0 16px 10px;

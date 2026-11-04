@@ -662,6 +662,7 @@
   background: #ffffff;
   border-radius: 20px;
   width: 100%;
+  box-sizing: border-box;
   max-width: 680px;
   max-height: 90vh;
   overflow-y: auto;
@@ -711,18 +712,11 @@
   gap: 18px;
 }
 
-.vin-admin-registration-reminder,
 .vin-admin-registration-notice,
 .vin-admin-registration-error {
   padding: 11px 13px;
   border-radius: 10px;
   font-size: 0.84rem;
-}
-
-.vin-admin-registration-reminder {
-  color: #475569;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
 }
 
 .vin-admin-registration-notice {
@@ -928,10 +922,53 @@
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
+.vin-admin-validated-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+}
+
+.vin-admin-validated-field > .vin-admin-form-input,
+.vin-admin-validated-field > .vin-admin-form-select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vin-admin-field-error {
+  color: #dc2626;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.vin-admin-form-input.vin-admin-field-invalid,
+.vin-admin-form-select.vin-admin-field-invalid {
+  border-color: #dc2626;
+  background: #fff7f7;
+}
+
+.vin-admin-form-input.vin-admin-field-invalid:focus,
+.vin-admin-form-select.vin-admin-field-invalid:focus {
+  border-color: #dc2626;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+}
+
 .vin-admin-form-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+}
+
+.vin-admin-household-name-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+  .vin-admin-household-name-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .vin-admin-member-form-box {

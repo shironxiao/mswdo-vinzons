@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { createElement, useState, useEffect } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2,
   AlertTriangle, ChevronDown, Building,
@@ -44,58 +44,79 @@ const REGISTRATION_YES_NO_FIELDS = [
 ];
 
 function validateHouseholdRegistration(form) {
-  const errors = [];
+  const errors = {};
   const currentYear = new Date().getFullYear();
-  const validateAge = (age, label) => {
+  const setError = (field, message) => {
+    errors[field] = message;
+  };
+  const validateAge = (age, field) => {
     if (age === '' || age == null) {
-      errors.push(`${label}: enter an age.`);
+      setError(field, 'This field is required.');
     } else if (!Number.isFinite(Number(age)) || Number(age) < 0 || Number(age) > 120) {
-      errors.push(`${label}: age must be between 0 and 120.`);
+      setError(field, 'Enter an age between 0 and 120.');
     }
   };
-  const validateIncome = (income, label) => {
+  const validateIncome = (income, field) => {
     if (income !== '' && income != null &&
       (!Number.isFinite(Number(income)) || Number(income) < 0 || Number(income) > 99999999.99)) {
-      errors.push(`${label}: income must be between 0 and 99,999,999.99.`);
+      setError(field, 'Enter an income between 0 and 99,999,999.99.');
     }
   };
-  const validateYear = (year, label) => {
+  const validateYear = (year, field) => {
     if (!year || !Number.isInteger(Number(year)) || Number(year) < 1900 || Number(year) > currentYear) {
-      errors.push(`${label}: enter a year between 1900 and ${currentYear}.`);
+      setError(field, `Enter a year between 1900 and ${currentYear}.`);
     }
   };
-  const validateProfile = (profile, label) => {
-    REGISTRATION_YES_NO_FIELDS.forEach(([field, question]) => {
-      if (profile[field] == null) errors.push(`${label}: answer "${question}".`);
+  const validateProfile = (profile, prefix) => {
+    REGISTRATION_YES_NO_FIELDS.forEach(([field]) => {
+      if (profile[field] == null) setError(`${prefix}.${field}`, 'This field is required.');
     });
 
     if (profile.hasWorkedDole === true) {
-      validateYear(profile.doleEmploymentYear, `${label}: DOLE employment year`);
+      validateYear(profile.doleEmploymentYear, `${prefix}.doleEmploymentYear`);
     }
     if (profile.hasReceivedGovernmentAssistance === true) {
       if (!profile.govAssistanceAvailed?.length) {
-        errors.push(`${label}: select at least one government assistance type.`);
+        setError(`${prefix}.govAssistanceAvailed`, 'Select at least one assistance type.');
       }
-      validateYear(profile.governmentAssistanceYear, `${label}: government assistance year`);
+      validateYear(profile.governmentAssistanceYear, `${prefix}.governmentAssistanceYear`);
     }
   };
 
-  if (!form.headFirstName?.trim()) errors.push('Household head: enter a first name.');
-  if (!form.headLastName?.trim()) errors.push('Household head: enter a last name.');
-  validateAge(form.age, 'Household head');
-  validateIncome(form.monthlyIncome, 'Household head');
-  validateProfile(form, 'Household head profile');
+  if (!form.headFirstName?.trim()) setError('headFirstName', 'This field is required.');
+  if (!form.headLastName?.trim()) setError('headLastName', 'This field is required.');
+  validateAge(form.age, 'headAge');
+  validateIncome(form.monthlyIncome, 'headMonthlyIncome');
+  validateProfile(form, 'head');
 
   form.members.forEach((member, index) => {
-    const label = `Family member ${index + 1}`;
-    if (!member.firstName?.trim()) errors.push(`${label}: enter a first name.`);
-    if (!member.lastName?.trim()) errors.push(`${label}: enter a last name.`);
-    validateAge(member.age, label);
-    validateIncome(member.monthlyIncome, label);
-    validateProfile(member, `${label} profile`);
+    const prefix = `member-${index}`;
+    if (!member.firstName?.trim()) setError(`${prefix}.firstName`, 'This field is required.');
+    if (!member.lastName?.trim()) setError(`${prefix}.lastName`, 'This field is required.');
+    validateAge(member.age, `${prefix}.age`);
+    validateIncome(member.monthlyIncome, `${prefix}.monthlyIncome`);
+    validateProfile(member, prefix);
   });
 
   return errors;
+}
+
+function ValidatedMobileField({ as: Control = 'input', field, errors, className = '', children, ...props }) {
+  const error = errors[field];
+  const errorId = `${field}-error`;
+
+  return (
+    <div className="vin-mob-validated-field">
+      {createElement(Control, {
+        ...props,
+        className: `${className}${error ? ' vin-mob-field-invalid' : ''}`,
+        'data-validation-field': field,
+        'aria-invalid': error ? 'true' : undefined,
+        'aria-describedby': error ? errorId : undefined,
+      }, children)}
+      {error && <span id={errorId} className="vin-mob-field-error" role="alert">{error}</span>}
+    </div>
+  );
 }
 
 /* ──────────────────────────────────────────────
@@ -869,7 +890,7 @@ export default function MobileHouseholds() {
   const [centerRooms, setCenterRooms] = useState(DEFAULT_CENTER_ROOMS);
   const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
-  const [validationErrors, setValidationErrors] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
   const [registrationSaveError, setRegistrationSaveError] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftStorageError, setDraftStorageError] = useState(false);
@@ -884,6 +905,15 @@ export default function MobileHouseholds() {
   const [showGenderPicker, setShowGenderPicker] = useState(null);
   const [showFormChoicePicker, setShowFormChoicePicker] = useState(null);
   const [showYesNoPicker, setShowYesNoPicker] = useState(null);
+
+  const clearValidationError = (field) => {
+    setValidationErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
 
   const [activeForm, setActiveForm] = useState({
     head: '', headFirstName: '', headMiddleName: '', headLastName: '', age: '', sex: 'Male',
@@ -1027,7 +1057,7 @@ export default function MobileHouseholds() {
     };
     let restoredForm = null;
     setDraftRestored(false);
-    setValidationErrors([]);
+    setValidationErrors({});
     setRegistrationSaveError('');
     try {
       const savedDraft = window.sessionStorage.getItem(MOBILE_HOUSEHOLD_DRAFT_KEY);
@@ -1055,7 +1085,7 @@ export default function MobileHouseholds() {
   const openEdit = (item, e) => {
     e.stopPropagation();
     setDraftRestored(false);
-    setValidationErrors([]);
+    setValidationErrors({});
     setRegistrationSaveError('');
     const headNameParts = splitFullName(item.name || '');
     setActiveForm({
@@ -1085,6 +1115,7 @@ export default function MobileHouseholds() {
     setModalMode('edit');
   };
   const setHeadNamePart = (field, value) => {
+    clearValidationError(field);
     setActiveForm((prev) => {
       const next = { ...prev, [field]: value };
       next.head = joinFullName({
@@ -1096,6 +1127,7 @@ export default function MobileHouseholds() {
     });
   };
   const setMemberNamePart = (index, field, value) => {
+    clearValidationError(`member-${index}.${field}`);
     setActiveForm((prev) => {
       const members = [...prev.members];
       const member = { ...members[index], [field]: value };
@@ -1110,16 +1142,22 @@ export default function MobileHouseholds() {
   };
   const handleSaveHousehold = async (e) => {
     e.preventDefault();
+    let errors = {};
     if (modalMode === 'register') {
-      const errors = validateHouseholdRegistration(activeForm);
-      setValidationErrors(errors);
-      if (errors.length > 0) return;
+      errors = validateHouseholdRegistration(activeForm);
     } else {
-      const errors = [];
-      if (!activeForm.headFirstName?.trim()) errors.push('Household head: enter a first name.');
-      if (!activeForm.headLastName?.trim()) errors.push('Household head: enter a last name.');
-      setValidationErrors(errors);
-      if (errors.length > 0) return;
+      if (!activeForm.headFirstName?.trim()) errors.headFirstName = 'This field is required.';
+      if (!activeForm.headLastName?.trim()) errors.headLastName = 'This field is required.';
+    }
+    setValidationErrors(errors);
+    const firstInvalidField = Object.keys(errors)[0];
+    if (firstInvalidField) {
+      requestAnimationFrame(() => {
+        const field = document.querySelector(`[data-validation-field="${firstInvalidField}"]`);
+        field?.focus({ preventScroll: true });
+        field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
     }
 
     if (modalMode === 'register') {
@@ -1249,10 +1287,23 @@ export default function MobileHouseholds() {
         otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
       }],
     }));
-  const removeMember = (idx) =>
+  const removeMember = (idx) => {
+    setValidationErrors((previous) => Object.fromEntries(
+      Object.entries(previous).filter(([field]) => !field.startsWith('member-'))
+    ));
     setActiveForm((p) => ({ ...p, members: p.members.filter((_, i) => i !== idx) }));
+  };
   const setYesNoValue = (target, index, field, choice) => {
     const value = choice === '' ? null : choice === 'Yes';
+    const prefix = target === 'head' ? 'head' : `member-${index}`;
+    clearValidationError(`${prefix}.${field}`);
+    if (value !== true) {
+      if (field === 'hasWorkedDole') clearValidationError(`${prefix}.doleEmploymentYear`);
+      if (field === 'hasReceivedGovernmentAssistance') {
+        clearValidationError(`${prefix}.govAssistanceAvailed`);
+        clearValidationError(`${prefix}.governmentAssistanceYear`);
+      }
+    }
     const clearedFields = value === true
       ? {}
       : field === 'hasWorkedDole'
@@ -1552,11 +1603,6 @@ export default function MobileHouseholds() {
               </button>
             </div>
             <form noValidate onSubmit={handleSaveHousehold} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {modalMode === 'register' && (
-                <div style={{ color: '#475569', fontSize: '0.82rem' }}>
-                  Required: the household head&apos;s first name, last name, age, and profile Yes/No answers. Added members also need a first name, last name, age, and profile answers. A Yes answer also requires its year and, for government assistance, an assistance type.
-                </div>
-              )}
               {modalMode === 'register' && draftRestored && (
                 <div role="status" style={{
                   padding: '10px 12px',
@@ -1594,38 +1640,29 @@ export default function MobileHouseholds() {
                   {registrationSaveError}
                 </div>
               )}
-              {validationErrors.length > 0 && (
-                <div role="alert" style={{
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  color: '#991b1b',
-                  fontSize: '0.84rem',
-                }}>
-                  <strong>Please review these required or invalid fields:</strong>
-                  <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                    {validationErrors.map((error) => <li key={error}>{error}</li>)}
-                  </ul>
-                </div>
-              )}
               <div className="vin-mob-input-group">
                 <label className="vin-mob-input-label">HOUSEHOLD HEAD</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-                  <input type="text" placeholder="First name" aria-label="First name" className="vin-mob-select"
-                    value={activeForm.headFirstName} onChange={(e) => setHeadNamePart('headFirstName', e.target.value)} required />
+                <div className="vin-mob-household-name-row">
+                  <ValidatedMobileField type="text" placeholder="First name" aria-label="First name" className="vin-mob-select"
+                    field="headFirstName" errors={validationErrors}
+                    value={activeForm.headFirstName} onChange={(e) => setHeadNamePart('headFirstName', e.target.value)} />
                   <input type="text" placeholder="Middle" aria-label="Middle name (optional)" className="vin-mob-select"
                     value={activeForm.headMiddleName} onChange={(e) => setHeadNamePart('headMiddleName', e.target.value)} />
-                  <input type="text" placeholder="Last name" aria-label="Last name" className="vin-mob-select"
-                    value={activeForm.headLastName} onChange={(e) => setHeadNamePart('headLastName', e.target.value)} required />
+                  <ValidatedMobileField type="text" placeholder="Last name" aria-label="Last name" className="vin-mob-select"
+                    field="headLastName" errors={validationErrors}
+                    value={activeForm.headLastName} onChange={(e) => setHeadNamePart('headLastName', e.target.value)} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label">AGE</label>
-                  <input type="number" placeholder="45" className="vin-mob-select"
+                  <ValidatedMobileField type="number" placeholder="45" className="vin-mob-select"
+                    field="headAge" errors={validationErrors}
                     value={activeForm.age}
-                    onChange={(e) => setActiveForm({ ...activeForm, age: e.target.value })} />
+                    onChange={(e) => {
+                      clearValidationError('headAge');
+                      setActiveForm({ ...activeForm, age: e.target.value });
+                    }} />
                 </div>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label">GENDER</label>
@@ -1707,44 +1744,55 @@ export default function MobileHouseholds() {
                 <span className="vin-mob-input-label">HOUSEHOLD HEAD PROFILE</span>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label" htmlFor="mobile-monthly-income">MONTHLY INCOME</label>
-                  <input id="mobile-monthly-income" type="number" min="0" max="99999999.99" step="0.01" placeholder="0.00"
-                    className="vin-mob-select" value={activeForm.monthlyIncome}
-                    onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
+                  <ValidatedMobileField id="mobile-monthly-income" type="number" min="0" max="99999999.99" step="0.01" placeholder="0.00"
+                    className="vin-mob-select" field="headMonthlyIncome" errors={validationErrors}
+                    value={activeForm.monthlyIncome}
+                    onChange={(e) => {
+                      clearValidationError('headMonthlyIncome');
+                      setActiveForm({ ...activeForm, monthlyIncome: e.target.value });
+                    }} />
                 </div>
                 <div className="vin-mob-input-group">
                   <span className="vin-mob-input-label">WORKED IN DOLE BEFORE?</span>
-                  <button id="mobile-worked-dole" type="button" className="vin-mob-select"
+                  <ValidatedMobileField as="button" id="mobile-worked-dole" type="button" className="vin-mob-select"
+                    field="head.hasWorkedDole" errors={validationErrors}
                     aria-haspopup="dialog"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
                     onClick={() => setShowYesNoPicker({ target: 'head', field: 'hasWorkedDole', title: 'Worked in DOLE before?' })}>
                     {activeForm.hasWorkedDole == null ? 'Select yes or no' : activeForm.hasWorkedDole ? 'Yes' : 'No'}
                     <ChevronDown size={16} />
-                  </button>
+                  </ValidatedMobileField>
                 </div>
                 {activeForm.hasWorkedDole === true && (
                   <div className="vin-mob-input-group">
                     <label className="vin-mob-input-label" htmlFor="mobile-dole-year">WHEN? (YEAR)</label>
-                    <input id="mobile-dole-year" type="number" min="1900" max={new Date().getFullYear()}
+                    <ValidatedMobileField id="mobile-dole-year" type="number" min="1900" max={new Date().getFullYear()}
                       step="1" placeholder="Year" className="vin-mob-select"
+                      field="head.doleEmploymentYear" errors={validationErrors}
                       value={activeForm.doleEmploymentYear}
-                      onChange={(e) => setActiveForm((prev) => ({ ...prev, doleEmploymentYear: e.target.value }))} />
+                      onChange={(e) => {
+                        clearValidationError('head.doleEmploymentYear');
+                        setActiveForm((prev) => ({ ...prev, doleEmploymentYear: e.target.value }));
+                      }} />
                   </div>
                 )}
                 <div className="vin-mob-input-group">
                   <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE RECEIVED?</span>
-                  <button id="mobile-government-assistance" type="button" className="vin-mob-select"
+                  <ValidatedMobileField as="button" id="mobile-government-assistance" type="button" className="vin-mob-select"
+                    field="head.hasReceivedGovernmentAssistance" errors={validationErrors}
                     aria-haspopup="dialog"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
                     onClick={() => setShowYesNoPicker({ target: 'head', field: 'hasReceivedGovernmentAssistance', title: 'Government assistance received?' })}>
                     {activeForm.hasReceivedGovernmentAssistance == null ? 'Select yes or no' : activeForm.hasReceivedGovernmentAssistance ? 'Yes' : 'No'}
                     <ChevronDown size={16} />
-                  </button>
+                  </ValidatedMobileField>
                 </div>
                 {activeForm.hasReceivedGovernmentAssistance === true && (
                   <>
                     <div className="vin-mob-input-group">
                       <span className="vin-mob-input-label">AVAILABLE GOVERNMENT ASSISTANCE</span>
-                      <div id="mobile-gov-assistance" className="vin-mob-select"
+                      <ValidatedMobileField as="div" id="mobile-gov-assistance" className="vin-mob-select"
+                        field="head.govAssistanceAvailed" errors={validationErrors}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
                         onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
                         onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
@@ -1754,26 +1802,31 @@ export default function MobileHouseholds() {
                             : 'Select assistance'}
                         </span>
                         <ChevronDown size={16} style={{ flexShrink: 0 }} />
-                      </div>
+                      </ValidatedMobileField>
                     </div>
                     <div className="vin-mob-input-group">
                       <label className="vin-mob-input-label" htmlFor="mobile-assistance-year">YEAR ACQUIRED</label>
-                      <input id="mobile-assistance-year" type="number" min="1900" max={new Date().getFullYear()}
+                      <ValidatedMobileField id="mobile-assistance-year" type="number" min="1900" max={new Date().getFullYear()}
                         step="1" placeholder="Year" className="vin-mob-select"
+                        field="head.governmentAssistanceYear" errors={validationErrors}
                         value={activeForm.governmentAssistanceYear}
-                        onChange={(e) => setActiveForm((prev) => ({ ...prev, governmentAssistanceYear: e.target.value }))} />
+                        onChange={(e) => {
+                          clearValidationError('head.governmentAssistanceYear');
+                          setActiveForm((prev) => ({ ...prev, governmentAssistanceYear: e.target.value }));
+                        }} />
                     </div>
                   </>
                 )}
                 <div className="vin-mob-input-group">
                   <span className="vin-mob-input-label">RECEIVED ANY RELIEF ASSISTANCE?</span>
-                  <button id="mobile-relief-assistance" type="button" className="vin-mob-select"
+                  <ValidatedMobileField as="button" id="mobile-relief-assistance" type="button" className="vin-mob-select"
+                    field="head.hasReceivedReliefAssistance" errors={validationErrors}
                     aria-haspopup="dialog"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
                     onClick={() => setShowYesNoPicker({ target: 'head', field: 'hasReceivedReliefAssistance', title: 'Received any relief assistance?' })}>
                     {activeForm.hasReceivedReliefAssistance == null ? 'Select yes or no' : activeForm.hasReceivedReliefAssistance ? 'Yes' : 'No'}
                     <ChevronDown size={16} />
-                  </button>
+                  </ValidatedMobileField>
                 </div>
                 <div className="vin-mob-input-group">
                   <label className="vin-mob-input-label" htmlFor="mobile-other-income-source">OTHER SOURCE OF INCOME</label>
@@ -1808,13 +1861,15 @@ export default function MobileHouseholds() {
               {activeForm.members.map((m, idx) => (
                 <div key={idx} className="vin-mob-member-box">
                   <div className="vin-mob-member-top" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) auto', gap: 6 }}>
-                    <input type="text" placeholder="First name" aria-label={`Member ${idx + 1} first name`} className="vin-mob-select"
+                    <ValidatedMobileField type="text" placeholder="First name" aria-label={`Member ${idx + 1} first name`} className="vin-mob-select"
+                      field={`member-${idx}.firstName`} errors={validationErrors}
                       value={m.firstName ?? ''} onChange={(e) => setMemberNamePart(idx, 'firstName', e.target.value)}
                       style={{ padding: '8px', minWidth: 0 }} />
                     <input type="text" placeholder="Middle" aria-label={`Member ${idx + 1} middle name`} className="vin-mob-select"
                       value={m.middleName ?? ''} onChange={(e) => setMemberNamePart(idx, 'middleName', e.target.value)}
                       style={{ padding: '8px', minWidth: 0 }} />
-                    <input type="text" placeholder="Last name" aria-label={`Member ${idx + 1} last name`} className="vin-mob-select"
+                    <ValidatedMobileField type="text" placeholder="Last name" aria-label={`Member ${idx + 1} last name`} className="vin-mob-select"
+                      field={`member-${idx}.lastName`} errors={validationErrors}
                       value={m.lastName ?? ''} onChange={(e) => setMemberNamePart(idx, 'lastName', e.target.value)}
                       style={{ padding: '8px', minWidth: 0 }} />
                     <button type="button" onClick={() => removeMember(idx)}
@@ -1823,8 +1878,14 @@ export default function MobileHouseholds() {
                     </button>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.3fr', gap: 8 }}>
-                    <input type="number" placeholder="Age" className="vin-mob-select" value={m.age}
-                      onChange={(e) => { const u = [...activeForm.members]; u[idx].age = e.target.value; setActiveForm({ ...activeForm, members: u }); }}
+                    <ValidatedMobileField type="number" placeholder="Age" className="vin-mob-select" value={m.age}
+                      field={`member-${idx}.age`} errors={validationErrors}
+                      onChange={(e) => {
+                        clearValidationError(`member-${idx}.age`);
+                        const u = [...activeForm.members];
+                        u[idx].age = e.target.value;
+                        setActiveForm({ ...activeForm, members: u });
+                      }}
                       style={{ padding: 8 }} />
                     <button type="button" className="vin-mob-select"
                       style={{ padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
@@ -1874,83 +1935,99 @@ export default function MobileHouseholds() {
                     <span className="vin-mob-input-label">MEMBER PROFILE</span>
                     <div className="vin-mob-input-group">
                       <label className="vin-mob-input-label" htmlFor={`mobile-member-monthly-income-${idx}`}>MONTHLY INCOME</label>
-                      <input id={`mobile-member-monthly-income-${idx}`} type="number" min="0" max="99999999.99" step="0.01"
+                      <ValidatedMobileField id={`mobile-member-monthly-income-${idx}`} type="number" min="0" max="99999999.99" step="0.01"
                         placeholder="0.00" className="vin-mob-select" value={m.monthlyIncome ?? ''}
-                        onChange={(e) => setActiveForm((prev) => ({
-                          ...prev,
-                          members: prev.members.map((member, index) =>
-                            index === idx ? { ...member, monthlyIncome: e.target.value } : member
-                          ),
-                        }))} />
+                        field={`member-${idx}.monthlyIncome`} errors={validationErrors}
+                        onChange={(e) => {
+                          clearValidationError(`member-${idx}.monthlyIncome`);
+                          setActiveForm((prev) => ({
+                            ...prev,
+                            members: prev.members.map((member, index) =>
+                              index === idx ? { ...member, monthlyIncome: e.target.value } : member
+                            ),
+                          }));
+                        }} />
                     </div>
                     <div className="vin-mob-input-group">
                       <span className="vin-mob-input-label">WORKED IN DOLE BEFORE?</span>
-                      <button id={`mobile-member-worked-dole-${idx}`} type="button" className="vin-mob-select"
+                      <ValidatedMobileField as="button" id={`mobile-member-worked-dole-${idx}`} type="button" className="vin-mob-select"
+                        field={`member-${idx}.hasWorkedDole`} errors={validationErrors}
                         aria-haspopup="dialog"
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
                         onClick={() => setShowYesNoPicker({ target: 'member', index: idx, field: 'hasWorkedDole', title: `Worked in DOLE before? — Member #${idx + 1}` })}>
                         {m.hasWorkedDole == null ? 'Select yes or no' : m.hasWorkedDole ? 'Yes' : 'No'}
                         <ChevronDown size={16} />
-                      </button>
+                      </ValidatedMobileField>
                     </div>
                     {m.hasWorkedDole === true && (
                       <div className="vin-mob-input-group">
                         <label className="vin-mob-input-label" htmlFor={`mobile-member-dole-year-${idx}`}>WHEN? (YEAR)</label>
-                        <input id={`mobile-member-dole-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                        <ValidatedMobileField id={`mobile-member-dole-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
                           step="1" placeholder="Year" className="vin-mob-select" value={m.doleEmploymentYear ?? ''}
-                          onChange={(e) => setActiveForm((prev) => ({
-                            ...prev,
-                            members: prev.members.map((member, index) =>
-                              index === idx ? { ...member, doleEmploymentYear: e.target.value } : member
-                            ),
-                          }))} />
+                          field={`member-${idx}.doleEmploymentYear`} errors={validationErrors}
+                          onChange={(e) => {
+                            clearValidationError(`member-${idx}.doleEmploymentYear`);
+                            setActiveForm((prev) => ({
+                              ...prev,
+                              members: prev.members.map((member, index) =>
+                                index === idx ? { ...member, doleEmploymentYear: e.target.value } : member
+                              ),
+                            }));
+                          }} />
                       </div>
                     )}
                     <div className="vin-mob-input-group">
                       <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE RECEIVED?</span>
-                      <button id={`mobile-member-government-assistance-${idx}`} type="button" className="vin-mob-select"
+                      <ValidatedMobileField as="button" id={`mobile-member-government-assistance-${idx}`} type="button" className="vin-mob-select"
+                        field={`member-${idx}.hasReceivedGovernmentAssistance`} errors={validationErrors}
                         aria-haspopup="dialog"
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
                         onClick={() => setShowYesNoPicker({ target: 'member', index: idx, field: 'hasReceivedGovernmentAssistance', title: `Government assistance received? — Member #${idx + 1}` })}>
                         {m.hasReceivedGovernmentAssistance == null ? 'Select yes or no' : m.hasReceivedGovernmentAssistance ? 'Yes' : 'No'}
                         <ChevronDown size={16} />
-                      </button>
+                      </ValidatedMobileField>
                     </div>
                     {m.hasReceivedGovernmentAssistance === true && (
                       <>
                         <div className="vin-mob-input-group">
                           <span className="vin-mob-input-label">GOVERNMENT ASSISTANCE</span>
-                          <button type="button" className="vin-mob-select"
+                          <ValidatedMobileField as="button" type="button" className="vin-mob-select"
+                            field={`member-${idx}.govAssistanceAvailed`} errors={validationErrors}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
                             onClick={() => setShowMemberAssistancePicker(idx)}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {m.govAssistanceAvailed?.length ? m.govAssistanceAvailed.join(', ') : 'Select assistance'}
                             </span>
                             <ChevronDown size={14} />
-                          </button>
+                          </ValidatedMobileField>
                         </div>
                         <div className="vin-mob-input-group">
                           <label className="vin-mob-input-label" htmlFor={`mobile-member-assistance-year-${idx}`}>YEAR ACQUIRED</label>
-                          <input id={`mobile-member-assistance-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                          <ValidatedMobileField id={`mobile-member-assistance-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
                             step="1" placeholder="Year" className="vin-mob-select" value={m.governmentAssistanceYear ?? ''}
-                            onChange={(e) => setActiveForm((prev) => ({
-                              ...prev,
-                              members: prev.members.map((member, index) =>
-                                index === idx ? { ...member, governmentAssistanceYear: e.target.value } : member
-                              ),
-                            }))} />
+                            field={`member-${idx}.governmentAssistanceYear`} errors={validationErrors}
+                            onChange={(e) => {
+                              clearValidationError(`member-${idx}.governmentAssistanceYear`);
+                              setActiveForm((prev) => ({
+                                ...prev,
+                                members: prev.members.map((member, index) =>
+                                  index === idx ? { ...member, governmentAssistanceYear: e.target.value } : member
+                                ),
+                              }));
+                            }} />
                         </div>
                       </>
                     )}
                     <div className="vin-mob-input-group">
                       <span className="vin-mob-input-label">RECEIVED ANY RELIEF ASSISTANCE?</span>
-                      <button id={`mobile-member-relief-assistance-${idx}`} type="button" className="vin-mob-select"
+                      <ValidatedMobileField as="button" id={`mobile-member-relief-assistance-${idx}`} type="button" className="vin-mob-select"
+                        field={`member-${idx}.hasReceivedReliefAssistance`} errors={validationErrors}
                         aria-haspopup="dialog"
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
                         onClick={() => setShowYesNoPicker({ target: 'member', index: idx, field: 'hasReceivedReliefAssistance', title: `Received any relief assistance? — Member #${idx + 1}` })}>
                         {m.hasReceivedReliefAssistance == null ? 'Select yes or no' : m.hasReceivedReliefAssistance ? 'Yes' : 'No'}
                         <ChevronDown size={16} />
-                      </button>
+                      </ValidatedMobileField>
                     </div>
                     <div className="vin-mob-input-group">
                       <label className="vin-mob-input-label" htmlFor={`mobile-member-other-income-${idx}`}>OTHER SOURCE OF INCOME</label>
@@ -2066,10 +2143,15 @@ export default function MobileHouseholds() {
             floodDepthLevel: 'Select Flood Depth',
           }[showFormProfilePicker]}
           otherMaxLength={showFormProfilePicker === 'floodDepthLevel' ? 50 : 100}
-          onSelect={(value) => setActiveForm((prev) => ({
-            ...prev,
-            [showFormProfilePicker]: value,
-          }))}
+          onSelect={(value) => {
+            if (showFormProfilePicker === 'govAssistanceAvailed') {
+              clearValidationError('head.govAssistanceAvailed');
+            }
+            setActiveForm((prev) => ({
+              ...prev,
+              [showFormProfilePicker]: value,
+            }));
+          }}
           onClose={() => setShowFormProfilePicker(null)}
         />
       )}
@@ -2079,12 +2161,15 @@ export default function MobileHouseholds() {
           options={HOUSEHOLD_PROFILE_OPTIONS.govAssistanceAvailed}
           multiple
           title={`Government Assistance for ${activeForm.members[showMemberAssistancePicker]?.name || `Member #${showMemberAssistancePicker + 1}`}`}
-          onSelect={(value) => setActiveForm((prev) => ({
-            ...prev,
-            members: prev.members.map((member, index) =>
-              index === showMemberAssistancePicker ? { ...member, govAssistanceAvailed: value } : member
-            ),
-          }))}
+          onSelect={(value) => {
+            clearValidationError(`member-${showMemberAssistancePicker}.govAssistanceAvailed`);
+            setActiveForm((prev) => ({
+              ...prev,
+              members: prev.members.map((member, index) =>
+                index === showMemberAssistancePicker ? { ...member, govAssistanceAvailed: value } : member
+              ),
+            }));
+          }}
           onClose={() => setShowMemberAssistancePicker(null)}
         />
       )}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useContext } from 'react';
+import { createElement, useState, useEffect, useMemo, useContext } from 'react';
 import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
@@ -50,58 +50,79 @@ const REGISTRATION_YES_NO_FIELDS = [
 ];
 
 function validateHouseholdRegistration(form) {
-  const errors = [];
+  const errors = {};
   const currentYear = new Date().getFullYear();
-  const validateAge = (age, label) => {
+  const setError = (field, message) => {
+    errors[field] = message;
+  };
+  const validateAge = (age, field) => {
     if (age === '' || age == null) {
-      errors.push(`${label}: enter an age.`);
+      setError(field, 'This field is required.');
     } else if (!Number.isFinite(Number(age)) || Number(age) < 0 || Number(age) > 120) {
-      errors.push(`${label}: age must be between 0 and 120.`);
+      setError(field, 'Enter an age between 0 and 120.');
     }
   };
-  const validateIncome = (income, label) => {
+  const validateIncome = (income, field) => {
     if (income !== '' && income != null &&
       (!Number.isFinite(Number(income)) || Number(income) < 0 || Number(income) > 99999999.99)) {
-      errors.push(`${label}: income must be between 0 and 99,999,999.99.`);
+      setError(field, 'Enter an income between 0 and 99,999,999.99.');
     }
   };
-  const validateYear = (year, label) => {
+  const validateYear = (year, field) => {
     if (!year || !Number.isInteger(Number(year)) || Number(year) < 1900 || Number(year) > currentYear) {
-      errors.push(`${label}: enter a year between 1900 and ${currentYear}.`);
+      setError(field, `Enter a year between 1900 and ${currentYear}.`);
     }
   };
-  const validateProfile = (profile, label) => {
-    REGISTRATION_YES_NO_FIELDS.forEach(([field, question]) => {
-      if (profile[field] == null) errors.push(`${label}: answer "${question}".`);
+  const validateProfile = (profile, prefix) => {
+    REGISTRATION_YES_NO_FIELDS.forEach(([field]) => {
+      if (profile[field] == null) setError(`${prefix}.${field}`, 'This field is required.');
     });
 
     if (profile.hasWorkedDole === true) {
-      validateYear(profile.doleEmploymentYear, `${label}: DOLE employment year`);
+      validateYear(profile.doleEmploymentYear, `${prefix}.doleEmploymentYear`);
     }
     if (profile.hasReceivedGovernmentAssistance === true) {
       if (!profile.govAssistanceAvailed?.length) {
-        errors.push(`${label}: select at least one government assistance type.`);
+        setError(`${prefix}.govAssistanceAvailed`, 'Select at least one assistance type.');
       }
-      validateYear(profile.governmentAssistanceYear, `${label}: government assistance year`);
+      validateYear(profile.governmentAssistanceYear, `${prefix}.governmentAssistanceYear`);
     }
   };
 
-  if (!form.headFirstName?.trim()) errors.push('Household head: enter a first name.');
-  if (!form.headLastName?.trim()) errors.push('Household head: enter a last name.');
-  validateAge(form.age, 'Household head');
-  validateIncome(form.monthlyIncome, 'Household head');
-  validateProfile(form, 'Household head profile');
+  if (!form.headFirstName?.trim()) setError('headFirstName', 'This field is required.');
+  if (!form.headLastName?.trim()) setError('headLastName', 'This field is required.');
+  validateAge(form.age, 'headAge');
+  validateIncome(form.monthlyIncome, 'headMonthlyIncome');
+  validateProfile(form, 'head');
 
   form.members.forEach((member, index) => {
-    const label = `Family member ${index + 1}`;
-    if (!member.firstName?.trim()) errors.push(`${label}: enter a first name.`);
-    if (!member.lastName?.trim()) errors.push(`${label}: enter a last name.`);
-    validateAge(member.age, label);
-    validateIncome(member.monthlyIncome, label);
-    validateProfile(member, `${label} profile`);
+    const prefix = `member-${index}`;
+    if (!member.firstName?.trim()) setError(`${prefix}.firstName`, 'This field is required.');
+    if (!member.lastName?.trim()) setError(`${prefix}.lastName`, 'This field is required.');
+    validateAge(member.ageValue ?? member.age, `${prefix}.age`);
+    validateIncome(member.monthlyIncome, `${prefix}.monthlyIncome`);
+    validateProfile(member, prefix);
   });
 
   return errors;
+}
+
+function ValidatedField({ as: Control = 'input', field, errors, className = '', children, ...props }) {
+  const error = errors[field];
+  const errorId = `${field}-error`;
+
+  return (
+    <div className="vin-admin-validated-field">
+      {createElement(Control, {
+        ...props,
+        className: `${className}${error ? ' vin-admin-field-invalid' : ''}`,
+        'data-validation-field': field,
+        'aria-invalid': error ? 'true' : undefined,
+        'aria-describedby': error ? errorId : undefined,
+      }, children)}
+      {error && <span id={errorId} className="vin-admin-field-error" role="alert">{error}</span>}
+    </div>
+  );
 }
 
 /* ──────────────────────────────────────────────
@@ -698,7 +719,7 @@ export default function Household() {
   const [importError, setImportError] = useState('');
   const [actionError, setActionError] = useState('');
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
-  const [validationErrors, setValidationErrors] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
   const [registrationSaveError, setRegistrationSaveError] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftStorageError, setDraftStorageError] = useState(false);
@@ -710,6 +731,15 @@ export default function Household() {
   const [showMemberAssistancePicker, setShowMemberAssistancePicker] = useState(null);
   const [showGenderPicker, setShowGenderPicker] = useState(null);
   const [showFormChoicePicker, setShowFormChoicePicker] = useState(null);
+
+  const clearValidationError = (field) => {
+    setValidationErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
 
   const [activeForm, setActiveForm] = useState({
     id: '',
@@ -968,7 +998,7 @@ export default function Household() {
     };
     let restoredForm = null;
     setDraftRestored(false);
-    setValidationErrors([]);
+    setValidationErrors({});
     setRegistrationSaveError('');
     try {
       const savedDraft = window.sessionStorage.getItem(ADMIN_HOUSEHOLD_DRAFT_KEY);
@@ -997,7 +1027,7 @@ export default function Household() {
   const openEdit = (item, e) => {
     e.stopPropagation();
     setDraftRestored(false);
-    setValidationErrors([]);
+    setValidationErrors({});
     setRegistrationSaveError('');
     const headNameParts = splitFullName(item.name || '');
     setActiveForm({
@@ -1033,6 +1063,7 @@ export default function Household() {
   };
 
   const setHeadNamePart = (field, value) => {
+    clearValidationError(field);
     setActiveForm((prev) => {
       const next = { ...prev, [field]: value };
       next.head = joinFullName({
@@ -1045,6 +1076,7 @@ export default function Household() {
   };
 
   const setMemberNamePart = (index, field, value) => {
+    clearValidationError(`member-${index}.${field}`);
     setActiveForm((prev) => {
       const members = [...prev.members];
       const member = { ...members[index], [field]: value };
@@ -1060,17 +1092,23 @@ export default function Household() {
 
   const handleSaveHousehold = async (e) => {
     e.preventDefault();
+    let errors = {};
     if (modalMode === 'register') {
-      const errors = validateHouseholdRegistration(activeForm);
-      setValidationErrors(errors);
+      errors = validateHouseholdRegistration(activeForm);
       setRegistrationSaveError('');
-      if (errors.length > 0) return;
     } else {
-      const errors = [];
-      if (!activeForm.headFirstName?.trim()) errors.push('Household head: enter a first name.');
-      if (!activeForm.headLastName?.trim()) errors.push('Household head: enter a last name.');
-      setValidationErrors(errors);
-      if (errors.length > 0) return;
+      if (!activeForm.headFirstName?.trim()) errors.headFirstName = 'This field is required.';
+      if (!activeForm.headLastName?.trim()) errors.headLastName = 'This field is required.';
+    }
+    setValidationErrors(errors);
+    const firstInvalidField = Object.keys(errors)[0];
+    if (firstInvalidField) {
+      requestAnimationFrame(() => {
+        const field = document.querySelector(`[data-validation-field="${firstInvalidField}"]`);
+        field?.focus({ preventScroll: true });
+        field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
     }
 
     if (modalMode === 'register') {
@@ -1674,11 +1712,6 @@ export default function Household() {
             </div>
 
             <form noValidate onSubmit={handleSaveHousehold} className="vin-admin-modal-body">
-              {modalMode === 'register' && (
-                <div className="vin-admin-registration-reminder">
-                  Required: the household head&apos;s first name, last name, age, and profile Yes/No answers. Added members also need a first name, last name, age, and profile answers. A Yes answer also requires its year and, for government assistance, an assistance type.
-                </div>
-              )}
               {modalMode === 'register' && draftRestored && (
                 <div className="vin-admin-registration-notice" role="status">
                   Your unfinished registration was restored. It will remain saved until the household is registered.
@@ -1694,35 +1727,34 @@ export default function Household() {
                   {registrationSaveError}
                 </div>
               )}
-              {validationErrors.length > 0 && (
-                <div className="vin-admin-registration-error" role="alert">
-                  <strong>Please review these required or invalid fields:</strong>
-                  <ul>
-                    {validationErrors.map((error) => <li key={error}>{error}</li>)}
-                  </ul>
-                </div>
-              )}
               <div className="vin-admin-form-group">
                 <label className="vin-admin-form-label">HOUSEHOLD HEAD NAME</label>
-                <div className="vin-admin-form-row" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-                  <input aria-label="First name" type="text" placeholder="First name" className="vin-admin-form-input"
-                    value={activeForm.headFirstName} onChange={(e) => setHeadNamePart('headFirstName', e.target.value)} required />
+                <div className="vin-admin-form-row vin-admin-household-name-row">
+                  <ValidatedField aria-label="First name" type="text" placeholder="First name" className="vin-admin-form-input"
+                    field="headFirstName" errors={validationErrors}
+                    value={activeForm.headFirstName} onChange={(e) => setHeadNamePart('headFirstName', e.target.value)} />
                   <input aria-label="Middle name" type="text" placeholder="Middle name (optional)" className="vin-admin-form-input"
                     value={activeForm.headMiddleName} onChange={(e) => setHeadNamePart('headMiddleName', e.target.value)} />
-                  <input aria-label="Last name" type="text" placeholder="Last name" className="vin-admin-form-input"
-                    value={activeForm.headLastName} onChange={(e) => setHeadNamePart('headLastName', e.target.value)} required />
+                  <ValidatedField aria-label="Last name" type="text" placeholder="Last name" className="vin-admin-form-input"
+                    field="headLastName" errors={validationErrors}
+                    value={activeForm.headLastName} onChange={(e) => setHeadNamePart('headLastName', e.target.value)} />
                 </div>
               </div>
 
               <div className="vin-admin-form-row">
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label">AGE</label>
-                  <input
+                  <ValidatedField
                     type="number"
                     placeholder="45"
                     className="vin-admin-form-input"
+                    field="headAge"
+                    errors={validationErrors}
                     value={activeForm.age}
-                    onChange={(e) => setActiveForm({ ...activeForm, age: e.target.value })}
+                    onChange={(e) => {
+                      clearValidationError('headAge');
+                      setActiveForm({ ...activeForm, age: e.target.value });
+                    }}
                   />
                 </div>
                 <div className="vin-admin-form-group">
@@ -1794,16 +1826,23 @@ export default function Household() {
                 <span className="vin-admin-form-label">HOUSEHOLD HEAD PROFILE</span>
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-monthly-income">MONTHLY INCOME</label>
-                  <input id="admin-monthly-income" type="number" min="0" max="99999999.99" step="0.01" placeholder="0.00"
-                    className="vin-admin-form-input" value={activeForm.monthlyIncome}
-                    onChange={(e) => setActiveForm({ ...activeForm, monthlyIncome: e.target.value })} />
+                  <ValidatedField id="admin-monthly-income" type="number" min="0" max="99999999.99" step="0.01" placeholder="0.00"
+                    className="vin-admin-form-input" field="headMonthlyIncome" errors={validationErrors}
+                    value={activeForm.monthlyIncome}
+                    onChange={(e) => {
+                      clearValidationError('headMonthlyIncome');
+                      setActiveForm({ ...activeForm, monthlyIncome: e.target.value });
+                    }} />
                 </div>
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-worked-dole">WORKED IN DOLE BEFORE?</label>
-                  <select id="admin-worked-dole" className="vin-admin-form-select"
+                  <ValidatedField as="select" id="admin-worked-dole" className="vin-admin-form-select"
+                    field="head.hasWorkedDole" errors={validationErrors}
                     value={activeForm.hasWorkedDole == null ? '' : String(activeForm.hasWorkedDole)}
                     onChange={(e) => {
                       const value = e.target.value;
+                      clearValidationError('head.hasWorkedDole');
+                      clearValidationError('head.doleEmploymentYear');
                       setActiveForm((prev) => ({
                         ...prev,
                         hasWorkedDole: value === '' ? null : value === 'true',
@@ -1813,23 +1852,31 @@ export default function Household() {
                     <option value="">Select yes or no</option>
                     <option value="true">Yes</option>
                     <option value="false">No</option>
-                  </select>
+                  </ValidatedField>
                 </div>
                 {activeForm.hasWorkedDole === true && (
                   <div className="vin-admin-form-group">
                     <label className="vin-admin-form-label" htmlFor="admin-dole-year">WHEN? (YEAR)</label>
-                    <input id="admin-dole-year" type="number" min="1900" max={new Date().getFullYear()}
+                    <ValidatedField id="admin-dole-year" type="number" min="1900" max={new Date().getFullYear()}
                       step="1" placeholder="Year" className="vin-admin-form-input"
+                      field="head.doleEmploymentYear" errors={validationErrors}
                       value={activeForm.doleEmploymentYear}
-                      onChange={(e) => setActiveForm((prev) => ({ ...prev, doleEmploymentYear: e.target.value }))} />
+                      onChange={(e) => {
+                        clearValidationError('head.doleEmploymentYear');
+                        setActiveForm((prev) => ({ ...prev, doleEmploymentYear: e.target.value }));
+                      }} />
                   </div>
                 )}
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-government-assistance">GOVERNMENT ASSISTANCE RECEIVED?</label>
-                  <select id="admin-government-assistance" className="vin-admin-form-select"
+                  <ValidatedField as="select" id="admin-government-assistance" className="vin-admin-form-select"
+                    field="head.hasReceivedGovernmentAssistance" errors={validationErrors}
                     value={activeForm.hasReceivedGovernmentAssistance == null ? '' : String(activeForm.hasReceivedGovernmentAssistance)}
                     onChange={(e) => {
                       const value = e.target.value;
+                      clearValidationError('head.hasReceivedGovernmentAssistance');
+                      clearValidationError('head.govAssistanceAvailed');
+                      clearValidationError('head.governmentAssistanceYear');
                       setActiveForm((prev) => ({
                         ...prev,
                         hasReceivedGovernmentAssistance: value === '' ? null : value === 'true',
@@ -1839,13 +1886,14 @@ export default function Household() {
                     <option value="">Select yes or no</option>
                     <option value="true">Yes</option>
                     <option value="false">No</option>
-                  </select>
+                  </ValidatedField>
                 </div>
                 {activeForm.hasReceivedGovernmentAssistance === true && (
                   <>
                     <div className="vin-admin-form-group">
                       <span className="vin-admin-form-label">AVAILABLE GOVERNMENT ASSISTANCE</span>
-                      <div id="admin-gov-assistance" className="vin-admin-form-select"
+                      <ValidatedField as="div" id="admin-gov-assistance" className="vin-admin-form-select"
+                        field="head.govAssistanceAvailed" errors={validationErrors}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
                         onClick={() => setShowFormProfilePicker('govAssistanceAvailed')} role="button" tabIndex={0}
                         onKeyDown={(e) => e.key === 'Enter' && setShowFormProfilePicker('govAssistanceAvailed')}>
@@ -1855,23 +1903,29 @@ export default function Household() {
                             : 'Select assistance'}
                         </span>
                         <ChevronDown size={16} style={{ flexShrink: 0 }} />
-                      </div>
+                      </ValidatedField>
                     </div>
                     <div className="vin-admin-form-group">
                       <label className="vin-admin-form-label" htmlFor="admin-assistance-year">YEAR ACQUIRED</label>
-                      <input id="admin-assistance-year" type="number" min="1900" max={new Date().getFullYear()}
+                      <ValidatedField id="admin-assistance-year" type="number" min="1900" max={new Date().getFullYear()}
                         step="1" placeholder="Year" className="vin-admin-form-input"
+                        field="head.governmentAssistanceYear" errors={validationErrors}
                         value={activeForm.governmentAssistanceYear}
-                        onChange={(e) => setActiveForm((prev) => ({ ...prev, governmentAssistanceYear: e.target.value }))} />
+                        onChange={(e) => {
+                          clearValidationError('head.governmentAssistanceYear');
+                          setActiveForm((prev) => ({ ...prev, governmentAssistanceYear: e.target.value }));
+                        }} />
                     </div>
                   </>
                 )}
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-relief-assistance">RECEIVED ANY RELIEF ASSISTANCE?</label>
-                  <select id="admin-relief-assistance" className="vin-admin-form-select"
+                  <ValidatedField as="select" id="admin-relief-assistance" className="vin-admin-form-select"
+                    field="head.hasReceivedReliefAssistance" errors={validationErrors}
                     value={activeForm.hasReceivedReliefAssistance == null ? '' : String(activeForm.hasReceivedReliefAssistance)}
                     onChange={(e) => {
                       const value = e.target.value;
+                      clearValidationError('head.hasReceivedReliefAssistance');
                       setActiveForm((prev) => ({
                         ...prev,
                         hasReceivedReliefAssistance: value === '' ? null : value === 'true',
@@ -1880,7 +1934,7 @@ export default function Household() {
                     <option value="">Select yes or no</option>
                     <option value="true">Yes</option>
                     <option value="false">No</option>
-                  </select>
+                  </ValidatedField>
                 </div>
                 <div className="vin-admin-form-group">
                   <label className="vin-admin-form-label" htmlFor="admin-other-income-source">OTHER SOURCE OF INCOME</label>
@@ -1925,12 +1979,14 @@ export default function Household() {
                   {activeForm.members.map((m, idx) => (
                     <div key={idx} className="vin-admin-member-form-box">
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) auto', gap: 8, alignItems: 'center' }}>
-                        <input
+                        <ValidatedField
                           type="text"
                           aria-label={`Member ${idx + 1} first name`}
                           placeholder="First name"
                           className="vin-admin-form-input"
                           style={{ padding: '8px 12px', minWidth: 0 }}
+                          field={`member-${idx}.firstName`}
+                          errors={validationErrors}
                           value={m.firstName ?? ''}
                           onChange={(e) => setMemberNamePart(idx, 'firstName', e.target.value)}
                         />
@@ -1943,12 +1999,14 @@ export default function Household() {
                           value={m.middleName ?? ''}
                           onChange={(e) => setMemberNamePart(idx, 'middleName', e.target.value)}
                         />
-                        <input
+                        <ValidatedField
                           type="text"
                           aria-label={`Member ${idx + 1} last name`}
                           placeholder="Last name"
                           className="vin-admin-form-input"
                           style={{ padding: '8px 12px', minWidth: 0 }}
+                          field={`member-${idx}.lastName`}
+                          errors={validationErrors}
                           value={m.lastName ?? ''}
                           onChange={(e) => setMemberNamePart(idx, 'lastName', e.target.value)}
                         />
@@ -1969,13 +2027,16 @@ export default function Household() {
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.9fr 1fr 1.2fr', gap: 8 }}>
-                        <input
+                        <ValidatedField
                           type="number"
                           placeholder="Age"
                           className="vin-admin-form-input"
                           style={{ padding: '6px 10px' }}
+                          field={`member-${idx}.age`}
+                          errors={validationErrors}
                           value={m.ageValue ?? m.age ?? ''}
                           onChange={(e) => {
+                            clearValidationError(`member-${idx}.age`);
                             const updated = [...activeForm.members];
                             updated[idx].ageValue = e.target.value;
                             updated[idx].age = String(updated[idx].ageUnit || 'Years').toLowerCase().startsWith('month')
@@ -2052,21 +2113,28 @@ export default function Household() {
                           <span className="vin-admin-form-label">MEMBER PROFILE</span>
                           <div className="vin-admin-form-group">
                             <label className="vin-admin-form-label" htmlFor={`admin-member-monthly-income-${idx}`}>MONTHLY INCOME</label>
-                            <input id={`admin-member-monthly-income-${idx}`} type="number" min="0" max="99999999.99" step="0.01"
+                            <ValidatedField id={`admin-member-monthly-income-${idx}`} type="number" min="0" max="99999999.99" step="0.01"
                               placeholder="0.00" className="vin-admin-form-input" value={m.monthlyIncome ?? ''}
-                              onChange={(e) => setActiveForm((prev) => ({
-                                ...prev,
-                                members: prev.members.map((member, index) =>
-                                  index === idx ? { ...member, monthlyIncome: e.target.value } : member
-                                ),
-                              }))} />
+                              field={`member-${idx}.monthlyIncome`} errors={validationErrors}
+                              onChange={(e) => {
+                                clearValidationError(`member-${idx}.monthlyIncome`);
+                                setActiveForm((prev) => ({
+                                  ...prev,
+                                  members: prev.members.map((member, index) =>
+                                    index === idx ? { ...member, monthlyIncome: e.target.value } : member
+                                  ),
+                                }));
+                              }} />
                           </div>
                           <div className="vin-admin-form-group">
                             <label className="vin-admin-form-label" htmlFor={`admin-member-worked-dole-${idx}`}>WORKED IN DOLE BEFORE?</label>
-                            <select id={`admin-member-worked-dole-${idx}`} className="vin-admin-form-select"
+                            <ValidatedField as="select" id={`admin-member-worked-dole-${idx}`} className="vin-admin-form-select"
+                              field={`member-${idx}.hasWorkedDole`} errors={validationErrors}
                               value={m.hasWorkedDole == null ? '' : String(m.hasWorkedDole)}
                               onChange={(e) => {
                                 const value = e.target.value;
+                                clearValidationError(`member-${idx}.hasWorkedDole`);
+                                clearValidationError(`member-${idx}.doleEmploymentYear`);
                                 setActiveForm((prev) => ({
                                   ...prev,
                                   members: prev.members.map((member, index) => index === idx
@@ -2081,27 +2149,35 @@ export default function Household() {
                               <option value="">Select yes or no</option>
                               <option value="true">Yes</option>
                               <option value="false">No</option>
-                            </select>
+                            </ValidatedField>
                           </div>
                           {m.hasWorkedDole === true && (
                             <div className="vin-admin-form-group">
                               <label className="vin-admin-form-label" htmlFor={`admin-member-dole-year-${idx}`}>WHEN? (YEAR)</label>
-                              <input id={`admin-member-dole-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                              <ValidatedField id={`admin-member-dole-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
                                 step="1" placeholder="Year" className="vin-admin-form-input" value={m.doleEmploymentYear ?? ''}
-                                onChange={(e) => setActiveForm((prev) => ({
-                                  ...prev,
-                                  members: prev.members.map((member, index) =>
-                                    index === idx ? { ...member, doleEmploymentYear: e.target.value } : member
-                                  ),
-                                }))} />
+                                field={`member-${idx}.doleEmploymentYear`} errors={validationErrors}
+                                onChange={(e) => {
+                                  clearValidationError(`member-${idx}.doleEmploymentYear`);
+                                  setActiveForm((prev) => ({
+                                    ...prev,
+                                    members: prev.members.map((member, index) =>
+                                      index === idx ? { ...member, doleEmploymentYear: e.target.value } : member
+                                    ),
+                                  }));
+                                }} />
                             </div>
                           )}
                           <div className="vin-admin-form-group">
                             <label className="vin-admin-form-label" htmlFor={`admin-member-government-assistance-${idx}`}>GOVERNMENT ASSISTANCE RECEIVED?</label>
-                            <select id={`admin-member-government-assistance-${idx}`} className="vin-admin-form-select"
+                            <ValidatedField as="select" id={`admin-member-government-assistance-${idx}`} className="vin-admin-form-select"
+                              field={`member-${idx}.hasReceivedGovernmentAssistance`} errors={validationErrors}
                               value={m.hasReceivedGovernmentAssistance == null ? '' : String(m.hasReceivedGovernmentAssistance)}
                               onChange={(e) => {
                                 const value = e.target.value;
+                                clearValidationError(`member-${idx}.hasReceivedGovernmentAssistance`);
+                                clearValidationError(`member-${idx}.govAssistanceAvailed`);
+                                clearValidationError(`member-${idx}.governmentAssistanceYear`);
                                 setActiveForm((prev) => ({
                                   ...prev,
                                   members: prev.members.map((member, index) => index === idx
@@ -2116,40 +2192,47 @@ export default function Household() {
                               <option value="">Select yes or no</option>
                               <option value="true">Yes</option>
                               <option value="false">No</option>
-                            </select>
+                            </ValidatedField>
                           </div>
                           {m.hasReceivedGovernmentAssistance === true && (
                             <>
                               <div className="vin-admin-form-group">
                                 <span className="vin-admin-form-label">GOVERNMENT ASSISTANCE</span>
-                                <button type="button" className="vin-admin-form-select"
+                                <ValidatedField as="button" type="button" className="vin-admin-form-select"
+                                  field={`member-${idx}.govAssistanceAvailed`} errors={validationErrors}
                                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}
                                   onClick={() => setShowMemberAssistancePicker(idx)}>
                                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {m.govAssistanceAvailed?.length ? m.govAssistanceAvailed.join(', ') : 'Select assistance'}
                                   </span>
                                   <ChevronDown size={14} />
-                                </button>
+                                </ValidatedField>
                               </div>
                               <div className="vin-admin-form-group">
                                 <label className="vin-admin-form-label" htmlFor={`admin-member-assistance-year-${idx}`}>YEAR ACQUIRED</label>
-                                <input id={`admin-member-assistance-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
+                                <ValidatedField id={`admin-member-assistance-year-${idx}`} type="number" min="1900" max={new Date().getFullYear()}
                                   step="1" placeholder="Year" className="vin-admin-form-input" value={m.governmentAssistanceYear ?? ''}
-                                  onChange={(e) => setActiveForm((prev) => ({
-                                    ...prev,
-                                    members: prev.members.map((member, index) =>
-                                      index === idx ? { ...member, governmentAssistanceYear: e.target.value } : member
-                                    ),
-                                  }))} />
+                                  field={`member-${idx}.governmentAssistanceYear`} errors={validationErrors}
+                                  onChange={(e) => {
+                                    clearValidationError(`member-${idx}.governmentAssistanceYear`);
+                                    setActiveForm((prev) => ({
+                                      ...prev,
+                                      members: prev.members.map((member, index) =>
+                                        index === idx ? { ...member, governmentAssistanceYear: e.target.value } : member
+                                      ),
+                                    }));
+                                  }} />
                               </div>
                             </>
                           )}
                           <div className="vin-admin-form-group">
                             <label className="vin-admin-form-label" htmlFor={`admin-member-relief-assistance-${idx}`}>RECEIVED ANY RELIEF ASSISTANCE?</label>
-                            <select id={`admin-member-relief-assistance-${idx}`} className="vin-admin-form-select"
+                            <ValidatedField as="select" id={`admin-member-relief-assistance-${idx}`} className="vin-admin-form-select"
+                              field={`member-${idx}.hasReceivedReliefAssistance`} errors={validationErrors}
                               value={m.hasReceivedReliefAssistance == null ? '' : String(m.hasReceivedReliefAssistance)}
                               onChange={(e) => {
                                 const value = e.target.value;
+                                clearValidationError(`member-${idx}.hasReceivedReliefAssistance`);
                                 setActiveForm((prev) => ({
                                   ...prev,
                                   members: prev.members.map((member, index) =>
@@ -2160,7 +2243,7 @@ export default function Household() {
                               <option value="">Select yes or no</option>
                               <option value="true">Yes</option>
                               <option value="false">No</option>
-                            </select>
+                            </ValidatedField>
                           </div>
                           <div className="vin-admin-form-group">
                             <label className="vin-admin-form-label" htmlFor={`admin-member-other-income-${idx}`}>OTHER SOURCE OF INCOME</label>
@@ -2273,10 +2356,15 @@ export default function Household() {
             floodDepthLevel: 'Select Flood Depth',
           }[showFormProfilePicker]}
           otherMaxLength={showFormProfilePicker === 'floodDepthLevel' ? 50 : 100}
-          onSelect={(value) => setActiveForm((prev) => ({
-            ...prev,
-            [showFormProfilePicker]: value,
-          }))}
+          onSelect={(value) => {
+            if (showFormProfilePicker === 'govAssistanceAvailed') {
+              clearValidationError('head.govAssistanceAvailed');
+            }
+            setActiveForm((prev) => ({
+              ...prev,
+              [showFormProfilePicker]: value,
+            }));
+          }}
           onClose={() => setShowFormProfilePicker(null)}
         />
       )}
@@ -2286,12 +2374,15 @@ export default function Household() {
           options={HOUSEHOLD_PROFILE_OPTIONS.govAssistanceAvailed}
           multiple
           title={`Government Assistance for ${activeForm.members[showMemberAssistancePicker]?.name || `Member #${showMemberAssistancePicker + 1}`}`}
-          onSelect={(value) => setActiveForm((prev) => ({
-            ...prev,
-            members: prev.members.map((member, index) =>
-              index === showMemberAssistancePicker ? { ...member, govAssistanceAvailed: value } : member
-            ),
-          }))}
+          onSelect={(value) => {
+            clearValidationError(`member-${showMemberAssistancePicker}.govAssistanceAvailed`);
+            setActiveForm((prev) => ({
+              ...prev,
+              members: prev.members.map((member, index) =>
+                index === showMemberAssistancePicker ? { ...member, govAssistanceAvailed: value } : member
+              ),
+            }));
+          }}
           onClose={() => setShowMemberAssistancePicker(null)}
         />
       )}
