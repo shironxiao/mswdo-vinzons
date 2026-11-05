@@ -1231,10 +1231,17 @@
   inset: 0;
   background-color: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(2px);
-  z-index: 85;
+  z-index: 2100;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+}
+
+@media (min-width: 769px) {
+  .vin-center-picker-overlay {
+    align-items: center;
+    padding: 20px;
+  }
 }
 
 .vin-center-picker-sheet {

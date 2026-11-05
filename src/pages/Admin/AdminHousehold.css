@@ -658,6 +658,22 @@
   padding: 24px;
 }
 
+/* Ensure picker sheets (Gender, Category, Occupation, etc.) always float above the modal */
+.vin-center-picker-overlay {
+  z-index: 2100 !important;
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.vin-center-picker-sheet {
+  border-radius: 20px !important;
+  max-height: 85vh !important;
+  height: auto !important;
+}
+
 .vin-admin-modal-card {
   background: #ffffff;
   border-radius: 20px;

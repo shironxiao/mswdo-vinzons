@@ -588,7 +588,7 @@
   inset: 0;
   background-color: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(3px);
-  z-index: 1200;
+  z-index: 2100 !important;
   display: flex;
   align-items: center;
   justify-content: center;

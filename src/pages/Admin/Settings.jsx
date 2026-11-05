@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   RefreshCw,
   Database,
-  Shield,
   FileSpreadsheet,
   FileCode,
   CheckCircle2,
@@ -29,11 +28,6 @@ const DEFAULT_SETTINGS = {
   autoBackupDaily: true,
   autoBackupOnConclude: true,
   retentionPeriod: '90 Days',
-
-  // Evacuation & Relief Policies
-  defaultDistributionBatch: '1 Kit per Household',
-  enableRealtimeAlerts: true,
-  dailyMonitoringAlerts: true,
 };
 
 export default function Settings() {
@@ -171,7 +165,7 @@ export default function Settings() {
           <span className="vin-settings-eyebrow">WORKSPACE CONFIGURATION</span>
           <h1 className="vin-settings-title">Settings</h1>
           <p className="vin-settings-desc">
-            Configure offline synchronization, automated database backups, and operational policies for MSWDO Vinzons.
+            Configure offline synchronization and automated database disaster recovery archives for MSWDO Vinzons.
           </p>
         </div>
 
@@ -440,74 +434,6 @@ export default function Settings() {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 3: Evacuation & Relief Policies */}
-        <section className="vin-settings-section">
-          <div className="vin-section-header">
-            <Shield className="vin-section-icon" size={20} />
-            <div>
-              <h2 className="vin-section-title">Evacuation & Relief Goods Policies</h2>
-              <p className="vin-section-subtitle">
-                Operational guidelines for food pack quotas and room capacity alerts.
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div className="vin-settings-field">
-              <label htmlFor="defaultDistributionBatch" className="vin-field-label">
-                Standard Relief Stub Ratio
-              </label>
-              <select
-                id="defaultDistributionBatch"
-                name="defaultDistributionBatch"
-                value={settings.defaultDistributionBatch}
-                onChange={handleChange}
-                className="vin-field-select"
-              >
-                <option value="1 Kit per Household">1 Kit per Household</option>
-                <option value="1 Kit per 4 Individuals">1 Kit per 4 Individuals</option>
-                <option value="Individual Ration Pack">Individual Ration Pack</option>
-              </select>
-            </div>
-
-            <div className="vin-toggle-row">
-              <div className="vin-toggle-info">
-                <span className="vin-toggle-title">Real-time Evacuee Overcapacity Warnings</span>
-                <span className="vin-toggle-desc">
-                  Visually alert supervisors and command staff when an evacuation room exceeds 100% capacity
-                </span>
-              </div>
-              <label className="vin-switch">
-                <input
-                  type="checkbox"
-                  name="enableRealtimeAlerts"
-                  checked={settings.enableRealtimeAlerts}
-                  onChange={handleChange}
-                />
-                <span className="vin-slider" />
-              </label>
-            </div>
-
-            <div className="vin-toggle-row">
-              <div className="vin-toggle-info">
-                <span className="vin-toggle-title">Daily Monitoring Round Notifications</span>
-                <span className="vin-toggle-desc">
-                  Notify the command dashboard upon completion of each monitoring round across centers
-                </span>
-              </div>
-              <label className="vin-switch">
-                <input
-                  type="checkbox"
-                  name="dailyMonitoringAlerts"
-                  checked={settings.dailyMonitoringAlerts}
-                  onChange={handleChange}
-                />
-                <span className="vin-slider" />
-              </label>
             </div>
           </div>
         </section>
