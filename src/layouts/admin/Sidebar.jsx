@@ -56,8 +56,7 @@ export default function Sidebar({
   const navigate = useNavigate();
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [toastNotification, setToastNotification] = useState(null);
-  const toastTimerRef = useRef(null);
+  const [popupDialog, setPopupDialog] = useState(null);
 
   // Admin Account state from localStorage
   const [adminAccount, setAdminAccount] = useState(() => {
@@ -91,20 +90,6 @@ export default function Sidebar({
 
   const currentPath = activePath || location.pathname || '/admin/dashboard';
 
-  const showToast = (title, message, type = 'success') => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToastNotification({ title, message, type });
-    toastTimerRef.current = setTimeout(() => {
-      setToastNotification(null);
-    }, 4500);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    };
-  }, []);
-
   const handleOpenProfileModal = () => {
     setProfileForm({
       fullName: adminAccount.fullName || 'Ronald Augorio',
@@ -122,22 +107,28 @@ export default function Sidebar({
 
     // Validate email
     if (!profileForm.email?.trim()) {
-      setProfileFeedback({ type: 'error', message: 'Email address is required.' });
+      setPopupDialog({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Admin email address is required.',
+      });
       return;
     }
 
     // Validate password if provided
     if (profileForm.newPassword) {
       if (profileForm.newPassword.length < 6) {
-        setProfileFeedback({
+        setPopupDialog({
           type: 'error',
+          title: 'Validation Error',
           message: 'New password must be at least 6 characters long.',
         });
         return;
       }
       if (profileForm.newPassword !== profileForm.confirmPassword) {
-        setProfileFeedback({
+        setPopupDialog({
           type: 'error',
+          title: 'Validation Error',
           message: 'New password and confirm password do not match.',
         });
         return;
@@ -173,21 +164,21 @@ export default function Sidebar({
       setProfileForm((prev) => ({ ...prev, newPassword: '', confirmPassword: '' }));
       setShowProfileModal(false);
 
-      // Trigger floating feedback pop-up toast message
-      showToast(
-        'Admin Information Updated',
-        profileForm.newPassword
+      // Trigger centered pop-up dialog message
+      setPopupDialog({
+        type: 'success',
+        title: 'Admin Information Updated',
+        message: profileForm.newPassword
           ? 'Administrator credentials & password updated successfully!'
           : 'Administrator information saved successfully!',
-        'success'
-      );
+      });
     } catch (err) {
       const errorMsg = err?.message || 'Could not update profile information.';
-      setProfileFeedback({
+      setPopupDialog({
         type: 'error',
+        title: 'Update Failed',
         message: errorMsg,
       });
-      showToast('Update Failed', errorMsg, 'error');
     } finally {
       setIsSavingProfile(false);
     }
@@ -327,14 +318,6 @@ export default function Sidebar({
                   MSWDO Command and Operations Administrator Credentials
                 </p>
               </div>
-              <button
-                type="button"
-                className="vin-picker-close-btn"
-                onClick={() => setShowProfileModal(false)}
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
             </div>
 
             {/* Modal Body Form */}
@@ -504,32 +487,28 @@ export default function Sidebar({
         onCancel={() => setShowLogoutConfirmation(false)}
       />
 
-      {/* ── Floating Feedback Pop-Up Toast Notification ── */}
-      {toastNotification && (
-        <div
-          className={`vin-admin-popup-toast ${toastNotification.type}`}
-          role="status"
-          aria-live="polite"
-        >
-          <div className="vin-popup-toast-icon-wrap">
-            {toastNotification.type === 'error' ? (
-              <AlertCircle size={20} color="#dc2626" />
-            ) : (
-              <CheckCircle2 size={20} color="#7c3aed" />
-            )}
+      {/* ── Pop-up Dialog Message (Modal Alert Dialog) ── */}
+      {popupDialog && (
+        <div className="vin-dialog-overlay" onClick={() => setPopupDialog(null)}>
+          <div className="vin-dialog-card" onClick={(e) => e.stopPropagation()}>
+            <div className={`vin-dialog-icon-wrap ${popupDialog.type}`}>
+              {popupDialog.type === 'error' ? (
+                <AlertCircle size={32} />
+              ) : (
+                <CheckCircle2 size={32} />
+              )}
+            </div>
+            <h3 className="vin-dialog-title">{popupDialog.title}</h3>
+            <p className="vin-dialog-message">{popupDialog.message}</p>
+            <button
+              type="button"
+              className={`vin-dialog-btn ${popupDialog.type}`}
+              onClick={() => setPopupDialog(null)}
+              autoFocus
+            >
+              OK
+            </button>
           </div>
-          <div className="vin-popup-toast-text">
-            <span className="vin-popup-toast-title">{toastNotification.title}</span>
-            <span className="vin-popup-toast-message">{toastNotification.message}</span>
-          </div>
-          <button
-            type="button"
-            className="vin-popup-toast-close"
-            onClick={() => setToastNotification(null)}
-            aria-label="Close notification"
-          >
-            <X size={16} />
-          </button>
         </div>
       )}
     </>

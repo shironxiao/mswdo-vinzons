@@ -514,112 +514,119 @@
 }
 
 /* ══════════════════════════════════════════════
-   Floating Feedback Pop-up Toast Message
+   Pop-up Dialog Message (Modal Alert Dialog)
    ══════════════════════════════════════════════ */
-.vin-admin-popup-toast {
+.vin-dialog-overlay {
   position: fixed;
-  top: 24px;
-  right: 28px;
-  z-index: 99999;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: #ffffff;
-  color: #0f172a;
-  border-radius: 14px;
-  padding: 14px 18px;
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.2), 0 2px 8px rgba(15, 23, 42, 0.08);
-  border: 1px solid #e2e8f0;
-  max-width: 420px;
-  min-width: 320px;
-  box-sizing: border-box;
-  animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.vin-admin-popup-toast.success {
-  border-left: 4px solid #7c3aed;
-}
-
-.vin-admin-popup-toast.error {
-  border-left: 4px solid #dc2626;
-}
-
-@keyframes toastSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-16px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.vin-popup-toast-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #f5f3ff;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  margin-top: 2px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.vin-admin-popup-toast.error .vin-popup-toast-icon-wrap {
-  background: #fef2f2;
-}
-
-.vin-popup-toast-text {
+.vin-dialog-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 20px;
+  padding: 30px 24px 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
+  align-items: center;
+  text-align: center;
+  animation: dialogScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
-.vin-popup-toast-title {
-  font-size: 0.9rem;
+@keyframes dialogScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.vin-dialog-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.vin-dialog-icon-wrap.success {
+  background: #f5f3ff;
+  border: 2px solid #ddd6fe;
+  color: #7c3aed;
+}
+
+.vin-dialog-icon-wrap.error {
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  color: #dc2626;
+}
+
+.vin-dialog-title {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #0f172a;
   line-height: 1.25;
 }
 
-.vin-popup-toast-message {
-  font-size: 0.8rem;
+.vin-dialog-message {
+  margin: 0 0 24px;
+  font-size: 0.88rem;
   color: #475569;
-  line-height: 1.35;
+  line-height: 1.5;
+  max-width: 340px;
 }
 
-.vin-popup-toast-close {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
+.vin-dialog-btn {
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border: none;
   transition: all 0.15s ease;
-  margin-left: 4px;
-  flex-shrink: 0;
 }
 
-.vin-popup-toast-close:hover {
-  background: #f1f5f9;
-  color: #334155;
+.vin-dialog-btn.success {
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(107, 33, 168, 0.3);
 }
 
-@media (max-width: 768px) {
-  .vin-admin-popup-toast {
-    top: 16px;
-    left: 16px;
-    right: 16px;
-    min-width: 0;
-    max-width: none;
-  }
+.vin-dialog-btn.success:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #581c87 100%);
+  transform: translateY(-1px);
+}
+
+.vin-dialog-btn.error {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
+}
+
+.vin-dialog-btn.error:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
 }
 
 .vin-user-avatar {
