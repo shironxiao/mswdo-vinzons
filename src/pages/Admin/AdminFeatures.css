@@ -177,6 +177,37 @@
   border-bottom: none;
 }
 
+.vin-room-placement-table-wrap {
+  overflow-x: auto;
+}
+
+.vin-room-placement-table {
+  min-width: 960px;
+}
+
+.vin-room-placement-household-list {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vin-room-placement-household-list li {
+  display: grid;
+  gap: 2px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.vin-room-placement-household-list small,
+.vin-room-placement-empty {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
 .vin-status-tag {
   display: inline-flex;
   align-items: center;

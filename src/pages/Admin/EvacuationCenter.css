@@ -785,7 +785,7 @@
   grid-template-columns: 110px minmax(0, 1fr) 120px 78px;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 18px 12px 8px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
@@ -834,6 +834,7 @@
 }
 
 .vin-room-capacity-col {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -841,6 +842,12 @@
   font-size: 0.67rem;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.vin-room-capacity-col > span {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 3px);
 }
 
 .vin-room-capacity-input {
@@ -911,6 +918,7 @@
   .vin-room-rename-row {
     grid-template-columns: 1fr;
     gap: 8px;
+    padding-top: 20px;
   }
 
   .vin-room-editor-header {

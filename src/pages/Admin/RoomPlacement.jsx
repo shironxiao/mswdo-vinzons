@@ -32,17 +32,17 @@ export default function RoomPlacement() {
     const eventPlacements = placements.filter((placement) =>
       placement.event_id === selectedEvent?.id && placement.status === 'Evacuated'
     );
-    const occupancyForRoom = (roomId, centerId) => eventPlacements
+    const householdsById = new Map(households.map((household) => [household.id, household]));
+    const householdsForRoom = (roomId, centerId) => eventPlacements
       .filter((placement) => placement.room_id === roomId && placement.center_id === centerId)
-      .reduce((sum, placement) => {
-        const household = households.find((item) => item.id === placement.household_id);
-        return sum + (household?.familyCount || 1);
-      }, 0);
+      .map((placement) => householdsById.get(placement.household_id))
+      .filter(Boolean);
 
     // 1. If we have rooms from Supabase dbRooms
     if (dbRooms && dbRooms.length > 0) {
       return dbRooms.map((r) => {
-        const occupied = occupancyForRoom(r.id, r.centerId);
+        const roomHouseholds = householdsForRoom(r.id, r.centerId);
+        const occupied = roomHouseholds.reduce((sum, household) => sum + (household.familyCount || 1), 0);
         const isFull = occupied >= r.capacity;
 
         return {
@@ -51,6 +51,7 @@ export default function RoomPlacement() {
           center: r.center,
           name: `${r.roomName} - Capacity ${r.capacity}`,
           occupied,
+          households: roomHouseholds,
           capacity: r.capacity,
           status: isFull ? 'Full' : 'Active',
         };
@@ -61,21 +62,22 @@ export default function RoomPlacement() {
     const list = [];
     centers.forEach((center) => {
       (center.rooms || []).forEach((r) => {
-        const roomOccupants = households.filter((household) => {
-        const matchCenter =
-          household.center === center.displayName ||
-          isCenterMatch(household.center, center.displayName, centers);
-        const matchRoom = household.room === r.id || household.room === r.name;
-        return matchCenter && matchRoom;
-        });
-        const occupied = roomOccupants.reduce((sum, household) => {
-        const placement = eventPlacements.find((item) =>
-          item.household_id === household.id &&
-          item.center_id === center.id &&
-          item.room_id === household.roomId
-        );
-        return sum + (placement ? household.familyCount || 1 : 0);
-        }, 0);
+        const roomOccupants = eventPlacements
+          .filter((placement) => placement.center_id === center.id)
+          .map((placement) => ({
+            placement,
+            household: householdsById.get(placement.household_id),
+          }))
+          .filter(({ placement, household }) => {
+            if (!household || placement.room_id !== household.roomId) return false;
+            const matchCenter =
+              household.center === center.displayName ||
+              isCenterMatch(household.center, center.displayName, centers);
+            const matchRoom = household.room === r.id || household.room === r.name;
+            return matchCenter && matchRoom;
+          })
+          .map(({ household }) => household);
+        const occupied = roomOccupants.reduce((sum, household) => sum + (household.familyCount || 1), 0);
         const isFull = occupied >= (r.capacity || 25);
 
         list.push({
@@ -84,6 +86,7 @@ export default function RoomPlacement() {
           center: center.displayName,
           name: `${r.name} - Capacity ${r.capacity || 25}`,
           occupied,
+          households: roomOccupants,
           capacity: r.capacity || 25,
           status: isFull ? 'Full' : 'Active',
         });
@@ -110,7 +113,13 @@ export default function RoomPlacement() {
         r.id.toLowerCase().includes(filterRoom.toLowerCase());
 
       const query = search.trim().toLowerCase();
-      const matchSearch = !query || [r.id, r.roomKey, r.name, r.center]
+      const matchSearch = !query || [
+        r.id,
+        r.roomKey,
+        r.name,
+        r.center,
+        ...r.households.flatMap((household) => [household.name, household.householdCode]),
+      ]
         .some((value) => String(value || '').toLowerCase().includes(query));
 
       return matchSearch && matchCenter && matchStatus && matchRoom;
@@ -141,7 +150,7 @@ export default function RoomPlacement() {
       <div className="vin-feature-content-card">
         <div className="vin-feature-toolbar">
           <AdminSearchInput
-            placeholder="Search by room or center..."
+            placeholder="Search by room, center, or household..."
             value={search}
             onChange={(value) => {
               setSearch(value);
@@ -183,56 +192,73 @@ export default function RoomPlacement() {
           />
         </div>
 
-        <table className="vin-feature-table">
-          <thead>
-            <tr>
-              <th>ROOM CODE</th>
-              <th>CENTER</th>
-              <th>ROOM NAME / DESIGNATION</th>
-              <th>OCCUPANCY</th>
-              <th>STATUS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedRooms.length === 0 ? (
+        <div className="vin-room-placement-table-wrap">
+          <table className="vin-feature-table vin-room-placement-table">
+            <thead>
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  No rooms match the current filter criteria.
-                </td>
+                <th>ROOM CODE</th>
+                <th>CENTER</th>
+                <th>ROOM NAME / DESIGNATION</th>
+                <th>HOUSEHOLDS IN ROOM</th>
+                <th>OCCUPANCY</th>
+                <th>STATUS</th>
               </tr>
-            ) : (
-              paginatedRooms.map((item) => (
-                <tr key={item.id}>
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.id}</td>
-                  <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                      <Building size={15} color="#2563eb" />
-                      {item.center}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: 600 }}>{item.name}</td>
-                  <td>
-                    <div style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#7c3aed' }}>
-                      {item.occupied} / {item.capacity} persons
-                    </div>
-                    <div style={{ height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', marginTop: 5 }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${Math.min(100, Math.round((item.occupied / item.capacity) * 100))}%`,
-                        background: item.status === 'Full' ? '#dc2626' : '#7c3aed',
-                      }} />
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`vin-status-tag ${item.status === 'Full' ? 'pending' : 'active'}`}>
-                      {item.status}
-                    </span>
+            </thead>
+            <tbody>
+              {paginatedRooms.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                    No rooms match the current filter criteria.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                paginatedRooms.map((item) => (
+                  <tr key={item.id}>
+                    <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.id}</td>
+                    <td>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                        <Building size={15} color="#2563eb" />
+                        {item.center}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{item.name}</td>
+                    <td>
+                      {item.households.length > 0 ? (
+                        <ul className="vin-room-placement-household-list">
+                          {item.households.map((household) => (
+                            <li key={household.id}>
+                              <span>{household.name}</span>
+                              <small>{household.householdCode || household.id}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="vin-room-placement-empty">No households assigned</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#7c3aed' }}>
+                        {item.occupied} / {item.capacity} persons
+                      </div>
+                      <div style={{ height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', marginTop: 5 }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${Math.min(100, Math.round((item.occupied / item.capacity) * 100))}%`,
+                          background: item.status === 'Full' ? '#dc2626' : '#7c3aed',
+                        }} />
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`vin-status-tag ${item.status === 'Full' ? 'pending' : 'active'}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination Controls */}
