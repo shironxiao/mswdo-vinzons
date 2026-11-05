@@ -1,9 +1,14 @@
 import { useState, useMemo } from 'react';
-import { Plus, Shield, UserCheck, X, Edit2, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Shield, UserCheck, X, Edit2, Trash2, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
 import './UserManagement.css';
 import { useEvacuationCenters, isCenterMatch } from '../../lib/evacuationCenters.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
+import {
+  CenterSelectSheet,
+  RoleSelectSheet,
+  ChoiceSelectSheet,
+} from '../../components/CenterSelectSheet.jsx';
 import {
   useUserAccounts,
   createUserAccount,
@@ -91,6 +96,11 @@ export default function UserManagement() {
     status: 'Active',
   });
   const [editErrors, setEditErrors] = useState({});
+
+  // Pop up panel picker states: null | 'add' | 'edit'
+  const [showRolePicker, setShowRolePicker] = useState(null);
+  const [showCenterPicker, setShowCenterPicker] = useState(null);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -425,33 +435,49 @@ export default function UserManagement() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Role</label>
-                <select
+                <button
+                  type="button"
                   className="vin-form-select"
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    width: '100%',
+                  }}
+                  onClick={() => setShowRolePicker('add')}
                 >
-                  {MSWDO_ROLES.map((roleName) => (
-                    <option key={roleName} value={roleName}>
-                      {roleName} {roleName === 'MSWD Officer' ? '(Admin)' : roleName === 'Job Order' ? '(Personnel)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                    {form.role}
+                    {form.role === 'MSWD Officer' ? ' (Admin)' : form.role === 'Job Order' ? ' (Personnel)' : ''}
+                  </span>
+                  <ChevronDown size={16} color="#64748b" />
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '22px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Assigned Center</label>
-                <select
+                <button
+                  type="button"
                   className="vin-form-select"
-                  value={form.assignedCenter}
-                  onChange={(e) => setForm({ ...form, assignedCenter: e.target.value })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    width: '100%',
+                  }}
+                  onClick={() => setShowCenterPicker('add')}
                 >
-                  <option value="All Centers (Command)">All Centers (Command)</option>
-                  {centers.map((c) => (
-                    <option key={c.id || c.displayName} value={c.displayName}>
-                      {c.displayName}
-                    </option>
-                  ))}
-                </select>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                    {form.assignedCenter}
+                  </span>
+                  <ChevronDown size={16} color="#64748b" />
+                </button>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
@@ -519,45 +545,72 @@ export default function UserManagement() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Role</label>
-                <select
+                <button
+                  type="button"
                   className="vin-form-select"
-                  value={editForm.role}
-                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    width: '100%',
+                  }}
+                  onClick={() => setShowRolePicker('edit')}
                 >
-                  {MSWDO_ROLES.map((roleName) => (
-                    <option key={roleName} value={roleName}>
-                      {roleName} {roleName === 'MSWD Officer' ? '(Admin)' : roleName === 'Job Order' ? '(Personnel)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                    {editForm.role}
+                    {editForm.role === 'MSWD Officer' ? ' (Admin)' : editForm.role === 'Job Order' ? ' (Personnel)' : ''}
+                  </span>
+                  <ChevronDown size={16} color="#64748b" />
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Assigned Center</label>
-                <select
+                <button
+                  type="button"
                   className="vin-form-select"
-                  value={editForm.assignedCenter}
-                  onChange={(e) => setEditForm({ ...editForm, assignedCenter: e.target.value })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    width: '100%',
+                  }}
+                  onClick={() => setShowCenterPicker('edit')}
                 >
-                  <option value="All Centers (Command)">All Centers (Command)</option>
-                  {centers.map((c) => (
-                    <option key={c.id || c.displayName} value={c.displayName}>
-                      {c.displayName}
-                    </option>
-                  ))}
-                </select>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                    {editForm.assignedCenter}
+                  </span>
+                  <ChevronDown size={16} color="#64748b" />
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '22px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Account Status</label>
-                <select
+                <button
+                  type="button"
                   className="vin-form-select"
-                  value={editForm.status}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    width: '100%',
+                  }}
+                  onClick={() => setShowStatusPicker(true)}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                    {editForm.status}
+                  </span>
+                  <ChevronDown size={16} color="#64748b" />
+                </button>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
@@ -609,6 +662,53 @@ export default function UserManagement() {
         }}
         onClose={() => setShowFilterModal(false)}
       />
+
+      {/* ── Role Select Sheet Popup Panel ── */}
+      {showRolePicker && (
+        <RoleSelectSheet
+          selected={showRolePicker === 'add' ? form.role : editForm.role}
+          onSelect={(selectedRole) => {
+            if (showRolePicker === 'add') {
+              setForm((prev) => ({ ...prev, role: selectedRole }));
+            } else {
+              setEditForm((prev) => ({ ...prev, role: selectedRole }));
+            }
+          }}
+          onClose={() => setShowRolePicker(null)}
+        />
+      )}
+
+      {/* ── Center Select Sheet Popup Panel ── */}
+      {showCenterPicker && (
+        <CenterSelectSheet
+          selected={showCenterPicker === 'add' ? form.assignedCenter : editForm.assignedCenter}
+          centersList={centers}
+          allCentersLabel="All Centers (Command)"
+          allCentersValue="All Centers (Command)"
+          allCentersSub="Full administrative command & access across all centers"
+          onSelect={(selectedCenter) => {
+            if (showCenterPicker === 'add') {
+              setForm((prev) => ({ ...prev, assignedCenter: selectedCenter }));
+            } else {
+              setEditForm((prev) => ({ ...prev, assignedCenter: selectedCenter }));
+            }
+          }}
+          onClose={() => setShowCenterPicker(null)}
+        />
+      )}
+
+      {/* ── Status Select Sheet Popup Panel ── */}
+      {showStatusPicker && (
+        <ChoiceSelectSheet
+          selected={editForm.status}
+          options={['Active', 'Inactive']}
+          title="Select Account Status"
+          onSelect={(selectedStatus) => {
+            setEditForm((prev) => ({ ...prev, status: selectedStatus || 'Active' }));
+          }}
+          onClose={() => setShowStatusPicker(false)}
+        />
+      )}
     </div>
   );
 }

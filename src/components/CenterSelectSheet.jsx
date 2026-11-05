@@ -24,11 +24,13 @@ export function CenterSelectSheet({
   onClose,
   allCentersSub = 'Show records from all evacuation centers',
   showAllOption = true,
+  allCentersLabel = 'All centers',
+  allCentersValue = 'All Centers',
 }) {
   const initialSelected =
-    !showAllOption && (!selected || selected === 'All Centers')
+    !showAllOption && (!selected || selected === allCentersValue || selected === 'All Centers')
       ? (centersList[0]?.displayName || centersList[0]?.name || '')
-      : (selected || 'All Centers');
+      : (selected || allCentersValue);
   const [tempSelected, setTempSelected] = useState(initialSelected);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -87,16 +89,16 @@ export function CenterSelectSheet({
         {/* Center List */}
         <div className="vin-center-picker-list">
           {/* All Centers Option */}
-          {showAllOption && (!searchQuery || 'all centers'.includes(searchQuery.toLowerCase())) && (
+          {showAllOption && (!searchQuery || allCentersLabel.toLowerCase().includes(searchQuery.toLowerCase()) || 'all centers'.includes(searchQuery.toLowerCase())) && (
             <div
-              className={`vin-center-picker-item ${tempSelected === 'All Centers' ? 'selected' : ''}`}
-              onClick={() => setTempSelected('All Centers')}
+              className={`vin-center-picker-item ${tempSelected === allCentersValue || tempSelected === allCentersLabel || tempSelected === 'All Centers' ? 'selected' : ''}`}
+              onClick={() => setTempSelected(allCentersValue)}
             >
               <div className="vin-center-picker-radio">
                 <div className="vin-center-picker-radio-dot" />
               </div>
               <div className="vin-center-picker-info">
-                <span className="vin-center-picker-name">All centers</span>
+                <span className="vin-center-picker-name">{allCentersLabel}</span>
                 <span className="vin-center-picker-loc">{allCentersSub}</span>
               </div>
             </div>
@@ -136,6 +138,136 @@ export function CenterSelectSheet({
           onClick={handleConfirm}
         >
           Select center
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Role Selection Bottom Sheet (White Theme)
+   ────────────────────────────────────────────── */
+export function RoleSelectSheet({
+  selected,
+  onSelect,
+  onClose,
+  title = 'Select Role / Designation',
+}) {
+  const [tempSelected, setTempSelected] = useState(selected || 'Social Welfare Officer II');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const ROLE_DETAILS = [
+    { name: 'MSWD Officer', tier: 'Admin', tierClass: 'admin', desc: 'Municipal Social Welfare & Development Head (Full Admin)' },
+    { name: 'Public Services Officer II', tier: 'Coordinator', tierClass: 'coordinator', desc: 'Field Operations & Public Services Lead' },
+    { name: 'Social Welfare Officer II', tier: 'Coordinator', tierClass: 'coordinator', desc: 'Case Management & Welfare Center Operations' },
+    { name: 'Child Development Worker II', tier: 'Staff', tierClass: 'staff', desc: 'Child Friendly Spaces & Early Development Support' },
+    { name: 'Administrative Aide IV', tier: 'Staff', tierClass: 'staff', desc: 'Administrative Records & Logistics Assistance' },
+    { name: 'Social Welfare Aide', tier: 'Staff', tierClass: 'staff', desc: 'Center Intake Support & Relief Distribution' },
+    { name: 'Social Welfare Assistant', tier: 'Staff', tierClass: 'staff', desc: 'Evacuee Profiling & Family Registration Assistance' },
+    { name: 'OSCA Head', tier: 'Coordinator', tierClass: 'coordinator', desc: 'Office of Senior Citizens Affairs Section Head' },
+    { name: 'PDAO Officer', tier: 'Coordinator', tierClass: 'coordinator', desc: 'Persons with Disability Affairs Office Officer' },
+    { name: 'Job Order', tier: 'Personnel', tierClass: 'personnel', desc: 'Field Evacuation Center & Monitoring Personnel' },
+  ];
+
+  const filteredRoles = ROLE_DETAILS.filter((r) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      r.name.toLowerCase().includes(q) ||
+      r.tier.toLowerCase().includes(q) ||
+      r.desc.toLowerCase().includes(q)
+    );
+  });
+
+  const handleConfirm = () => {
+    onSelect(tempSelected);
+    onClose();
+  };
+
+  return (
+    <div className="vin-center-picker-overlay" onClick={onClose}>
+      <div className="vin-center-picker-sheet" onClick={(e) => e.stopPropagation()}>
+        {/* Drag handle */}
+        <div className="vin-center-picker-handle" />
+
+        {/* Title bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px 4px' }}>
+          <div>
+            <div style={{ fontSize: '1.05rem', color: '#0f172a', fontWeight: 800 }}>{title}</div>
+            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Select designated organizational position</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="vin-center-picker-search-box">
+          <Search size={16} className="vin-center-picker-search-icon" />
+          <input
+            type="text"
+            className="vin-center-picker-search-input"
+            placeholder="Search roles or designations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="vin-center-picker-clear-btn"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {/* Role list */}
+        <div className="vin-center-picker-list" style={{ maxHeight: '48vh', overflowY: 'auto' }}>
+          {filteredRoles.map((r) => {
+            const isSelected = tempSelected === r.name;
+            return (
+              <div
+                key={r.name}
+                className={`vin-center-picker-item ${isSelected ? 'selected' : ''}`}
+                onClick={() => setTempSelected(r.name)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="vin-center-picker-radio">
+                  <div className="vin-center-picker-radio-dot" />
+                </div>
+                <div className="vin-center-picker-info" style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span className="vin-center-picker-name" style={{ fontWeight: 700 }}>
+                      {r.name}
+                    </span>
+                    <span className={`vin-role-badge ${r.tierClass}`} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                      {r.tier}
+                    </span>
+                  </div>
+                  <span className="vin-center-picker-loc" style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                    {r.desc}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Submit */}
+        <button
+          type="button"
+          className="vin-center-picker-submit"
+          onClick={handleConfirm}
+        >
+          Select Role
         </button>
       </div>
     </div>
