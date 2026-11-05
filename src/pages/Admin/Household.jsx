@@ -713,6 +713,7 @@ export default function Household() {
   const [checkInCenterId, setCheckInCenterId] = useState('');
   const [checkInRoom, setCheckInRoom] = useState('');
   const [checkInError, setCheckInError] = useState('');
+  const [checkInFeedback, setCheckInFeedback] = useState(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState('');
@@ -836,6 +837,91 @@ export default function Household() {
     [currentEventPlacements]
   );
 
+  /* ── Room allocation calculations for Check-In / Assign Room ── */
+  const selectedCenterObj = useMemo(() => {
+    return (
+      centers.find(
+        (c) =>
+          c.id === checkInCenterId ||
+          c.displayName === checkInCenterId ||
+          c.name === checkInCenterId
+      ) || centers[0]
+    );
+  }, [centers, checkInCenterId]);
+
+  const neededSlots = useMemo(() => {
+    if (!checkInTarget) return 1;
+    return (
+      checkInTarget.familyCount ||
+      (checkInTarget.members?.length ? checkInTarget.members.length + 1 : 1)
+    );
+  }, [checkInTarget]);
+
+  const availableRoomsForCheckIn = useMemo(() => {
+    if (!selectedCenterObj) return [];
+
+    const matchingDbRooms = databaseRooms.filter(
+      (r) =>
+        r.centerId === selectedCenterObj.id ||
+        r.center === selectedCenterObj.displayName ||
+        r.center === selectedCenterObj.name
+    );
+
+    const baseRooms =
+      matchingDbRooms.length > 0
+        ? matchingDbRooms.map((r) => ({
+            id: r.roomName,
+            roomId: r.id,
+            name: r.roomName,
+            capacity: Number(r.capacity) || 30,
+          }))
+        : (selectedCenterObj.rooms || []).map((r) => ({
+            id: r.name || r.id,
+            roomId: r.id,
+            name: r.name || r.id,
+            capacity: Number(r.capacity) || 30,
+          }));
+
+    const effectiveRooms =
+      baseRooms.length > 0
+        ? baseRooms
+        : [
+            { id: 'Room 1', roomId: 'Room 1', name: 'Room 1', capacity: 30 },
+            { id: 'Room 2', roomId: 'Room 2', name: 'Room 2', capacity: 25 },
+            { id: 'Room 3', roomId: 'Room 3', name: 'Room 3', capacity: 25 },
+            { id: 'Room 4', roomId: 'Room 4', name: 'Room 4', capacity: 20 },
+            { id: 'Room 5', roomId: 'Room 5', name: 'Room 5', capacity: 20 },
+          ];
+
+    const activePlacementsInCenter = currentEventPlacements.filter(
+      (p) => p.status === 'Evacuated' && p.center_id === selectedCenterObj.id
+    );
+
+    const householdsMap = new Map(households.map((h) => [h.id, h]));
+
+    return effectiveRooms.map((room) => {
+      const roomOccupants = activePlacementsInCenter
+        .filter(
+          (p) =>
+            p.room_id === room.roomId ||
+            p.room_id === room.id ||
+            p.room_name === room.name
+        )
+        .map((p) => householdsMap.get(p.household_id))
+        .filter(Boolean);
+
+      const occupied = roomOccupants.reduce(
+        (sum, h) => sum + (h.familyCount || 1),
+        0
+      );
+
+      return {
+        ...room,
+        occupied,
+      };
+    });
+  }, [selectedCenterObj, databaseRooms, currentEventPlacements, households]);
+
   /* ── Filter logic ── */
   const sourceHouseholds = activeTab === 'active'
     ? (isReadOnly ? eventHouseholds : activeEventHouseholds)
@@ -907,28 +993,40 @@ export default function Household() {
   };
 
   const openCheckIn = (household, event) => {
-    event.stopPropagation();
-    const firstCenter = centers[0];
+    if (event?.stopPropagation) event.stopPropagation();
+    const defaultCenter = centers.find(
+      (c) =>
+        c.displayName === household.center ||
+        c.name === household.center ||
+        c.id === household.centerId
+    ) || centers[0];
+
     setCheckInTarget(household);
-    setCheckInCenterId(firstCenter?.id || '');
-    setCheckInRoom(getRoomsForCenter(firstCenter?.id, centers).find((room) => room !== 'All Rooms') || '');
+    setCheckInCenterId(defaultCenter?.id || '');
+    setCheckInRoom(household.room && household.room !== 'Unassigned' ? household.room : '');
     setCheckInError('');
+    setCheckInFeedback(null);
   };
 
-  const handleCheckIn = async (event) => {
-    event.preventDefault();
+  const executeCheckIn = async (roomName, roomId = null) => {
     if (isReadOnly || !selectedEvent?.id) {
       setCheckInError('Select the active evacuation operation before checking in a household.');
+      return;
+    }
+    if (!roomName) {
+      setCheckInError('Please select a room to assign.');
       return;
     }
 
     setIsCheckingIn(true);
     setCheckInError('');
+    setCheckInFeedback(null);
     try {
       await checkInHousehold({
         householdId: checkInTarget.id,
         centerId: checkInCenterId,
-        roomName: checkInRoom,
+        roomId: roomId || undefined,
+        roomName: roomName,
         eventId: selectedEvent.id,
       });
       setCheckInTarget(null);
@@ -938,6 +1036,55 @@ export default function Household() {
     } finally {
       setIsCheckingIn(false);
     }
+  };
+
+  const handleAutoAssign = () => {
+    if (!availableRoomsForCheckIn.length) {
+      setCheckInError('No rooms found in the selected evacuation center.');
+      return;
+    }
+
+    const candidate = availableRoomsForCheckIn.find(
+      (r) => r.name !== checkInTarget?.room && (r.capacity - r.occupied) >= neededSlots
+    );
+
+    if (!candidate) {
+      setCheckInError(
+        `Validation Error: No room in "${selectedCenterObj?.displayName || selectedCenterObj?.name}" has ${neededSlots} free slots! Please select another center.`
+      );
+      return;
+    }
+
+    setCheckInRoom(candidate.name || candidate.id);
+    setCheckInError('');
+    executeCheckIn(candidate.name || candidate.id, candidate.roomId);
+  };
+
+  const handleManualAssign = (room) => {
+    const isCurrent =
+      checkInTarget?.room === room.name &&
+      checkInTarget?.center === selectedCenterObj?.displayName;
+    if (isCurrent) {
+      setCheckInError(`${checkInTarget?.name} is already assigned to ${room.name}.`);
+      return;
+    }
+
+    const remaining = room.capacity - room.occupied;
+    if (remaining < neededSlots) {
+      setCheckInError(
+        `Validation Failed: Room ${room.name} only has ${remaining} slots available, but ${checkInTarget?.name} needs ${neededSlots} slots.`
+      );
+      return;
+    }
+
+    setCheckInRoom(room.name || room.id);
+    setCheckInError('');
+    executeCheckIn(room.name || room.id, room.roomId);
+  };
+
+  const handleCheckIn = async (event) => {
+    if (event?.preventDefault) event.preventDefault();
+    await executeCheckIn(checkInRoom);
   };
 
   const handleImportFile = async (event) => {
@@ -1638,58 +1785,282 @@ export default function Household() {
 
       {checkInTarget && (
         <div className="vin-admin-modal-overlay" onClick={() => setCheckInTarget(null)}>
-          <div className="vin-admin-modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="vin-admin-modal-card" style={{ maxWidth: '720px' }} onClick={(e) => e.stopPropagation()}>
             <div className="vin-admin-modal-header">
               <div>
-                <h2 className="vin-admin-modal-title">Check-In / Assign Room</h2>
+                <h2 className="vin-admin-modal-title">Assign Room & Check-In</h2>
                 <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '.84rem' }}>
-                  {checkInTarget.name} • {selectedEvent?.event_name || 'No active operation'}
+                  Allocate household to an available room with capacity validation • {selectedEvent?.event_name || 'Active Operation'}
                 </p>
               </div>
-              <button type="button" className="vin-admin-modal-close-btn" onClick={() => setCheckInTarget(null)}>
+              <button
+                type="button"
+                className="vin-admin-modal-close-btn"
+                onClick={() => setCheckInTarget(null)}
+                aria-label="Close"
+              >
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleCheckIn} className="vin-admin-modal-body">
+
+            <div className="vin-admin-modal-body" style={{ maxHeight: '78vh', overflowY: 'auto' }}>
+              {/* Household Info Banner */}
+              <div className="vin-room-hh-banner">
+                <div className="vin-room-hh-left">
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: '50%',
+                      background: '#ede9fe',
+                      color: '#7c3aed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <User size={20} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                      {checkInTarget.name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '0.82rem',
+                        color: '#64748b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: 2,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span>
+                        <strong>{neededSlots}</strong> family {neededSlots === 1 ? 'member' : 'members'}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Current Room:{' '}
+                        <strong
+                          style={{
+                            color:
+                              checkInTarget.room && checkInTarget.room !== 'Unassigned'
+                                ? '#16a34a'
+                                : '#d97706',
+                          }}
+                        >
+                          {checkInTarget.room && checkInTarget.room !== 'Unassigned'
+                            ? checkInTarget.room
+                            : 'Unassigned'}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Evacuation Center Selector */}
               <div className="vin-admin-form-group">
-                <label className="vin-admin-form-label" htmlFor="check-in-center">EVACUATION CENTER</label>
+                <label
+                  className="vin-admin-form-label"
+                  htmlFor="check-in-center"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Building size={14} color="#7c3aed" />
+                  EVACUATION CENTER
+                </label>
                 <select
                   id="check-in-center"
                   className="vin-admin-form-select"
                   value={checkInCenterId}
                   onChange={(e) => {
                     setCheckInCenterId(e.target.value);
-                    setCheckInRoom(getRoomsForCenter(e.target.value, centers).find((room) => room !== 'All Rooms') || '');
+                    setCheckInRoom('');
+                    setCheckInError('');
                   }}
                   required
                 >
                   {centers.map((center) => (
-                    <option key={center.id} value={center.id}>{center.displayName || center.name}</option>
+                    <option key={center.id} value={center.id}>
+                      {center.displayName || center.name}
+                    </option>
                   ))}
                 </select>
               </div>
-              <div className="vin-admin-form-group">
-                <label className="vin-admin-form-label" htmlFor="check-in-room">ROOM / AREA</label>
-                <select
-                  id="check-in-room"
-                  className="vin-admin-form-select"
-                  value={checkInRoom}
-                  onChange={(e) => setCheckInRoom(e.target.value)}
-                  required
+
+              {/* Feedback Error Banner */}
+              {checkInError && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.82rem',
+                    marginTop: 10,
+                  }}
+                  role="alert"
                 >
-                  {getRoomsForCenter(checkInCenterId, centers)
-                    .filter((room) => room !== 'All Rooms')
-                    .map((room) => <option key={room} value={room}>{room}</option>)}
-                </select>
-              </div>
-              {checkInError && <p role="alert" style={{ color: '#b91c1c', margin: 0 }}>{checkInError}</p>}
-              <div className="vin-modal-actions">
-                <button type="button" className="vin-btn-cancel" onClick={() => setCheckInTarget(null)}>Cancel</button>
-                <button type="submit" className="vin-btn-submit" disabled={isCheckingIn || isReadOnly}>
-                  {isCheckingIn ? 'Checking In…' : 'Confirm Check-In'}
+                  <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span style={{ fontWeight: 600 }}>{checkInError}</span>
+                </div>
+              )}
+
+              {/* Room Capacity & Status Section Header with Auto-Assign */}
+              <div className="vin-room-list-header">
+                <span className="vin-room-list-title">ROOM CAPACITY & STATUS</span>
+                <button
+                  type="button"
+                  className="vin-auto-assign-action-btn"
+                  onClick={handleAutoAssign}
+                  disabled={isCheckingIn || isReadOnly}
+                >
+                  Auto-Assign
                 </button>
               </div>
-            </form>
+
+              {/* Room Cards Grid */}
+              <div className="vin-admin-room-cards-grid">
+                {availableRoomsForCheckIn.map((room) => {
+                  const remaining = Math.max(0, room.capacity - room.occupied);
+                  const percentFilled = Math.min(
+                    100,
+                    Math.round((room.occupied / room.capacity) * 100)
+                  );
+                  const isCurrent =
+                    checkInTarget.room === room.name &&
+                    checkInTarget.center === selectedCenterObj?.displayName;
+                  const isSelected = checkInRoom === room.name;
+                  const hasCapacity = remaining >= neededSlots;
+                  const isFull = remaining <= 0;
+
+                  let cardCls = 'available';
+                  if (isCurrent) cardCls = 'current';
+                  else if (isSelected) cardCls = 'selected';
+                  else if (isFull) cardCls = 'full';
+                  else if (!hasCapacity) cardCls = 'insufficient';
+
+                  return (
+                    <div
+                      key={room.id}
+                      className={`vin-room-card-box ${cardCls}`}
+                      onClick={() => {
+                        if (hasCapacity && !isCurrent) {
+                          setCheckInRoom(room.name || room.id);
+                          setCheckInError('');
+                        }
+                      }}
+                      style={{ cursor: hasCapacity && !isCurrent ? 'pointer' : 'default' }}
+                    >
+                      <div className="vin-room-card-top-row">
+                        <div>
+                          <div className="vin-room-card-id">{room.name || room.id}</div>
+                          <div className="vin-room-card-subname">
+                            Capacity: {room.capacity} persons
+                          </div>
+                        </div>
+
+                        <span
+                          className={`vin-room-status-chip ${
+                            isCurrent
+                              ? 'current'
+                              : isFull
+                              ? 'full'
+                              : hasCapacity
+                              ? 'available'
+                              : 'low'
+                          }`}
+                        >
+                          {isCurrent
+                            ? 'Current Room'
+                            : isFull
+                            ? 'Full (0 free)'
+                            : `${remaining} slots free`}
+                        </span>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="vin-room-progress-track">
+                        <div
+                          className={`vin-room-progress-bar ${
+                            isFull ? 'full' : percentFilled > 75 ? 'warn' : 'ok'
+                          }`}
+                          style={{ width: `${percentFilled}%` }}
+                        />
+                      </div>
+
+                      {/* Capacity stats */}
+                      <div className="vin-room-card-stats-row">
+                        <span>
+                          Occupancy: <strong>{room.occupied}/{room.capacity}</strong> ({percentFilled}%)
+                        </span>
+                        <span>
+                          {isCurrent ? (
+                            <span className="vin-badge-green-txt">Assigned</span>
+                          ) : hasCapacity ? (
+                            <span className="vin-badge-green-txt">Fits {neededSlots} pers.</span>
+                          ) : isFull ? (
+                            <span className="vin-badge-red-txt">No space</span>
+                          ) : (
+                            <span className="vin-badge-amber-txt">Needs {neededSlots} slots</span>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Assign Button */}
+                      <button
+                        type="button"
+                        disabled={isCurrent || !hasCapacity || isCheckingIn || isReadOnly}
+                        className={`vin-room-select-btn ${
+                          isCurrent ? 'btn-current' : hasCapacity ? 'btn-fit' : 'btn-disabled'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleManualAssign(room);
+                        }}
+                      >
+                        {isCurrent
+                          ? 'Current Room ✓'
+                          : isSelected
+                          ? `Assign Selected (${room.name})`
+                          : hasCapacity
+                          ? `Assign ${room.name}`
+                          : 'Room Full / No Space'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="vin-modal-actions" style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  className="vin-btn-cancel"
+                  onClick={() => setCheckInTarget(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="vin-btn-submit"
+                  disabled={isCheckingIn || isReadOnly || !checkInRoom}
+                  onClick={() => executeCheckIn(checkInRoom)}
+                >
+                  {isCheckingIn
+                    ? 'Assigning Room…'
+                    : checkInRoom
+                    ? `Confirm Room ${checkInRoom}`
+                    : 'Select a Room Above'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
