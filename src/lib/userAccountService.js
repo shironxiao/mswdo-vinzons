@@ -1,13 +1,45 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase.js';
 
+export const MSWDO_ROLES = [
+  'MSWD Officer',
+  'Public Services Officer II',
+  'Social Welfare Officer II',
+  'Child Development Worker II',
+  'Administrative Aide IV',
+  'Social Welfare Aide',
+  'Social Welfare Assistant',
+  'OSCA Head',
+  'PDAO Officer',
+  'Job Order',
+];
+
+export function getRoleType(role = '') {
+  if (role === 'MSWD Officer' || role === 'admin') {
+    return 'admin';
+  }
+  if (
+    role === 'Public Services Officer II' ||
+    role === 'Social Welfare Officer II' ||
+    role === 'OSCA Head' ||
+    role === 'PDAO Officer' ||
+    role === 'coordinator'
+  ) {
+    return 'coordinator';
+  }
+  if (role === 'Job Order' || role === 'personnel') {
+    return 'personnel';
+  }
+  return 'staff';
+}
+
 export const FALLBACK_USERS = [
   {
     id: 'USR-001',
     initials: 'HM',
     name: 'Ronald Augorio',
     email: 'aaugorio@gmail.com',
-    role: 'Head of MSWDO',
+    role: 'MSWD Officer',
     roleType: 'admin',
     assignedCenter: 'All Centers (Command)',
     assignedCenterId: null,
@@ -18,8 +50,8 @@ export const FALLBACK_USERS = [
     initials: 'ME',
     name: 'Maria Elena Santos',
     email: 'melena@gmail.com',
-    role: 'Field Coordinator',
-    roleType: 'personnel',
+    role: 'Social Welfare Officer II',
+    roleType: 'coordinator',
     assignedCenter: 'LGU EC (Mangcaway)',
     assignedCenterId: null,
     status: 'Active',
@@ -29,8 +61,8 @@ export const FALLBACK_USERS = [
     initials: 'CM',
     name: 'Carlos Mendoza',
     email: 'cmendoza@gmail.com',
-    role: 'Relief Goods Staff',
-    roleType: 'personnel',
+    role: 'Social Welfare Assistant',
+    roleType: 'staff',
     assignedCenter: 'PLGU EC (Mat-I)',
     assignedCenterId: null,
     status: 'Active',
@@ -60,12 +92,14 @@ export function normalizeUserAccount(row, centersList = []) {
     .slice(0, 2) || 'US';
 
   // Role display label
-  const roleDisplay =
-    row.role === 'admin'
-      ? 'Head of MSWDO'
-      : row.role === 'viewer'
-      ? 'Evacuee Monitor'
-      : 'Field Coordinator';
+  let roleDisplay = row.role;
+  if (!MSWDO_ROLES.includes(roleDisplay)) {
+    if (row.role === 'admin') roleDisplay = 'MSWD Officer';
+    else if (row.role === 'personnel' || row.role === 'viewer') roleDisplay = 'Job Order';
+    else roleDisplay = 'Job Order';
+  }
+
+  const roleType = getRoleType(roleDisplay);
 
   return {
     id: row.id,
@@ -74,7 +108,7 @@ export function normalizeUserAccount(row, centersList = []) {
     email: row.email,
     phoneNumber: row.phone_number || '',
     role: roleDisplay,
-    roleType: row.role || 'personnel',
+    roleType,
     assignedCenter: centerName,
     assignedCenterId: row.assigned_center_id || null,
     status: row.status || 'Active',
@@ -163,13 +197,7 @@ export async function createUserAccount(userData, centersList = []) {
     if (found) centerId = found.id;
   }
 
-  const roleValue =
-    userData.role?.includes('Head') || userData.roleType === 'admin'
-      ? 'admin'
-      : userData.role?.includes('Monitor')
-      ? 'viewer'
-      : 'personnel';
-
+  const directRole = userData.role || 'Social Welfare Officer II';
   const password = userData.password || 'MSWDOvinzons2026!';
 
   // 1. Create Auth account
@@ -182,7 +210,7 @@ export async function createUserAccount(userData, centersList = []) {
   const userId = authData?.user?.id;
   if (!userId) throw new Error('Could not generate user authentication ID.');
 
-  // 2. Insert into user_accounts table
+  // 2. Insert into user_accounts table directly with the MSWDO role
   const { data: profileData, error: profileError } = await supabase
     .from('user_accounts')
     .insert({
@@ -190,7 +218,7 @@ export async function createUserAccount(userData, centersList = []) {
       email: userData.email.trim(),
       full_name: userData.name.trim(),
       phone_number: userData.phoneNumber || null,
-      role: roleValue,
+      role: directRole,
       assigned_center_id: centerId,
       status: userData.status || 'Active',
     })
@@ -213,18 +241,13 @@ export async function updateUserAccount(id, userData, centersList = []) {
     if (found) centerId = found.id;
   }
 
-  const roleValue =
-    userData.role?.includes('Head') || userData.roleType === 'admin'
-      ? 'admin'
-      : userData.role?.includes('Monitor')
-      ? 'viewer'
-      : 'personnel';
+  const directRole = userData.role || 'Social Welfare Officer II';
 
   const { error } = await supabase
     .from('user_accounts')
     .update({
       full_name: userData.name.trim(),
-      role: roleValue,
+      role: directRole,
       assigned_center_id: centerId,
       status: userData.status || 'Active',
       updated_at: new Date().toISOString(),

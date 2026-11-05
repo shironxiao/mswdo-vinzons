@@ -9,6 +9,8 @@ import {
   createUserAccount,
   updateUserAccount,
   deleteUserAccount,
+  MSWDO_ROLES,
+  getRoleType,
 } from '../../lib/userAccountService.js';
 
 const INITIAL_USERS = [
@@ -17,7 +19,7 @@ const INITIAL_USERS = [
     initials: 'HM',
     name: 'Ronald Augorio',
     email: 'aaugorio@gmail.com',
-    role: 'Head of MSWDO',
+    role: 'MSWD Officer',
     roleType: 'admin',
     assignedCenter: 'All Centers (Command)',
     status: 'Active',
@@ -27,7 +29,7 @@ const INITIAL_USERS = [
     initials: 'ME',
     name: 'Maria Elena Santos',
     email: 'melena@vinzons.gov.ph',
-    role: 'Field Coordinator',
+    role: 'Social Welfare Officer II',
     roleType: 'coordinator',
     assignedCenter: 'Vinzons Central Elementary School',
     status: 'Active',
@@ -37,7 +39,7 @@ const INITIAL_USERS = [
     initials: 'CM',
     name: 'Carlos Mendoza',
     email: 'cmendoza@vinzons.gov.ph',
-    role: 'Relief Goods Staff',
+    role: 'Social Welfare Assistant',
     roleType: 'staff',
     assignedCenter: 'Vinzons Covered Court',
     status: 'Active',
@@ -47,7 +49,7 @@ const INITIAL_USERS = [
     initials: 'AR',
     name: 'Ana Reyes',
     email: 'areyes@vinzons.gov.ph',
-    role: 'Evacuee Monitor',
+    role: 'Child Development Worker II',
     roleType: 'staff',
     assignedCenter: 'Calaguas National High School',
     status: 'Active',
@@ -56,10 +58,7 @@ const INITIAL_USERS = [
 
 const ROLES = [
   'All Roles',
-  'Head of MSWDO',
-  'Field Coordinator',
-  'Relief Goods Staff',
-  'Evacuee Monitor',
+  ...MSWDO_ROLES,
 ];
 
 export default function UserManagement() {
@@ -79,7 +78,7 @@ export default function UserManagement() {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    role: 'Field Coordinator',
+    role: 'Social Welfare Officer II',
     assignedCenter: 'All Centers (Command)',
   });
   const [addErrors, setAddErrors] = useState({});
@@ -87,7 +86,7 @@ export default function UserManagement() {
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
-    role: 'Field Coordinator',
+    role: 'Social Welfare Officer II',
     assignedCenter: 'All Centers (Command)',
     status: 'Active',
   });
@@ -144,7 +143,7 @@ export default function UserManagement() {
       name: form.name.trim(),
       email: form.email.trim(),
       role: form.role,
-      roleType: form.role.includes('Head') ? 'admin' : form.role.includes('Coordinator') ? 'coordinator' : 'staff',
+      roleType: getRoleType(form.role),
       assignedCenter: form.assignedCenter,
       status: 'Active',
     };
@@ -152,7 +151,7 @@ export default function UserManagement() {
     // Optimistic UI update
     setUsers([newUser, ...users]);
     const addedName = form.name.trim();
-    setForm({ name: '', email: '', role: 'Field Coordinator', assignedCenter: 'All Centers (Command)' });
+    setForm({ name: '', email: '', role: 'Social Welfare Officer II', assignedCenter: 'All Centers (Command)' });
     setAddErrors({});
     setIsModalOpen(false);
     showToast(`User "${addedName}" added successfully.`);
@@ -204,7 +203,7 @@ export default function UserManagement() {
               name: editForm.name.trim(),
               email: editForm.email.trim(),
               role: editForm.role,
-              roleType: editForm.role.includes('Head') ? 'admin' : editForm.role.includes('Coordinator') ? 'coordinator' : 'staff',
+              roleType: getRoleType(editForm.role),
               assignedCenter: editForm.assignedCenter,
               status: editForm.status,
               initials: initials || u.initials,
@@ -431,10 +430,11 @@ export default function UserManagement() {
                   value={form.role}
                   onChange={(e) => setForm({ ...form, role: e.target.value })}
                 >
-                  <option value="Head of MSWDO">Head of MSWDO (Admin)</option>
-                  <option value="Field Coordinator">Field Coordinator</option>
-                  <option value="Relief Goods Staff">Relief Goods Staff</option>
-                  <option value="Evacuee Monitor">Evacuee Monitor</option>
+                  {MSWDO_ROLES.map((roleName) => (
+                    <option key={roleName} value={roleName}>
+                      {roleName} {roleName === 'MSWD Officer' ? '(Admin)' : roleName === 'Job Order' ? '(Personnel)' : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -524,10 +524,11 @@ export default function UserManagement() {
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                 >
-                  <option value="Head of MSWDO">Head of MSWDO (Admin)</option>
-                  <option value="Field Coordinator">Field Coordinator</option>
-                  <option value="Relief Goods Staff">Relief Goods Staff</option>
-                  <option value="Evacuee Monitor">Evacuee Monitor</option>
+                  {MSWDO_ROLES.map((roleName) => (
+                    <option key={roleName} value={roleName}>
+                      {roleName} {roleName === 'MSWD Officer' ? '(Admin)' : roleName === 'Job Order' ? '(Personnel)' : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 

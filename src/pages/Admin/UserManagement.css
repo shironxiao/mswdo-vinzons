@@ -179,6 +179,11 @@
   color: #7c3aed;
 }
 
+.vin-role-badge.personnel {
+  background-color: #f0fdf4;
+  color: #15803d;
+}
+
 .vin-role-badge.coordinator {
   background-color: #eff6ff;
   color: #2563eb;
