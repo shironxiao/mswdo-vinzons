@@ -1,5 +1,5 @@
 import { useState, useMemo, useContext } from 'react';
-import { Building, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building, ChevronLeft, ChevronRight, Users, X } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
@@ -24,8 +24,15 @@ export default function RoomPlacement() {
   const [filterStatus, setFilterStatus] = useState('All Status');
   const [search, setSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
+
+  // Clean room name by stripping redundant "- Capacity <number>"
+  const cleanRoomName = (name) =>
+    String(name || '')
+      .replace(/\s*-\s*Capacity\s*\d+/i, '')
+      .trim();
 
   // Calculate live room occupancies from Supabase database
   const allRooms = useMemo(() => {
@@ -49,7 +56,7 @@ export default function RoomPlacement() {
           id: r.code || r.id,
           roomKey: r.roomName,
           center: r.center,
-          name: `${r.roomName} - Capacity ${r.capacity}`,
+          name: cleanRoomName(r.roomName),
           occupied,
           households: roomHouseholds,
           capacity: r.capacity,
@@ -84,7 +91,7 @@ export default function RoomPlacement() {
           id: `${center.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()}-${r.id.replace(/\s+/g, '')}`,
           roomKey: r.id,
           center: center.displayName,
-          name: `${r.name} - Capacity ${r.capacity || 25}`,
+          name: cleanRoomName(r.name),
           occupied,
           households: roomOccupants,
           capacity: r.capacity || 25,
@@ -196,51 +203,35 @@ export default function RoomPlacement() {
           <table className="vin-feature-table vin-room-placement-table">
             <thead>
               <tr>
-                <th>ROOM CODE</th>
                 <th>CENTER</th>
                 <th>ROOM NAME / DESIGNATION</th>
-                <th>HOUSEHOLDS IN ROOM</th>
                 <th>OCCUPANCY</th>
                 <th>STATUS</th>
+                <th style={{ textAlign: 'right' }}>ACTION</th>
               </tr>
             </thead>
             <tbody>
               {paginatedRooms.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                     No rooms match the current filter criteria.
                   </td>
                 </tr>
               ) : (
                 paginatedRooms.map((item) => (
                   <tr key={item.id}>
-                    <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.id}</td>
                     <td>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
                         <Building size={15} color="#2563eb" />
                         {item.center}
                       </span>
                     </td>
-                    <td style={{ fontWeight: 600 }}>{item.name}</td>
-                    <td>
-                      {item.households.length > 0 ? (
-                        <ul className="vin-room-placement-household-list">
-                          {item.households.map((household) => (
-                            <li key={household.id}>
-                              <span>{household.name}</span>
-                              <small>{household.householdCode || household.id}</small>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className="vin-room-placement-empty">No households assigned</span>
-                      )}
-                    </td>
+                    <td style={{ fontWeight: 600, color: '#0f172a' }}>{item.name}</td>
                     <td>
                       <div style={{ fontWeight: 700, color: item.status === 'Full' ? '#b91c1c' : '#7c3aed' }}>
                         {item.occupied} / {item.capacity} persons
                       </div>
-                      <div style={{ height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', marginTop: 5 }}>
+                      <div style={{ height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', marginTop: 5, maxWidth: 160 }}>
                         <div style={{
                           height: '100%',
                           width: `${Math.min(100, Math.round((item.occupied / item.capacity) * 100))}%`,
@@ -252,6 +243,16 @@ export default function RoomPlacement() {
                       <span className={`vin-status-tag ${item.status === 'Full' ? 'pending' : 'active'}`}>
                         {item.status}
                       </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="vin-btn-view-households"
+                        onClick={() => setSelectedRoom(item)}
+                      >
+                        <Users size={14} />
+                        <span>View Households</span>
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -303,6 +304,124 @@ export default function RoomPlacement() {
               <span>Next</span>
               <ChevronRight size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── View Households In Room Modal Panel ── */}
+      {selectedRoom && (
+        <div className="vin-modal-overlay" onClick={() => setSelectedRoom(null)}>
+          <div
+            className="vin-room-households-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="vin-room-modal-header">
+              <div className="vin-room-modal-header-info">
+                <div className="vin-room-modal-badge-row">
+                  <span className="vin-room-center-badge">
+                    <Building size={13} color="#2563eb" />
+                    {selectedRoom.center}
+                  </span>
+                  <span className={`vin-status-tag ${selectedRoom.status === 'Full' ? 'pending' : 'active'}`}>
+                    {selectedRoom.status}
+                  </span>
+                </div>
+                <h2 className="vin-room-modal-title">
+                  {selectedRoom.name}
+                </h2>
+                <p className="vin-room-modal-subtitle">
+                  Occupancy: <strong>{selectedRoom.occupied} / {selectedRoom.capacity} persons</strong>
+                  {' • '}
+                  <strong>{selectedRoom.households.length}</strong> {selectedRoom.households.length === 1 ? 'household' : 'households'} assigned
+                </p>
+              </div>
+              <button
+                type="button"
+                className="vin-picker-close-btn"
+                onClick={() => setSelectedRoom(null)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="vin-room-modal-body">
+              {selectedRoom.households.length === 0 ? (
+                <div className="vin-room-households-empty">
+                  <Users size={44} className="vin-room-empty-icon" />
+                  <h4 className="vin-room-empty-title">No Households Assigned</h4>
+                  <p className="vin-room-empty-desc">
+                    There are currently no evacuated households allocated to {selectedRoom.name}.
+                  </p>
+                </div>
+              ) : (
+                <div className="vin-room-households-list">
+                  {selectedRoom.households.map((hh, idx) => {
+                    const memberCount = hh.familyCount || (hh.members?.length ? hh.members.length + 1 : 1);
+                    return (
+                      <div key={hh.id || idx} className="vin-room-household-card">
+                        <div className="vin-room-hh-top">
+                          <div className="vin-room-hh-identity">
+                            <span className="vin-room-hh-name">{hh.name}</span>
+                            <span className="vin-room-hh-code">
+                              {hh.householdCode || hh.id}
+                              {hh.stubCode ? ` • Stub: ${hh.stubCode}` : ''}
+                            </span>
+                          </div>
+                          <span className="vin-room-hh-count-badge">
+                            <Users size={12} />
+                            {memberCount} {memberCount === 1 ? 'Person' : 'Persons'}
+                          </span>
+                        </div>
+
+                        {(hh.purok || hh.barangay) && (
+                          <div className="vin-room-hh-location">
+                            📍 {[hh.purok, hh.barangay].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+
+                        {Array.isArray(hh.vulnerabilities) && hh.vulnerabilities.length > 0 && (
+                          <div className="vin-room-hh-tags">
+                            {hh.vulnerabilities.map((v, vIdx) => (
+                              <span key={vIdx} className="vin-room-hh-vuln-pill">
+                                {v}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {Array.isArray(hh.members) && hh.members.length > 0 && (
+                          <div className="vin-room-hh-members-wrap">
+                            <span className="vin-room-hh-members-label">Family Members ({hh.members.length}):</span>
+                            <div className="vin-room-hh-members-list">
+                              {hh.members.map((m, mIdx) => (
+                                <span key={mIdx} className="vin-room-member-chip">
+                                  {m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim() || `Member #${mIdx + 1}`}
+                                  {m.relationship ? ` • ${m.relationship}` : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="vin-room-modal-footer">
+              <button
+                type="button"
+                className="vin-btn-modal-close"
+                onClick={() => setSelectedRoom(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

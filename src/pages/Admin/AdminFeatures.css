@@ -208,6 +208,266 @@
   font-weight: 500;
 }
 
+/* ── Room Placement Action & Modal Styles ── */
+.vin-btn-view-households {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.vin-btn-view-households:hover {
+  background-color: #ede9fe;
+  border-color: #c4b5fd;
+  color: #6d28d9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(124, 58, 237, 0.15);
+}
+
+.vin-room-households-modal {
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+.vin-room-modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vin-room-modal-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-room-modal-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vin-room-center-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.vin-room-modal-title {
+  margin: 2px 0 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-room-modal-subtitle {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #64748b;
+}
+
+.vin-room-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: 55vh;
+}
+
+.vin-room-households-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.vin-room-empty-icon {
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.vin-room-empty-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 6px;
+}
+
+.vin-room-empty-desc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+  max-width: 340px;
+}
+
+.vin-room-households-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vin-room-household-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.vin-room-household-card:hover {
+  border-color: #cbd5e1;
+}
+
+.vin-room-hh-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vin-room-hh-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-room-hh-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-room-hh-code {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.vin-room-hh-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.vin-room-hh-location {
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.vin-room-hh-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vin-room-hh-vuln-pill {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #fde68a;
+}
+
+.vin-room-hh-members-wrap {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-room-hh-members-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.vin-room-hh-members-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vin-room-member-chip {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.vin-room-modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  background: #fafafa;
+}
+
+.vin-btn-modal-close {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-btn-modal-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
 .vin-status-tag {
   display: inline-flex;
   align-items: center;
