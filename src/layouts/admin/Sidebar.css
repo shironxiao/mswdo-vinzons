@@ -513,6 +513,115 @@
   cursor: wait;
 }
 
+/* ══════════════════════════════════════════════
+   Floating Feedback Pop-up Toast Message
+   ══════════════════════════════════════════════ */
+.vin-admin-popup-toast {
+  position: fixed;
+  top: 24px;
+  right: 28px;
+  z-index: 99999;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.2), 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
+  max-width: 420px;
+  min-width: 320px;
+  box-sizing: border-box;
+  animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vin-admin-popup-toast.success {
+  border-left: 4px solid #7c3aed;
+}
+
+.vin-admin-popup-toast.error {
+  border-left: 4px solid #dc2626;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.vin-popup-toast-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f5f3ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.vin-admin-popup-toast.error .vin-popup-toast-icon-wrap {
+  background: #fef2f2;
+}
+
+.vin-popup-toast-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.vin-popup-toast-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.vin-popup-toast-message {
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.vin-popup-toast-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.vin-popup-toast-close:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+@media (max-width: 768px) {
+  .vin-admin-popup-toast {
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
 .vin-user-avatar {
   width: 36px;
   height: 36px;

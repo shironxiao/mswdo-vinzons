@@ -56,6 +56,8 @@ export default function Sidebar({
   const navigate = useNavigate();
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [toastNotification, setToastNotification] = useState(null);
+  const toastTimerRef = useRef(null);
 
   // Admin Account state from localStorage
   const [adminAccount, setAdminAccount] = useState(() => {
@@ -88,6 +90,20 @@ export default function Sidebar({
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const currentPath = activePath || location.pathname || '/admin/dashboard';
+
+  const showToast = (title, message, type = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastNotification({ title, message, type });
+    toastTimerRef.current = setTimeout(() => {
+      setToastNotification(null);
+    }, 4500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   const handleOpenProfileModal = () => {
     setProfileForm({
@@ -153,20 +169,25 @@ export default function Sidebar({
       setAdminAccount(updatedAccount);
       localStorage.setItem('mswdo_admin_account', JSON.stringify(updatedAccount));
 
-      setProfileFeedback({
-        type: 'success',
-        message: profileForm.newPassword
-          ? 'Admin information & password updated successfully!'
-          : 'Admin information saved successfully!',
-      });
-
-      // Clear password fields
+      // Clear password fields and close modal
       setProfileForm((prev) => ({ ...prev, newPassword: '', confirmPassword: '' }));
+      setShowProfileModal(false);
+
+      // Trigger floating feedback pop-up toast message
+      showToast(
+        'Admin Information Updated',
+        profileForm.newPassword
+          ? 'Administrator credentials & password updated successfully!'
+          : 'Administrator information saved successfully!',
+        'success'
+      );
     } catch (err) {
+      const errorMsg = err?.message || 'Could not update profile information.';
       setProfileFeedback({
         type: 'error',
-        message: err?.message || 'Could not update profile information.',
+        message: errorMsg,
       });
+      showToast('Update Failed', errorMsg, 'error');
     } finally {
       setIsSavingProfile(false);
     }
@@ -482,6 +503,35 @@ export default function Sidebar({
         }}
         onCancel={() => setShowLogoutConfirmation(false)}
       />
+
+      {/* ── Floating Feedback Pop-Up Toast Notification ── */}
+      {toastNotification && (
+        <div
+          className={`vin-admin-popup-toast ${toastNotification.type}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="vin-popup-toast-icon-wrap">
+            {toastNotification.type === 'error' ? (
+              <AlertCircle size={20} color="#dc2626" />
+            ) : (
+              <CheckCircle2 size={20} color="#7c3aed" />
+            )}
+          </div>
+          <div className="vin-popup-toast-text">
+            <span className="vin-popup-toast-title">{toastNotification.title}</span>
+            <span className="vin-popup-toast-message">{toastNotification.message}</span>
+          </div>
+          <button
+            type="button"
+            className="vin-popup-toast-close"
+            onClick={() => setToastNotification(null)}
+            aria-label="Close notification"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </>
   );
 }
