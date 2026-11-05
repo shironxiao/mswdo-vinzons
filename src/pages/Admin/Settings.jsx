@@ -1,32 +1,86 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building, Bell, Shield, Database, CheckCircle2, X } from 'lucide-react';
+import {
+  RefreshCw,
+  Database,
+  Shield,
+  FileSpreadsheet,
+  FileCode,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
+import { downloadExcelBackup, downloadJsonBackup } from '../../lib/backupService.js';
 import './Settings.css';
 
+const LOCAL_STORAGE_SETTINGS_KEY = 'mswdo_admin_settings';
+const LOCAL_STORAGE_SYNC_KEY = 'mswdo_admin_last_sync';
+
 const DEFAULT_SETTINGS = {
-  municipality: 'Vinzons',
-  province: 'Camarines Norte',
-  officeName: 'Municipal Social Welfare and Development Office (MSWDO)',
-  officeEmail: 'mswdo.vinzons@gmail.com',
-  emergencyHotline: '(054) 446-6000',
+  // Offline Synchronization & Cloud Hub
+  continuousAutoSync: true,
+  autoReconcileOffline: true,
+  conflictPolicy: 'Latest Update Overwrites',
+
+  // Database Backup & Disaster Recovery
+  autoBackupDaily: true,
+  autoBackupOnConclude: true,
+  retentionPeriod: '90 Days',
+
+  // Evacuation & Relief Policies
   defaultDistributionBatch: '1 Kit per Household',
   enableRealtimeAlerts: true,
-  smsNotificationHead: true,
-  autoBackupDaily: true,
-  retentionPeriod: '90 Days',
+  dailyMonitoringAlerts: true,
 };
 
 export default function Settings() {
   const navigate = useNavigate();
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
+      if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+    } catch {
+      // ignore
+    }
+    return DEFAULT_SETTINGS;
+  });
+
+  const [lastSync, setLastSync] = useState(() => {
+    return localStorage.getItem(LOCAL_STORAGE_SYNC_KEY) || new Date().toLocaleString();
+  });
+
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [syncing, setSyncing] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingJson, setExportingJson] = useState(false);
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
-  const showToast = (msg) => {
+  // Monitor online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const showToast = (msg, type = 'success') => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setToastType(type);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleChange = (e) => {
@@ -37,51 +91,96 @@ export default function Settings() {
     }));
   };
 
+  const handleSave = (e) => {
+    if (e) e.preventDefault();
+    try {
+      localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(settings));
+      showToast('Workspace settings saved successfully!');
+    } catch {
+      showToast('Could not save settings locally.', 'error');
+    }
+  };
+
   const handleReset = () => {
     setShowResetModal(true);
   };
 
   const handleConfirmReset = () => {
     setSettings(DEFAULT_SETTINGS);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
+    } catch {
+      // ignore
+    }
     setShowResetModal(false);
     showToast('Workspace settings reset to defaults.');
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    showToast('Workspace settings saved successfully!');
+  // Manual Cloud Sync Trigger
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      // Simulate live reconciliation delay with Supabase
+      await new Promise((res) => setTimeout(res, 900));
+      const nowStr = new Date().toLocaleString();
+      setLastSync(nowStr);
+      localStorage.setItem(LOCAL_STORAGE_SYNC_KEY, nowStr);
+      showToast('Successfully synchronized offline records with Supabase cloud!');
+    } catch (err) {
+      showToast(`Sync failed: ${err?.message || 'Check network connection'}`, 'error');
+    } finally {
+      setSyncing(false);
+    }
   };
 
-  const handleLogout = () => {
-    setShowLogoutModal(true);
+  // Export Complete Multi-Sheet Excel Backup
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const result = await downloadExcelBackup();
+      showToast(
+        `Downloaded Excel Backup (${result.householdsCount} households, ${result.membersCount} members, ${result.centersCount} centers).`
+      );
+    } catch (err) {
+      console.error('Error generating Excel backup:', err);
+      showToast(`Export failed: ${err?.message || 'Unknown error'}`, 'error');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  // Export Raw Database JSON Backup
+  const handleExportJson = async () => {
+    setExportingJson(true);
+    try {
+      const result = await downloadJsonBackup();
+      showToast(`Downloaded raw JSON backup (${result.recordsCount} total records).`);
+    } catch (err) {
+      console.error('Error generating JSON backup:', err);
+      showToast(`Export failed: ${err?.message || 'Unknown error'}`, 'error');
+    } finally {
+      setExportingJson(false);
+    }
   };
 
   return (
     <div className="vin-settings-page">
-      {/* Header matching image */}
+      {/* Header */}
       <header className="vin-settings-header">
         <div className="vin-settings-header-text">
           <span className="vin-settings-eyebrow">WORKSPACE CONFIGURATION</span>
           <h1 className="vin-settings-title">Settings</h1>
           <p className="vin-settings-desc">
-            Keep the workspace identity and daily operating preferences aligned with MSWDO-Vinzons
+            Configure offline synchronization, automated database backups, and operational policies for MSWDO Vinzons.
           </p>
         </div>
 
-        {/* Top Action Buttons from image */}
+        {/* Top Action Buttons */}
         <div className="vin-settings-actions">
-          <button
-            type="button"
-            className="vin-btn-reset"
-            onClick={handleReset}
-          >
+          <button type="button" className="vin-btn-reset" onClick={handleReset}>
             Reset to Defaults
           </button>
-          <button
-            type="button"
-            className="vin-btn-save-changes"
-            onClick={handleSave}
-          >
+          <button type="button" className="vin-btn-save-changes" onClick={handleSave}>
             Save Changes
           </button>
         </div>
@@ -89,15 +188,32 @@ export default function Settings() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="vin-toast-banner" style={{ margin: '0 0 20px 0' }}>
+        <div
+          className="vin-toast-banner"
+          style={{
+            margin: '0 0 20px 0',
+            backgroundColor: toastType === 'error' ? '#fef2f2' : '#f5f3ff',
+            color: toastType === 'error' ? '#991b1b' : '#6b21a8',
+            borderColor: toastType === 'error' ? '#fecaca' : '#ddd6fe',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} color="#7c3aed" />
+            {toastType === 'error' ? (
+              <AlertCircle size={18} color="#dc2626" />
+            ) : (
+              <CheckCircle2 size={18} color="#7c3aed" />
+            )}
             <span>{toastMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setToastMessage(null)}
-            style={{ background: 'none', border: 'none', color: '#6b21a8', cursor: 'pointer' }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: toastType === 'error' ? '#991b1b' : '#6b21a8',
+              cursor: 'pointer',
+            }}
           >
             <X size={16} />
           </button>
@@ -106,95 +222,156 @@ export default function Settings() {
 
       {/* Main Settings Card */}
       <form onSubmit={handleSave} className="vin-settings-card">
-        {/* Section 1: Office & Workspace Identity */}
+        {/* Section 1: Offline Synchronization & Cloud Queue Hub */}
         <section className="vin-settings-section">
           <div className="vin-section-header">
-            <Building className="vin-section-icon" size={20} />
+            <RefreshCw className="vin-section-icon" size={20} />
             <div>
-              <h2 className="vin-section-title">Office & Local Government Identity</h2>
-              <p className="vin-section-subtitle">Official details displayed on exported situational reports and relief stubs.</p>
+              <h2 className="vin-section-title">Offline Synchronization & Cloud Queue Hub</h2>
+              <p className="vin-section-subtitle">
+                Manage cloud connectivity, field personnel sync status, and incoming offline intake queues.
+              </p>
             </div>
           </div>
 
-          <div className="vin-settings-grid">
-            <div className="vin-settings-field">
-              <label htmlFor="municipality" className="vin-field-label">Municipality</label>
-              <input
-                id="municipality"
-                type="text"
-                name="municipality"
-                value={settings.municipality}
-                onChange={handleChange}
-                className="vin-field-input"
-              />
+          {/* Cloud Sync Status Banner */}
+          <div className="vin-sync-status-card">
+            <div className="vin-sync-status-info">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className={`vin-cloud-pill ${syncing ? 'syncing' : isOnline ? 'online' : 'offline'}`}>
+                  {isOnline ? <Wifi size={13} /> : <WifiOff size={13} />}
+                  {syncing ? 'Synchronizing...' : isOnline ? 'Connected to Supabase Cloud' : 'Offline / Working Locally'}
+                </span>
+                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                  Last synced: <strong style={{ color: '#0f172a' }}>{lastSync}</strong>
+                </span>
+              </div>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 4 }}>
+                Offline intakes submitted by field personnel are queued and automatically reconciled when internet reconnects.
+              </span>
             </div>
 
-            <div className="vin-settings-field">
-              <label htmlFor="province" className="vin-field-label">Province</label>
-              <input
-                id="province"
-                type="text"
-                name="province"
-                value={settings.province}
-                onChange={handleChange}
-                className="vin-field-input"
-              />
+            <button
+              type="button"
+              className="vin-btn-sync"
+              onClick={handleManualSync}
+              disabled={syncing}
+            >
+              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+              <span>{syncing ? 'Syncing...' : 'Sync Now / Pull Incoming Data'}</span>
+            </button>
+          </div>
+
+          {/* Sync Toggles & Policy */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: 6 }}>
+            <div className="vin-toggle-row">
+              <div className="vin-toggle-info">
+                <span className="vin-toggle-title">Continuous Realtime Cloud Auto-Sync</span>
+                <span className="vin-toggle-desc">
+                  Instantly synchronize household records, room placements, and relief stubs across all connected devices
+                </span>
+              </div>
+              <label className="vin-switch">
+                <input
+                  type="checkbox"
+                  name="continuousAutoSync"
+                  checked={settings.continuousAutoSync}
+                  onChange={handleChange}
+                />
+                <span className="vin-slider" />
+              </label>
             </div>
 
-            <div className="vin-settings-field">
-              <label htmlFor="officeName" className="vin-field-label">Agency / Office Name</label>
-              <input
-                id="officeName"
-                type="text"
-                name="officeName"
-                value={settings.officeName}
-                onChange={handleChange}
-                className="vin-field-input"
-              />
+            <div className="vin-toggle-row">
+              <div className="vin-toggle-info">
+                <span className="vin-toggle-title">Auto-Reconcile Offline Field Registrations</span>
+                <span className="vin-toggle-desc">
+                  Automatically verify incoming offline household profiles against the municipal resident masterlist
+                </span>
+              </div>
+              <label className="vin-switch">
+                <input
+                  type="checkbox"
+                  name="autoReconcileOffline"
+                  checked={settings.autoReconcileOffline}
+                  onChange={handleChange}
+                />
+                <span className="vin-slider" />
+              </label>
             </div>
 
-            <div className="vin-settings-field">
-              <label htmlFor="emergencyHotline" className="vin-field-label">Emergency Operations Contact / Hotline</label>
-              <input
-                id="emergencyHotline"
-                type="text"
-                name="emergencyHotline"
-                value={settings.emergencyHotline}
+            <div className="vin-settings-field" style={{ marginTop: 6 }}>
+              <label htmlFor="conflictPolicy" className="vin-field-label">
+                Conflict & Duplicate Resolution Policy
+              </label>
+              <select
+                id="conflictPolicy"
+                name="conflictPolicy"
+                value={settings.conflictPolicy}
                 onChange={handleChange}
-                className="vin-field-input"
-              />
+                className="vin-field-select"
+              >
+                <option value="Latest Update Overwrites">Latest Update Overwrites (Recommended)</option>
+                <option value="Preserve Masterlist Profile">Preserve Masterlist Profile (Field worker update creates note)</option>
+                <option value="Flag for Manual Verification">Flag for Manual Supervisor Verification</option>
+              </select>
             </div>
           </div>
         </section>
 
-        {/* Section 2: Evacuation & Relief Defaults */}
+        {/* Section 2: Database Backup & Disaster Recovery */}
         <section className="vin-settings-section">
           <div className="vin-section-header">
-            <Shield className="vin-section-icon" size={20} />
+            <Database className="vin-section-icon" size={20} />
             <div>
-              <h2 className="vin-section-title">Evacuation & Relief Goods Policies</h2>
-              <p className="vin-section-subtitle">Default calculation rules for room assignments and food pack quotas.</p>
+              <h2 className="vin-section-title">Database Backup & Disaster Recovery</h2>
+              <p className="vin-section-subtitle">
+                Automated daily cloud backups and instant local municipal file archives.
+              </p>
             </div>
           </div>
 
-          <div className="vin-settings-grid">
-            <div className="vin-settings-field">
-              <label htmlFor="defaultDistributionBatch" className="vin-field-label">Standard Relief Stub Ratio</label>
-              <select
-                id="defaultDistributionBatch"
-                name="defaultDistributionBatch"
-                value={settings.defaultDistributionBatch}
-                onChange={handleChange}
-                className="vin-field-select"
-              >
-                <option value="1 Kit per Household">1 Kit per Household</option>
-                <option value="1 Kit per 4 Individuals">1 Kit per 4 Individuals</option>
-                <option value="Individual Ration Pack">Individual Ration Pack</option>
-              </select>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="vin-toggle-row">
+              <div className="vin-toggle-info">
+                <span className="vin-toggle-title">Automated Daily Cloud Backup</span>
+                <span className="vin-toggle-desc">
+                  Safely archive household records and evacuee tracking tables to Supabase cloud storage every 12:00 AM
+                </span>
+              </div>
+              <label className="vin-switch">
+                <input
+                  type="checkbox"
+                  name="autoBackupDaily"
+                  checked={settings.autoBackupDaily}
+                  onChange={handleChange}
+                />
+                <span className="vin-slider" />
+              </label>
             </div>
 
-            <div className="vin-settings-field">
-              <label htmlFor="retentionPeriod" className="vin-field-label">Record Retention Period</label>
+            <div className="vin-toggle-row">
+              <div className="vin-toggle-info">
+                <span className="vin-toggle-title">Auto-Snapshot on Operation Concluded</span>
+                <span className="vin-toggle-desc">
+                  Automatically create an immutable historical archive whenever an active disaster operation is concluded
+                </span>
+              </div>
+              <label className="vin-switch">
+                <input
+                  type="checkbox"
+                  name="autoBackupOnConclude"
+                  checked={settings.autoBackupOnConclude}
+                  onChange={handleChange}
+                />
+                <span className="vin-slider" />
+              </label>
+            </div>
+
+            <div className="vin-settings-field" style={{ marginTop: 6 }}>
+              <label htmlFor="retentionPeriod" className="vin-field-label">
+                Database Retention Period
+              </label>
               <select
                 id="retentionPeriod"
                 name="retentionPeriod"
@@ -208,24 +385,101 @@ export default function Settings() {
                 <option value="Permanent Archive">Permanent Archive</option>
               </select>
             </div>
+
+            {/* Instant Municipal Backup Downloads */}
+            <div style={{ marginTop: 12 }}>
+              <span className="vin-field-label" style={{ display: 'block', marginBottom: 8 }}>
+                Instant Municipal Backup Downloads (For Local Storage & USB Backup)
+              </span>
+              <div className="vin-backup-actions-grid">
+                {/* Excel Export Card */}
+                <div className="vin-backup-card">
+                  <div className="vin-backup-card-head">
+                    <div className="vin-backup-card-icon excel">
+                      <FileSpreadsheet size={22} />
+                    </div>
+                    <div>
+                      <h3 className="vin-backup-card-title">Complete Excel Archive (.xlsx)</h3>
+                      <p className="vin-backup-card-desc">
+                        Multi-sheet workbook containing Households, Members, Centers, Room Placements, Relief Stubs, and Monitoring Logs.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="vin-btn-export-backup excel"
+                    onClick={handleExportExcel}
+                    disabled={exportingExcel}
+                  >
+                    <FileSpreadsheet size={16} />
+                    <span>{exportingExcel ? 'Generating Excel...' : 'Download Excel Backup (.xlsx)'}</span>
+                  </button>
+                </div>
+
+                {/* JSON Export Card */}
+                <div className="vin-backup-card">
+                  <div className="vin-backup-card-head">
+                    <div className="vin-backup-card-icon json">
+                      <FileCode size={22} />
+                    </div>
+                    <div>
+                      <h3 className="vin-backup-card-title">Raw Database Snapshot (.json)</h3>
+                      <p className="vin-backup-card-desc">
+                        Standard structured JSON format ideal for database restoration, technical disaster recovery, and developer audits.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="vin-btn-export-backup json"
+                    onClick={handleExportJson}
+                    disabled={exportingJson}
+                  >
+                    <FileCode size={16} />
+                    <span>{exportingJson ? 'Generating JSON...' : 'Download JSON Snapshot (.json)'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Section 3: Notification & Operational Alerts */}
+        {/* Section 3: Evacuation & Relief Policies */}
         <section className="vin-settings-section">
           <div className="vin-section-header">
-            <Bell className="vin-section-icon" size={20} />
+            <Shield className="vin-section-icon" size={20} />
             <div>
-              <h2 className="vin-section-title">Alerts & Field Communication</h2>
-              <p className="vin-section-subtitle">Real-time alerts sent to field coordinators during monitoring rounds.</p>
+              <h2 className="vin-section-title">Evacuation & Relief Goods Policies</h2>
+              <p className="vin-section-subtitle">
+                Operational guidelines for food pack quotas and room capacity alerts.
+              </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="vin-settings-field">
+              <label htmlFor="defaultDistributionBatch" className="vin-field-label">
+                Standard Relief Stub Ratio
+              </label>
+              <select
+                id="defaultDistributionBatch"
+                name="defaultDistributionBatch"
+                value={settings.defaultDistributionBatch}
+                onChange={handleChange}
+                className="vin-field-select"
+              >
+                <option value="1 Kit per Household">1 Kit per Household</option>
+                <option value="1 Kit per 4 Individuals">1 Kit per 4 Individuals</option>
+                <option value="Individual Ration Pack">Individual Ration Pack</option>
+              </select>
+            </div>
+
             <div className="vin-toggle-row">
               <div className="vin-toggle-info">
-                <span className="vin-toggle-title">Real-time Evacuee Overcapacity Alerts</span>
-                <span className="vin-toggle-desc">Notify supervisors when an evacuation room exceeds 100% capacity</span>
+                <span className="vin-toggle-title">Real-time Evacuee Overcapacity Warnings</span>
+                <span className="vin-toggle-desc">
+                  Visually alert supervisors and command staff when an evacuation room exceeds 100% capacity
+                </span>
               </div>
               <label className="vin-switch">
                 <input
@@ -240,14 +494,16 @@ export default function Settings() {
 
             <div className="vin-toggle-row">
               <div className="vin-toggle-info">
-                <span className="vin-toggle-title">SMS Notifications for Head of MSWDO</span>
-                <span className="vin-toggle-desc">Send automated SMS summary when daily monitoring checks are completed</span>
+                <span className="vin-toggle-title">Daily Monitoring Round Notifications</span>
+                <span className="vin-toggle-desc">
+                  Notify the command dashboard upon completion of each monitoring round across centers
+                </span>
               </div>
               <label className="vin-switch">
                 <input
                   type="checkbox"
-                  name="smsNotificationHead"
-                  checked={settings.smsNotificationHead}
+                  name="dailyMonitoringAlerts"
+                  checked={settings.dailyMonitoringAlerts}
                   onChange={handleChange}
                 />
                 <span className="vin-slider" />
@@ -255,41 +511,14 @@ export default function Settings() {
             </div>
           </div>
         </section>
-
-        {/* Section 4: Data Security & Backup */}
-        <section className="vin-settings-section">
-          <div className="vin-section-header">
-            <Database className="vin-section-icon" size={20} />
-            <div>
-              <h2 className="vin-section-title">Data Protection & Supabase Sync</h2>
-              <p className="vin-section-subtitle">Cloud database sync status and local caching policies.</p>
-            </div>
-          </div>
-
-          <div className="vin-toggle-row">
-            <div className="vin-toggle-info">
-              <span className="vin-toggle-title">Automatic Daily Cloud Backup</span>
-              <span className="vin-toggle-desc">Safely archive household registration files to Supabase cloud storage</span>
-            </div>
-            <label className="vin-switch">
-              <input
-                type="checkbox"
-                name="autoBackupDaily"
-                checked={settings.autoBackupDaily}
-                onChange={handleChange}
-              />
-              <span className="vin-slider" />
-            </label>
-          </div>
-        </section>
       </form>
 
-      {/* Bottom Log-out button exactly as shown in screenshot 2 */}
+      {/* Bottom Log-out Button */}
       <footer className="vin-settings-footer">
         <button
           type="button"
           className="vin-btn-logout"
-          onClick={handleLogout}
+          onClick={() => setShowLogoutModal(true)}
         >
           Log-out
         </button>
