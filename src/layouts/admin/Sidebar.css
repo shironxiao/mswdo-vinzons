@@ -219,16 +219,298 @@
   align-items: center;
   gap: 11px;
   width: 100%;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: transparent;
-  border: none;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   text-align: left;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
-.vin-user-card:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+.vin-user-card.clickable {
+  cursor: pointer;
+}
+
+.vin-user-card:hover,
+.vin-user-card.clickable:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(196, 181, 253, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Dedicated sidebar logout button */
+.vin-sidebar-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.vin-sidebar-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.24);
+  color: #ffffff;
+  border-color: rgba(239, 68, 68, 0.45);
+  transform: translateY(-1px);
+}
+
+.vin-sidebar-logout-btn:active {
+  transform: scale(0.98);
+}
+
+/* ══════════════════════════════════════════════
+   Admin Profile & Change Password Center Panel Modal
+   ══════════════════════════════════════════════ */
+.vin-admin-profile-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.vin-admin-profile-modal {
+  width: 100%;
+  max-width: 500px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+.vin-admin-profile-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vin-admin-profile-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-admin-profile-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vin-admin-profile-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.vin-admin-profile-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vin-admin-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.vin-admin-profile-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed 0%, #581c87 100%);
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(124, 58, 237, 0.25);
+  flex-shrink: 0;
+}
+
+.vin-admin-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.vin-admin-profile-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-admin-profile-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 2px 8px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.vin-admin-profile-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-admin-profile-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+}
+
+.vin-admin-profile-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: all 0.15s ease;
+}
+
+.vin-admin-profile-input-wrap:focus-within {
+  border-color: #7c3aed;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.vin-admin-profile-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.vin-admin-profile-input:disabled {
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.vin-admin-eye-toggle {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.vin-admin-eye-toggle:hover {
+  color: #475569;
+}
+
+.vin-admin-profile-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 0;
+}
+
+.vin-admin-profile-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.vin-admin-profile-feedback.success {
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
+}
+
+.vin-admin-profile-feedback.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.vin-admin-profile-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #fafafa;
+  margin-top: 8px;
+}
+
+.vin-admin-btn-save-profile {
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(107, 33, 168, 0.25);
+}
+
+.vin-admin-btn-save-profile:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #581c87 100%);
+  transform: translateY(-1px);
+}
+
+.vin-admin-btn-save-profile:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .vin-user-avatar {
