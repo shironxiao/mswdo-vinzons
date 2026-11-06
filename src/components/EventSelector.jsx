@@ -3,7 +3,7 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { EventContext } from '../context/eventContext.js';
-import { Menu, Check, AlertCircle, X, CalendarDays, History, ChevronDown } from 'lucide-react';
+import { Menu, Check, AlertCircle, X, CalendarDays, History, ChevronDown, Search } from 'lucide-react';
 import { ChoiceSelectSheet } from './CenterSelectSheet.jsx';
 
 const DISASTER_TYPES = [
@@ -33,6 +33,7 @@ export default function EventSelector() {
   const [customEventType, setCustomEventType] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [showEventTypePicker, setShowEventTypePicker] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
   const [actionError, setActionError] = useState('');
   useEffect(() => {
     if (!showMenu) return undefined;
@@ -52,6 +53,16 @@ export default function EventSelector() {
   );
   const activeEvents = allEvents.filter((event) => event.status === 'Active');
   const historicalEvents = allEvents.filter((event) => event.status !== 'Active');
+  const filteredHistoricalEvents = historicalEvents.filter((event) => {
+    const query = historySearch.trim().toLowerCase();
+    return !query || [
+      event.event_name,
+      event.event_type,
+      event.status,
+      event.declared_at && new Date(event.declared_at).toLocaleDateString(),
+      event.concluded_at && new Date(event.concluded_at).toLocaleDateString(),
+    ].some((value) => String(value || '').toLowerCase().includes(query));
+  });
 
   const handleSelect = (event) => {
     setSelectedEvent(event);
@@ -167,7 +178,10 @@ export default function EventSelector() {
               <button
                 type="button"
                 className="event-history-toggle"
-                onClick={() => setShowHistory(true)}
+                onClick={() => {
+                  setHistorySearch('');
+                  setShowHistory(true);
+                }}
                 aria-haspopup="dialog"
               >
                 <span><History size={16} /> View event history <span className="event-count">{historicalEvents.length}</span></span>
@@ -279,36 +293,59 @@ export default function EventSelector() {
             <div className="event-modal-body">
               <div className="event-modal-section-heading">
                 <span>Past operations</span>
-                <span className="event-count">{historicalEvents.length}</span>
+                <span className="event-count">{filteredHistoricalEvents.length}</span>
               </div>
+              <label className="event-history-search">
+                <Search size={18} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  placeholder="Search by operation, disaster type, or date..."
+                  aria-label="Search past operations"
+                />
+                {historySearch && (
+                  <button
+                    type="button"
+                    onClick={() => setHistorySearch('')}
+                    aria-label="Clear event history search"
+                  >
+                    <X size={17} />
+                  </button>
+                )}
+              </label>
               {historicalEvents.length > 0 ? (
-                <div className="event-list event-history-list" id="event-history-list">
-                  {historicalEvents.map((ev) => {
-                    const isSelected = selectedEvent?.id === ev.id;
-                    const eventStatus = ev.status === 'Archived'
-                      ? 'Archived'
-                      : ev.status === 'Concluded' ? 'Concluded' : 'Historical';
-                    return (
-                      <button
-                        key={ev.id}
-                        type="button"
-                        onClick={() => handleSelect(ev)}
-                        className={`event-option ${isSelected ? 'selected' : ''}`}
-                      >
-                        <span className="event-status-indicator historical" />
-                        <span className="event-option-details">
-                          <span className="event-option-name">{ev.event_name}</span>
-                          <span className="event-option-meta">
-                            {ev.event_type || 'Disaster'} · {eventStatus}
-                            {ev.declared_at && ` · Started ${new Date(ev.declared_at).toLocaleDateString()}`}
-                            {ev.concluded_at && ` · Ended ${new Date(ev.concluded_at).toLocaleDateString()}`}
+                filteredHistoricalEvents.length > 0 ? (
+                  <div className="event-list event-history-list" id="event-history-list">
+                    {filteredHistoricalEvents.map((ev) => {
+                      const isSelected = selectedEvent?.id === ev.id;
+                      const eventStatus = ev.status === 'Archived'
+                        ? 'Archived'
+                        : ev.status === 'Concluded' ? 'Concluded' : 'Historical';
+                      return (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => handleSelect(ev)}
+                          className={`event-option ${isSelected ? 'selected' : ''}`}
+                        >
+                          <span className="event-status-indicator historical" />
+                          <span className="event-option-details">
+                            <span className="event-option-name">{ev.event_name}</span>
+                            <span className="event-option-meta">
+                              {ev.event_type || 'Disaster'} · {eventStatus}
+                              {ev.declared_at && ` · Started ${new Date(ev.declared_at).toLocaleDateString()}`}
+                              {ev.concluded_at && ` · Ended ${new Date(ev.concluded_at).toLocaleDateString()}`}
+                            </span>
                           </span>
-                        </span>
-                        {isSelected && <Check size={18} className="event-option-check" />}
-                      </button>
-                    );
-                  })}
-                </div>
+                          {isSelected && <Check size={18} className="event-option-check" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="event-empty-state">No past operations match your search.</p>
+                )
               ) : (
                 <p className="event-empty-state">No past operations in the event history.</p>
               )}
