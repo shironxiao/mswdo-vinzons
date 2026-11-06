@@ -780,3 +780,73 @@
     pointer-events: auto;
   }
 }
+
+/* ==========================================================
+   Responsive Adjustments for Admin Sidebar & Modals
+   ========================================================== */
+@media (max-width: 1024px) {
+  /* Sidebar becomes a slide‑in drawer */
+  .vin-sidebar {
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
+    position: fixed;
+    inset: 0 0 0 auto;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2000;
+  }
+  .vin-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  .vin-sidebar-close-btn {
+    display: block; /* show close button on tablet */
+  }
+  .vin-mobile-menu-btn {
+    display: block; /* ensure the hamburger appears */
+  }
+}
+
+@media (max-width: 640px) {
+  /* Full‑width sidebar on mobile */
+  .vin-sidebar {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    transform: translateX(0);
+  }
+  .vin-user-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 10px;
+  }
+  .vin-sidebar-logout-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 14px;
+    font-size: 0.86rem;
+  }
+  /* Profile modal scales down */
+  .vin-admin-profile-modal {
+    max-width: 90vw;
+    margin: 0 5vw;
+  }
+  .vin-admin-profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .vin-admin-profile-body {
+    padding: 16px 20px;
+  }
+  /* Dialog overlay adjustments */
+  .vin-dialog-card {
+    max-width: 90vw;
+    padding: 20px 16px;
+  }
+  .vin-dialog-title {
+    font-size: 1.1rem;
+  }
+}
