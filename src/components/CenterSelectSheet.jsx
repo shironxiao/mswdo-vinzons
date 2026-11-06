@@ -746,6 +746,7 @@ export function ChoiceSelectSheet({
   onSelect,
   onClose,
   allowOther = false,
+  allowEmpty = true,
 }) {
   const [otherValue, setOtherValue] = useState('');
   const values = [...new Set([...(options || []), ...(selected && !options?.includes(selected) ? [selected] : [])])];
@@ -759,18 +760,20 @@ export function ChoiceSelectSheet({
           {title}
         </div>
         <div className="vin-center-picker-list">
-          <button
-            type="button"
-            className={`vin-center-picker-item ${!selected ? 'selected' : ''}`}
-            onClick={() => {
-              onSelect('');
-              onClose();
-            }}
-            style={{ width: '100%', textAlign: 'left', font: 'inherit', cursor: 'pointer' }}
-          >
-            <span className="vin-center-picker-radio"><span className="vin-center-picker-radio-dot" /></span>
-            <span className="vin-center-picker-info"><span className="vin-center-picker-name">Not specified</span></span>
-          </button>
+          {allowEmpty && (
+            <button
+              type="button"
+              className={`vin-center-picker-item ${!selected ? 'selected' : ''}`}
+              onClick={() => {
+                onSelect('');
+                onClose();
+              }}
+              style={{ width: '100%', textAlign: 'left', font: 'inherit', cursor: 'pointer' }}
+            >
+              <span className="vin-center-picker-radio"><span className="vin-center-picker-radio-dot" /></span>
+              <span className="vin-center-picker-info"><span className="vin-center-picker-name">Not specified</span></span>
+            </button>
+          )}
           {values.map((value) => (
             <button
               key={value}

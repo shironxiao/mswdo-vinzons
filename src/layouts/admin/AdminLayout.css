@@ -339,7 +339,7 @@
 }
 
 .event-create-section input,
-.event-create-section select {
+.event-create-section .event-type-picker-trigger {
   width: 100%;
   margin-top: 9px;
   padding: 11px 13px;
@@ -351,8 +351,16 @@
   box-sizing: border-box;
 }
 
+.event-create-section .event-type-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+}
+
 .event-create-section input:focus,
-.event-create-section select:focus {
+.event-create-section .event-type-picker-trigger:focus-visible {
   outline: none;
   border-color: #8b5cf6;
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);

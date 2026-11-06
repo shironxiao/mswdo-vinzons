@@ -3,7 +3,8 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { EventContext } from '../context/eventContext.js';
-import { Menu, Check, AlertCircle, X, CalendarDays, History } from 'lucide-react';
+import { Menu, Check, AlertCircle, X, CalendarDays, History, ChevronDown } from 'lucide-react';
+import { ChoiceSelectSheet } from './CenterSelectSheet.jsx';
 
 const DISASTER_TYPES = [
   'Typhoon',
@@ -31,18 +32,20 @@ export default function EventSelector() {
   const [newEventType, setNewEventType] = useState('Typhoon');
   const [customEventType, setCustomEventType] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [showEventTypePicker, setShowEventTypePicker] = useState(false);
   const [actionError, setActionError] = useState('');
   useEffect(() => {
     if (!showMenu) return undefined;
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
-        if (showHistory) setShowHistory(false);
+        if (showEventTypePicker) setShowEventTypePicker(false);
+        else if (showHistory) setShowHistory(false);
         else setShowMenu(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showMenu, showHistory]);
+  }, [showMenu, showHistory, showEventTypePicker]);
 
   const hasActiveEvent = allEvents.some(
     (event) => event.status === 'Active' && event.id !== 'default-active-event'
@@ -189,13 +192,17 @@ export default function EventSelector() {
                   aria-label="New event name"
                   maxLength={150}
                 />
-                <select
-                  value={newEventType}
-                  onChange={(e) => setNewEventType(e.target.value)}
+                <button
+                  type="button"
+                  className="event-type-picker-trigger"
+                  onClick={() => setShowEventTypePicker(true)}
                   aria-label="Disaster type"
+                  aria-haspopup="dialog"
+                  aria-expanded={showEventTypePicker}
                 >
-                  {DISASTER_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-                </select>
+                  <span>{newEventType}</span>
+                  <ChevronDown size={18} />
+                </button>
                 {newEventType === 'Other' && (
                   <input
                     type="text"
@@ -308,6 +315,16 @@ export default function EventSelector() {
             </div>
           </section>
         </div>
+      )}
+      {showEventTypePicker && showMenu && (
+        <ChoiceSelectSheet
+          selected={newEventType}
+          options={DISASTER_TYPES}
+          title="Select disaster type"
+          onSelect={setNewEventType}
+          onClose={() => setShowEventTypePicker(false)}
+          allowEmpty={false}
+        />
       )}
     </div>
   );
