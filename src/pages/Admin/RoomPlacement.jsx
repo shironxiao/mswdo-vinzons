@@ -1,11 +1,12 @@
 import { useState, useMemo, useContext } from 'react';
-import { Building, ChevronLeft, ChevronRight, Users, X } from 'lucide-react';
+import { Building, ChevronLeft, ChevronRight, Users, X, ArrowRightLeft, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import './AdminFeatures.css';
+import './AdminHousehold.css';
 import {
   useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters.js';
-import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
+import { useEventRoomPlacements, useHouseholds, transferHouseholdRoom } from '../../lib/householdService.js';
 import { useRooms } from '../../lib/roomService.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { EventContext } from '../../context/eventContext.js';
@@ -16,9 +17,9 @@ const STATUSES = ['All Status', 'Active', 'Full'];
 export default function RoomPlacement() {
   const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
-  const { households } = useHouseholds(centers);
+  const { households, refresh: refreshHouseholds } = useHouseholds(centers);
   const { rooms: dbRooms } = useRooms(centers);
-  const { placements } = useEventRoomPlacements(selectedEvent?.id);
+  const { placements, refresh: refreshPlacements } = useEventRoomPlacements(selectedEvent?.id);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [filterStatus, setFilterStatus] = useState('All Status');
@@ -28,11 +29,196 @@ export default function RoomPlacement() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
+  /* Transfer Modal State */
+  const [transferTarget, setTransferTarget] = useState(null);
+  const [transferSourceRoom, setTransferSourceRoom] = useState(null);
+  const [targetCenterId, setTargetCenterId] = useState('');
+  const [targetRoomName, setTargetRoomName] = useState('');
+  const [targetRoomId, setTargetRoomId] = useState(null);
+  const [transferReason, setTransferReason] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferError, setTransferError] = useState('');
+  const [transferSuccessDialog, setTransferSuccessDialog] = useState(null);
+
   // Clean room name by stripping redundant "- Capacity <number>"
   const cleanRoomName = (name) =>
     String(name || '')
       .replace(/\s*-\s*Capacity\s*\d+/i, '')
       .trim();
+
+  /* ── Calculations for Destination Center & Rooms in Transfer Modal ── */
+  const targetCenterObj = useMemo(() => {
+    return centers.find((c) => c.id === targetCenterId) || centers[0];
+  }, [centers, targetCenterId]);
+
+  const transferFamilySize = useMemo(() => {
+    if (!transferTarget) return 1;
+    return transferTarget.familyCount || (transferTarget.members?.length ? transferTarget.members.length + 1 : 1);
+  }, [transferTarget]);
+
+  const availableRoomsForTransfer = useMemo(() => {
+    if (!targetCenterObj) return [];
+
+    const matchingDbRooms = (dbRooms || []).filter(
+      (r) =>
+        r.centerId === targetCenterObj.id ||
+        r.center === targetCenterObj.displayName ||
+        r.center === targetCenterObj.name
+    );
+
+    const baseRooms =
+      matchingDbRooms.length > 0
+        ? matchingDbRooms.map((r) => ({
+            id: r.roomName,
+            roomId: r.id,
+            name: cleanRoomName(r.roomName),
+            capacity: Number(r.capacity) || 30,
+          }))
+        : (targetCenterObj.rooms || []).map((r) => ({
+            id: r.name || r.id,
+            roomId: r.id,
+            name: cleanRoomName(r.name || r.id),
+            capacity: Number(r.capacity) || 30,
+          }));
+
+    const effectiveRooms =
+      baseRooms.length > 0
+        ? baseRooms
+        : [
+            { id: 'Room 1', roomId: 'Room 1', name: 'Room 1', capacity: 30 },
+            { id: 'Room 2', roomId: 'Room 2', name: 'Room 2', capacity: 25 },
+          ];
+
+    const activePlacementsInCenter = placements.filter(
+      (p) => p.status === 'Evacuated' && p.center_id === targetCenterObj.id && p.event_id === selectedEvent?.id
+    );
+
+    const householdsMap = new Map(households.map((h) => [h.id, h]));
+
+    return effectiveRooms.map((room) => {
+      const roomOccupants = activePlacementsInCenter
+        .filter(
+          (p) =>
+            p.room_id === room.roomId ||
+            p.room_id === room.id ||
+            p.room_name === room.name
+        )
+        .map((p) => householdsMap.get(p.household_id))
+        .filter(Boolean);
+
+      const occupied = roomOccupants.reduce(
+        (sum, h) => sum + (h.familyCount || 1),
+        0
+      );
+
+      return {
+        ...room,
+        occupied,
+      };
+    });
+  }, [targetCenterObj, dbRooms, placements, selectedEvent?.id, households]);
+
+  const handleOpenTransfer = (household, room) => {
+    setTransferTarget(household);
+    setTransferSourceRoom(room);
+    const matchingCenter = centers.find(
+      (c) => c.displayName === room?.center || c.name === room?.center || c.id === household.centerId
+    ) || centers[0];
+    setTargetCenterId(matchingCenter?.id || centers[0]?.id || '');
+    setTargetRoomName('');
+    setTargetRoomId(null);
+    setTransferReason('');
+    setTransferError('');
+  };
+
+  const handleAutoAssignTransfer = () => {
+    if (!availableRoomsForTransfer.length) {
+      setTransferError('No rooms found in the selected target evacuation center.');
+      return;
+    }
+
+    const currentRoomKey = transferSourceRoom ? transferSourceRoom.name : transferTarget?.room;
+    const isSameCenter = targetCenterObj?.displayName === transferSourceRoom?.center || targetCenterObj?.name === transferSourceRoom?.center;
+
+    const candidate = availableRoomsForTransfer.find((r) => {
+      const isCurrent = isSameCenter && (r.name === currentRoomKey || r.roomId === transferTarget?.roomId);
+      const freeSlots = r.capacity - r.occupied;
+      return !isCurrent && freeSlots >= transferFamilySize;
+    });
+
+    if (!candidate) {
+      setTransferError(
+        `Validation: No room in "${targetCenterObj?.displayName || targetCenterObj?.name}" has ${transferFamilySize} free spots. Please choose another center.`
+      );
+      return;
+    }
+
+    setTargetRoomName(candidate.name);
+    setTargetRoomId(candidate.roomId);
+    setTransferError('');
+  };
+
+  const handleConfirmTransfer = async () => {
+    if (isReadOnly) {
+      setTransferError('Historical event selected — transfers are read-only.');
+      return;
+    }
+    if (!targetCenterId) {
+      setTransferError('Please select a target evacuation center.');
+      return;
+    }
+    if (!targetRoomName) {
+      setTransferError('Please select a target room.');
+      return;
+    }
+
+    const isSameCenter = targetCenterObj?.displayName === transferSourceRoom?.center || targetCenterObj?.name === transferSourceRoom?.center;
+    const currentRoomKey = transferSourceRoom ? transferSourceRoom.name : transferTarget?.room;
+    if (isSameCenter && targetRoomName === currentRoomKey) {
+      setTransferError('This household is already placed in this room. Please choose a different room or center.');
+      return;
+    }
+
+    setIsTransferring(true);
+    setTransferError('');
+    try {
+      await transferHouseholdRoom({
+        householdId: transferTarget.id,
+        eventId: selectedEvent?.id,
+        centerId: targetCenterId,
+        roomId: targetRoomId || undefined,
+        roomName: targetRoomName,
+        reason: transferReason,
+      });
+
+      const transferredName = transferTarget.name;
+      const destCenterName = targetCenterObj?.displayName || targetCenterObj?.name || 'Selected Center';
+      const destRoomName = targetRoomName;
+
+      // Close transfer modal
+      setTransferTarget(null);
+
+      // Remove from current modal room view
+      if (selectedRoom) {
+        setSelectedRoom((prev) => prev ? {
+          ...prev,
+          households: prev.households.filter((h) => h.id !== transferTarget.id),
+          occupied: Math.max(0, prev.occupied - transferFamilySize),
+        } : null);
+      }
+
+      await Promise.all([refreshHouseholds(), refreshPlacements()]);
+
+      setTransferSuccessDialog({
+        title: 'Household Transferred Successfully',
+        message: `${transferredName} has been transferred to ${destCenterName} (${destRoomName}).`,
+      });
+    } catch (err) {
+      setTransferError(err.message || 'Could not complete household transfer.');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
 
   // Calculate live room occupancies from Supabase database
   const allRooms = useMemo(() => {
@@ -405,6 +591,20 @@ export default function RoomPlacement() {
                             </div>
                           </div>
                         )}
+
+                        {/* Transfer Action Row */}
+                        <div className="vin-room-hh-actions-row">
+                          <button
+                            type="button"
+                            className="vin-btn-transfer-action"
+                            onClick={() => handleOpenTransfer(hh, selectedRoom)}
+                            disabled={isReadOnly}
+                            title="Transfer household to another center or room"
+                          >
+                            <ArrowRightLeft size={14} />
+                            <span>Transfer Room / Center</span>
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -422,6 +622,323 @@ export default function RoomPlacement() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Transfer Household to Another Center / Room Modal ── */}
+      {transferTarget && (
+        <div
+          className="vin-modal-overlay"
+          onClick={() => {
+            if (!isTransferring) setTransferTarget(null);
+          }}
+        >
+          <div
+            className="vin-transfer-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="vin-room-modal-header">
+              <div className="vin-room-modal-header-info">
+                <div className="vin-room-modal-badge-row">
+                  <span className="vin-room-center-badge">
+                    <ArrowRightLeft size={13} color="#7c3aed" />
+                    Household Transfer
+                  </span>
+                  <span className="vin-status-tag active">
+                    Evacuated
+                  </span>
+                </div>
+                <h2 className="vin-room-modal-title">
+                  Transfer Household
+                </h2>
+                <p className="vin-room-modal-subtitle">
+                  Re-assign <strong>{transferTarget.name}</strong> to a different room or evacuation facility.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="vin-picker-close-btn"
+                onClick={() => setTransferTarget(null)}
+                disabled={isTransferring}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="vin-room-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Transfer Target Banner */}
+              <div className="vin-transfer-summary-box">
+                <div className="vin-transfer-target-banner">
+                  <div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                      {transferTarget.name}
+                    </div>
+                    <small style={{ color: '#64748b' }}>
+                      {transferTarget.householdCode || transferTarget.id}
+                      {transferTarget.stubCode ? ` • Stub: ${transferTarget.stubCode}` : ''}
+                    </small>
+                  </div>
+                  <span className="vin-room-hh-count-badge">
+                    <Users size={13} />
+                    {transferFamilySize} {transferFamilySize === 1 ? 'Person' : 'Persons'}
+                  </span>
+                </div>
+
+                <div className="vin-transfer-flow-row">
+                  <div className="vin-transfer-flow-box">
+                    <span className="vin-transfer-flow-label">Current Placement</span>
+                    <span className="vin-transfer-flow-val">
+                      {transferSourceRoom?.center || transferTarget.center || 'Unassigned'} — {transferSourceRoom?.name || transferTarget.room || 'Unassigned'}
+                    </span>
+                  </div>
+                  <ArrowRightLeft size={18} color="#7c3aed" style={{ flexShrink: 0 }} />
+                  <div className="vin-transfer-flow-box">
+                    <span className="vin-transfer-flow-label">Target Placement</span>
+                    <span className="vin-transfer-flow-val" style={{ color: targetRoomName ? '#6d28d9' : '#94a3b8' }}>
+                      {targetCenterObj?.displayName || targetCenterObj?.name} — {targetRoomName || 'Select room below'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error Alert */}
+              {transferError && (
+                <div role="alert" style={{
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#b91c1c',
+                  fontSize: '.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{transferError}</span>
+                </div>
+              )}
+
+              {/* Target Evacuation Center Selector */}
+              <div className="vin-transfer-center-select-wrap">
+                <label className="vin-transfer-field-label" htmlFor="target-center-select">
+                  Target Evacuation Center
+                </label>
+                <select
+                  id="target-center-select"
+                  className="vin-transfer-select-input"
+                  value={targetCenterId}
+                  onChange={(e) => {
+                    setTargetCenterId(e.target.value);
+                    setTargetRoomName('');
+                    setTargetRoomId(null);
+                    setTransferError('');
+                  }}
+                  disabled={isTransferring}
+                >
+                  {centers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.displayName || c.name} {c.location ? `(${c.location.split(',')[0]})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Room Selection with Auto-Assign */}
+              <div>
+                <div className="vin-transfer-room-section-header">
+                  <label className="vin-transfer-field-label">
+                    Select Target Room in {targetCenterObj?.displayName || targetCenterObj?.name}
+                  </label>
+                  <button
+                    type="button"
+                    className="vin-auto-assign-action-btn"
+                    onClick={handleAutoAssignTransfer}
+                    disabled={isTransferring}
+                    title="Automatically find and assign the best available room with enough space"
+                  >
+                    <Sparkles size={13} />
+                    <span>Auto-Assign</span>
+                  </button>
+                </div>
+
+                {/* Available Rooms Grid */}
+                <div className="vin-admin-room-cards-grid" style={{ marginTop: '10px' }}>
+                  {availableRoomsForTransfer.map((room) => {
+                    const currentRoomKey = transferSourceRoom ? transferSourceRoom.name : transferTarget?.room;
+                    const isSameCenter = targetCenterObj?.displayName === transferSourceRoom?.center || targetCenterObj?.name === transferSourceRoom?.center;
+                    const isCurrent = isSameCenter && (room.name === currentRoomKey || room.roomId === transferTarget?.roomId);
+                    const isSelected = targetRoomName === room.name;
+                    const freeSlots = Math.max(0, room.capacity - room.occupied);
+                    const hasCapacity = freeSlots >= transferFamilySize;
+                    const isFull = room.occupied >= room.capacity;
+
+                    let cardClass = 'available';
+                    if (isCurrent) cardClass = 'current';
+                    else if (isSelected) cardClass = 'selected';
+                    else if (isFull) cardClass = 'full';
+                    else if (!hasCapacity) cardClass = 'insufficient';
+
+                    return (
+                      <div
+                        key={room.roomId || room.name}
+                        className={`vin-room-card-box ${cardClass}`}
+                        onClick={() => {
+                          if (!isCurrent && hasCapacity && !isTransferring) {
+                            setTargetRoomName(room.name);
+                            setTargetRoomId(room.roomId);
+                            setTransferError('');
+                          }
+                        }}
+                        style={{ cursor: isCurrent || !hasCapacity ? 'default' : 'pointer' }}
+                      >
+                        <div className="vin-room-card-top-row">
+                          <div>
+                            <div className="vin-room-card-id">{room.name}</div>
+                            <div className="vin-room-card-subname">
+                              Capacity: {room.capacity} individuals
+                            </div>
+                          </div>
+                          <span className={`vin-room-status-chip ${
+                            isCurrent ? 'current' : isFull ? 'full' : hasCapacity ? 'available' : 'low'
+                          }`}>
+                            {isCurrent ? 'Current' : isFull ? 'Full' : hasCapacity ? 'Available' : 'No Space'}
+                          </span>
+                        </div>
+
+                        {/* Occupancy Progress */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', marginBottom: 4 }}>
+                            <span style={{ color: '#64748b' }}>Occupancy</span>
+                            <span style={{ fontWeight: 700, color: isFull ? '#dc2626' : '#475569' }}>
+                              {room.occupied} / {room.capacity} ({freeSlots} free)
+                            </span>
+                          </div>
+                          <div style={{ height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${Math.min(100, Math.round((room.occupied / room.capacity) * 100))}%`,
+                              background: isFull ? '#dc2626' : isCurrent ? '#16a34a' : '#7c3aed',
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Room Select Button */}
+                        <button
+                          type="button"
+                          className={`vin-room-select-btn ${
+                            isCurrent ? 'btn-current' : hasCapacity ? 'btn-fit' : 'btn-disabled'
+                          }`}
+                          disabled={isCurrent || !hasCapacity || isTransferring}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isCurrent && hasCapacity) {
+                              setTargetRoomName(room.name);
+                              setTargetRoomId(room.roomId);
+                              setTransferError('');
+                            }
+                          }}
+                        >
+                          {isCurrent
+                            ? 'Current Room ✓'
+                            : isSelected
+                            ? `Selected (${room.name})`
+                            : hasCapacity
+                            ? `Select ${room.name}`
+                            : 'No Space for Family'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Optional Reason Field */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="vin-transfer-field-label" htmlFor="transfer-reason">
+                  Reason for Transfer (Optional)
+                </label>
+                <input
+                  id="transfer-reason"
+                  type="text"
+                  className="vin-admin-form-input"
+                  placeholder="e.g., Overcapacity re-allocation, special medical care, family request"
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  disabled={isTransferring}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="vin-room-modal-footer" style={{ justifyContent: 'space-between' }}>
+              <button
+                type="button"
+                className="vin-btn-modal-close"
+                onClick={() => setTransferTarget(null)}
+                disabled={isTransferring}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="vin-btn-submit"
+                onClick={handleConfirmTransfer}
+                disabled={!targetRoomName || isTransferring || isReadOnly}
+                style={{ padding: '8px 20px' }}
+              >
+                {isTransferring
+                  ? 'Transferring…'
+                  : targetRoomName
+                  ? `Confirm Transfer to ${targetRoomName}`
+                  : 'Select a Room Above'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success Dialog ── */}
+      {transferSuccessDialog && (
+        <div
+          className="vin-dialog-overlay"
+          onClick={() => setTransferSuccessDialog(null)}
+        >
+          <div
+            className="vin-dialog-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: '#f0fdf4',
+              color: '#16a34a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <CheckCircle2 size={32} />
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+              {transferSuccessDialog.title}
+            </h3>
+            <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              {transferSuccessDialog.message}
+            </p>
+            <button
+              type="button"
+              className="vin-btn-submit"
+              onClick={() => setTransferSuccessDialog(null)}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

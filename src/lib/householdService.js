@@ -811,6 +811,97 @@ export async function checkInHousehold({ householdId, centerId, roomId, roomName
 /**
  * Decamp / Check-out a household from an evacuation center
  */
+/**
+ * Transfer an active/evacuated household to a new evacuation center and/or room
+ */
+export async function transferHouseholdRoom({
+  householdId,
+  eventId = null,
+  centerId,
+  roomId = null,
+  roomName = null,
+  reason = '',
+}) {
+  if (!householdId) throw new Error('Household ID is required for transfer.');
+  if (!centerId) throw new Error('Target evacuation center is required.');
+
+  // 1. Resolve room ID
+  let resolvedRoomId = roomId;
+  if (!resolvedRoomId && roomName) {
+    const { data: existingRoom, error: roomLookupError } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('center_id', centerId)
+      .eq('room_name', roomName)
+      .maybeSingle();
+
+    if (roomLookupError) throw roomLookupError;
+    if (existingRoom) {
+      resolvedRoomId = existingRoom.id;
+    } else {
+      const { data: newRoom, error: createRoomError } = await supabase
+        .from('rooms')
+        .insert({ center_id: centerId, room_name: roomName, capacity_individuals: 30 })
+        .select('id')
+        .single();
+      if (createRoomError) throw createRoomError;
+      resolvedRoomId = newRoom.id;
+    }
+  }
+
+  if (!resolvedRoomId) throw new Error('Target room is required.');
+
+  const now = new Date().toISOString();
+
+  // 2. Update existing active placement in room_placements
+  let placementQuery = supabase
+    .from('room_placements')
+    .update({
+      center_id: centerId,
+      room_id: resolvedRoomId,
+      status: 'Evacuated',
+    })
+    .eq('household_id', householdId)
+    .eq('status', 'Evacuated');
+
+  if (eventId && eventId !== 'default-active-event') {
+    placementQuery = placementQuery.eq('event_id', eventId);
+  }
+
+  const { data: updatedPlacements, error: placementError } = await placementQuery.select('id');
+  if (placementError) throw placementError;
+
+  // If no active placement was updated, insert a new placement
+  if (!updatedPlacements || updatedPlacements.length === 0) {
+    const { error: insertPlacementError } = await supabase
+      .from('room_placements')
+      .insert({
+        household_id: householdId,
+        center_id: centerId,
+        room_id: resolvedRoomId,
+        event_id: eventId && eventId !== 'default-active-event' ? eventId : null,
+        status: 'Evacuated',
+        check_in_at: now,
+      });
+    if (insertPlacementError) throw insertPlacementError;
+  }
+
+  // 3. Update the household table
+  const { error: householdError } = await supabase
+    .from('households')
+    .update({
+      center_id: centerId,
+      room_id: resolvedRoomId,
+      evacuee_status: 'Active',
+      updated_at: now,
+    })
+    .eq('id', householdId);
+
+  if (householdError) throw householdError;
+
+  return { success: true, centerId, roomId: resolvedRoomId };
+}
+
 export async function decampHousehold(householdId, eventId = null) {
   let placementUpdate = supabase
     .from('room_placements')

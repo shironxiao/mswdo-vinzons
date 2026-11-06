@@ -1603,3 +1603,153 @@
     width: 100%;
   }
 }
+
+
+/* ══════════════════════════════════════════════
+   Room Placement Transfer Household Styles
+   ══════════════════════════════════════════════ */
+
+.vin-room-hh-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 4px;
+}
+
+.vin-btn-transfer-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-btn-transfer-action:hover:not(:disabled) {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  color: #5b21b6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(109, 40, 217, 0.15);
+}
+
+.vin-btn-transfer-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Transfer Modal Card */
+.vin-transfer-modal {
+  width: 100%;
+  max-width: 680px;
+  max-height: 88vh;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+.vin-transfer-summary-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vin-transfer-target-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vin-transfer-flow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.vin-transfer-flow-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.vin-transfer-flow-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+
+.vin-transfer-flow-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Destination Center Tabs */
+.vin-transfer-center-select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vin-transfer-field-label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #475569;
+  letter-spacing: 0.06em;
+}
+
+.vin-transfer-select-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vin-transfer-select-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.vin-transfer-room-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
