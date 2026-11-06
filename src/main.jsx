@@ -9,32 +9,18 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Smooth single splash dismissal for mobile PWA
-const dismissSplash = () => {
-  const splash = document.getElementById('pwa-splash-screen');
-  if (splash) {
-    try {
-      sessionStorage.setItem('mswdo_pwa_splash_shown', 'true');
-    } catch (e) {}
+const splash = document.getElementById('pwa-splash-screen');
+
+if (splash) {
+  const revealSplashLogo = () => {
+    splash.classList.add('pwa-splash-revealed');
+  };
+
+  const dismissSplash = () => {
     splash.classList.add('pwa-splash-fade-out');
-    setTimeout(() => {
-      splash.remove();
-    }, 400);
-  }
-};
+    window.setTimeout(() => splash.remove(), 400);
+  };
 
-// Check if splash was already shown this session
-const alreadyShown = (() => {
-  try {
-    return Boolean(sessionStorage.getItem('mswdo_pwa_splash_shown'));
-  } catch (e) {
-    return false;
-  }
-})();
-
-if (alreadyShown) {
-  dismissSplash();
-} else {
-  // Allow loading animation to complete its smooth cycle then dismiss
-  setTimeout(dismissSplash, 350);
+  window.setTimeout(revealSplashLogo, 350);
+  window.setTimeout(dismissSplash, 1900);
 }

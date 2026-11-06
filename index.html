@@ -11,19 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MSWDO Vinzons" />
     <title>MSWDO Vinzons</title>
-    <script>
-      // If already shown during this session, do not replay splash
-      try {
-        if (sessionStorage.getItem('mswdo_pwa_splash_shown')) {
-          document.documentElement.classList.add('no-splash');
-        }
-      } catch (e) {}
-    </script>
     <style>
-      .no-splash #pwa-splash-screen {
-        display: none !important;
-      }
-
       /* Unified Single Splash Screen on PWA Launch */
       #pwa-splash-screen {
         position: fixed;
@@ -68,6 +56,12 @@
         justify-content: center;
         margin-bottom: 22px;
         box-sizing: border-box;
+        opacity: 0;
+        transform: scale(0.55);
+      }
+
+      #pwa-splash-screen.pwa-splash-revealed .pwa-splash-logo-container {
+        animation: pwaLogoReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
 
       .pwa-splash-logo {
@@ -83,6 +77,12 @@
         flex-direction: column;
         align-items: center;
         gap: 6px;
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      #pwa-splash-screen.pwa-splash-revealed .pwa-splash-brand {
+        animation: pwaBrandReveal 0.55s 0.18s ease-out forwards;
       }
 
       .pwa-splash-title {
@@ -114,6 +114,11 @@
         border-radius: 4px;
         overflow: hidden;
         position: relative;
+        opacity: 0;
+      }
+
+      #pwa-splash-screen.pwa-splash-revealed .pwa-splash-loader {
+        animation: pwaFadeIn 0.35s 0.25s ease-out forwards;
       }
 
       .pwa-splash-pulse {
@@ -125,12 +130,41 @@
         animation: pwaPulseBar 1.2s infinite ease-in-out;
       }
 
+      @keyframes pwaLogoReveal {
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes pwaBrandReveal {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes pwaFadeIn {
+        to {
+          opacity: 1;
+        }
+      }
+
       @keyframes pwaPulseBar {
         0% {
           left: -50%;
         }
         100% {
           left: 100%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #pwa-splash-screen.pwa-splash-revealed .pwa-splash-logo-container,
+        #pwa-splash-screen.pwa-splash-revealed .pwa-splash-brand,
+        #pwa-splash-screen.pwa-splash-revealed .pwa-splash-loader {
+          animation-duration: 0.01ms;
+          animation-delay: 0ms;
         }
       }
     </style>
