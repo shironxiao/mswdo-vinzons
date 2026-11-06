@@ -72,6 +72,7 @@ export default function Sidebar({
       fullName: 'Ronald Augorio',
       role: 'MSWD Officer',
       email: 'aaugorio@gmail.com',
+      password: 'password123',
     };
   });
 
@@ -79,10 +80,12 @@ export default function Sidebar({
   const [profileForm, setProfileForm] = useState({
     fullName: adminAccount.fullName || 'Ronald Augorio',
     email: adminAccount.email || 'aaugorio@gmail.com',
+    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
 
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileFeedback, setProfileFeedback] = useState(null);
@@ -94,9 +97,13 @@ export default function Sidebar({
     setProfileForm({
       fullName: adminAccount.fullName || 'Ronald Augorio',
       email: adminAccount.email || 'aaugorio@gmail.com',
+      currentPassword: '',
       newPassword: '',
       confirmPassword: '',
     });
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setProfileFeedback(null);
     setShowProfileModal(true);
   };
@@ -115,8 +122,40 @@ export default function Sidebar({
       return;
     }
 
-    // Validate password if provided
-    if (profileForm.newPassword) {
+    // Check if password change is requested
+    const isChangingPassword = Boolean(
+      profileForm.currentPassword || profileForm.newPassword || profileForm.confirmPassword
+    );
+
+    if (isChangingPassword) {
+      if (!profileForm.currentPassword) {
+        setPopupDialog({
+          type: 'error',
+          title: 'Verification Required',
+          message: 'Please enter your current password to verify your identity before changing password.',
+        });
+        return;
+      }
+
+      const activeSavedPassword = adminAccount.password || 'password123';
+      if (profileForm.currentPassword !== activeSavedPassword) {
+        setPopupDialog({
+          type: 'error',
+          title: 'Incorrect Current Password',
+          message: 'The current password you entered is incorrect. Please check and try again.',
+        });
+        return;
+      }
+
+      if (!profileForm.newPassword) {
+        setPopupDialog({
+          type: 'error',
+          title: 'Validation Error',
+          message: 'Please enter a new password.',
+        });
+        return;
+      }
+
       if (profileForm.newPassword.length < 6) {
         setPopupDialog({
           type: 'error',
@@ -125,6 +164,7 @@ export default function Sidebar({
         });
         return;
       }
+
       if (profileForm.newPassword !== profileForm.confirmPassword) {
         setPopupDialog({
           type: 'error',
@@ -133,12 +173,21 @@ export default function Sidebar({
         });
         return;
       }
+
+      if (profileForm.newPassword === profileForm.currentPassword) {
+        setPopupDialog({
+          type: 'error',
+          title: 'Validation Error',
+          message: 'New password cannot be the same as your current password.',
+        });
+        return;
+      }
     }
 
     setIsSavingProfile(true);
     try {
       // If updating password, attempt to sync with Supabase auth session if present
-      if (profileForm.newPassword) {
+      if (isChangingPassword && profileForm.newPassword) {
         try {
           const { error } = await supabase.auth.updateUser({
             password: profileForm.newPassword,
@@ -154,21 +203,23 @@ export default function Sidebar({
         ...adminAccount,
         fullName: profileForm.fullName.trim() || adminAccount.fullName,
         email: profileForm.email.trim(),
-        ...(profileForm.newPassword ? { password: profileForm.newPassword } : {}),
+        ...(isChangingPassword && profileForm.newPassword
+          ? { password: profileForm.newPassword }
+          : { password: adminAccount.password || 'password123' }),
       };
 
       setAdminAccount(updatedAccount);
       localStorage.setItem('mswdo_admin_account', JSON.stringify(updatedAccount));
 
       // Clear password fields and close modal
-      setProfileForm((prev) => ({ ...prev, newPassword: '', confirmPassword: '' }));
+      setProfileForm((prev) => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
       setShowProfileModal(false);
 
       // Trigger centered pop-up dialog message
       setPopupDialog({
         type: 'success',
         title: 'Admin Information Updated',
-        message: profileForm.newPassword
+        message: isChangingPassword
           ? 'Administrator credentials & password updated successfully!'
           : 'Administrator information saved successfully!',
       });
@@ -394,6 +445,33 @@ export default function Sidebar({
                   <KeyRound size={15} />
                   Change Password
                 </span>
+
+                {/* Current Password for verification */}
+                <div className="vin-admin-profile-group">
+                  <label className="vin-admin-profile-label" htmlFor="admin-current-password">
+                    Current Password <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div className="vin-admin-profile-input-wrap">
+                    <Lock size={17} color="#7c3aed" />
+                    <input
+                      id="admin-current-password"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      className="vin-admin-profile-input"
+                      value={profileForm.currentPassword}
+                      onChange={(e) => setProfileForm({ ...profileForm, currentPassword: e.target.value })}
+                      placeholder="Enter current password to verify"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      className="vin-admin-eye-toggle"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                    >
+                      {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
 
                 {/* New Password */}
                 <div className="vin-admin-profile-group">
