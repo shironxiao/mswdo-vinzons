@@ -207,7 +207,7 @@ export default function RoomPlacement() {
                 <th>ROOM NAME / DESIGNATION</th>
                 <th>OCCUPANCY</th>
                 <th>STATUS</th>
-                <th style={{ textAlign: 'right' }}>ACTION</th>
+                <th className="vin-room-placement-action-cell">ACTION</th>
               </tr>
             </thead>
             <tbody>
@@ -244,7 +244,7 @@ export default function RoomPlacement() {
                         {item.status}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="vin-room-placement-action-cell">
                       <button
                         type="button"
                         className="vin-btn-view-households"
