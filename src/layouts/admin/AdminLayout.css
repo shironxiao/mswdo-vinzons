@@ -294,18 +294,16 @@
 }
 
 .event-history-panel {
-  width: min(920px, 100%);
-  min-height: min(65vh, 600px);
-  max-height: min(850px, calc(100vh - 40px));
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100vh - 40px));
 }
 
 .event-history-panel .event-modal-body {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .event-history-search {
@@ -360,9 +358,8 @@
 }
 
 .event-history-list {
-  flex: 1;
-  min-height: 0;
-  max-height: none;
+  flex: 0 1 auto;
+  max-height: min(460px, calc(100vh - 300px));
   overflow-y: auto;
 }
 
@@ -589,7 +586,6 @@
   }
 
   .event-history-panel {
-    min-height: min(65vh, 520px);
     max-height: calc(100vh - 24px);
   }
 
