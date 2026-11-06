@@ -657,9 +657,9 @@ function CenterDetailsModal({ center, databaseRooms, centersList, onClose, onSav
                           {isFull ? 'Full' : 'Available'}
                         </span>
                       </div>
-                      <div className="vin-room-display-name">
-                        {rName !== room.id ? rName : room.id}
-                      </div>
+                      {rName !== room.id && (
+                        <div className="vin-room-display-name">{rName}</div>
+                      )}
                       <div className="vin-room-meta-info">
                         <span>Capacity: <strong>{room.capacity || 25}</strong></span>
                         <span>Occupants: <strong>{room.occupied || 0}</strong></span>
