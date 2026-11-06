@@ -8,14 +8,21 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons.svg'],
+      includeAssets: [
+        'favicon.svg',
+        'icons.svg',
+        'mswdo-logo.png',
+        'mswdo-pwa-180.png',
+        'mswdo-pwa-192.png',
+        'mswdo-pwa-512.png'
+      ],
       manifest: {
         name: 'MSWDO Vinzons - Evacuee Management System',
         short_name: 'MSWDO Vinzons',
         description: 'Vinzons Evacuee Management & Relief Operations System',
         id: '/',
         theme_color: '#581c87',
-        background_color: '#ffffff',
+        background_color: '#581c87',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/login',
@@ -27,10 +34,22 @@ export default defineConfig({
             purpose: 'any'
           },
           {
+            src: '/mswdo-pwa-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
             src: '/mswdo-pwa-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
+          },
+          {
+            src: '/mswdo-pwa-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
