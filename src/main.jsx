@@ -19,7 +19,7 @@ const dismissSplash = () => {
     splash.classList.add('pwa-splash-fade-out');
     setTimeout(() => {
       splash.remove();
-    }, 450);
+    }, 400);
   }
 };
 
@@ -35,6 +35,6 @@ const alreadyShown = (() => {
 if (alreadyShown) {
   dismissSplash();
 } else {
-  // Let the user appreciate the clean zoom-in animation before fading out smoothly
-  setTimeout(dismissSplash, 950);
+  // Allow loading animation to complete its smooth cycle then dismiss
+  setTimeout(dismissSplash, 350);
 }

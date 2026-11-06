@@ -29,6 +29,7 @@
         position: fixed;
         inset: 0;
         z-index: 999999;
+        background-color: #581c87;
         background: linear-gradient(160deg, #4c1d95 0%, #581c87 50%, #3b0764 100%);
         display: flex;
         align-items: center;
@@ -36,13 +37,12 @@
         overflow: hidden;
         user-select: none;
         -webkit-user-select: none;
-        transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        will-change: opacity, transform;
+        transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: opacity;
       }
 
       #pwa-splash-screen.pwa-splash-fade-out {
         opacity: 0;
-        transform: scale(1.04);
         pointer-events: none;
       }
 
@@ -58,18 +58,15 @@
         box-sizing: border-box;
       }
 
-      /* Single smooth zoom: starts smaller, expands bigger */
+      /* Clean logo matching native OS launch icon exactly */
       .pwa-splash-logo-container {
-        width: 110px;
-        height: 110px;
-        border-radius: 50%;
-        background: #ffffff;
-        padding: 5px;
-        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 0 5px rgba(255, 255, 255, 0.16);
+        width: 135px;
+        height: 135px;
+        background: transparent;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 20px;
+        margin-bottom: 22px;
         box-sizing: border-box;
       }
 
@@ -77,8 +74,8 @@
         width: 100%;
         height: 100%;
         object-fit: contain;
-        border-radius: 50%;
         display: block;
+        filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.25));
       }
 
       .pwa-splash-brand {
@@ -91,7 +88,7 @@
       .pwa-splash-title {
         color: #ffffff;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 1.6rem;
+        font-size: 1.55rem;
         font-weight: 800;
         letter-spacing: -0.02em;
         margin: 0;
@@ -101,7 +98,7 @@
       .pwa-splash-subtitle {
         color: #e9d5ff;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
@@ -110,8 +107,8 @@
       }
 
       .pwa-splash-loader {
-        margin-top: 30px;
-        width: 48px;
+        margin-top: 26px;
+        width: 52px;
         height: 4px;
         background: rgba(255, 255, 255, 0.2);
         border-radius: 4px;
@@ -142,11 +139,11 @@
     <!-- App Root for React -->
     <div id="root"></div>
 
-    <!-- Single Seamless PWA Launch Splash Screen -->
+    <!-- Single Unified Splash Screen with Loading Animation -->
     <div id="pwa-splash-screen" class="pwa-splash" aria-hidden="true">
       <div class="pwa-splash-inner">
         <div class="pwa-splash-logo-container">
-          <img src="/mswdo-logo.png" alt="MSWDO Vinzons" class="pwa-splash-logo" />
+          <img src="/mswdo-pwa-192.png" alt="MSWDO Vinzons" class="pwa-splash-logo" />
         </div>
         <div class="pwa-splash-brand">
           <h1 class="pwa-splash-title">MSWDO - Vinzons</h1>
