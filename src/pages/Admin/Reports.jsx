@@ -381,7 +381,7 @@ export default function Reports() {
 
         <div className="dromic-preview-summary">
           <span>{selectedCenter?.displayName || selectedCenter?.name || 'No center selected'}</span>
-          <span>{centerHouseholds.length} family{centerHouseholds.length === 1 ? '' : 'ies'} • {dromicRows.length} people</span>
+          <span>{centerHouseholds.length} {centerHouseholds.length === 1 ? 'family' : 'families'} • {dromicRows.length} people</span>
         </div>
         <div className="dromic-meta-grid">
           <strong>NAME OF BARANGAY:</strong><span>{headerBarangay || '—'}</span>
