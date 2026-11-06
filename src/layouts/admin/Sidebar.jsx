@@ -122,31 +122,28 @@ export default function Sidebar({
       return;
     }
 
-    // Check if password change is requested
-    const isChangingPassword = Boolean(
-      profileForm.currentPassword || profileForm.newPassword || profileForm.confirmPassword
-    );
+    const activeSavedPassword = adminAccount.password || 'password123';
+    if (!profileForm.currentPassword) {
+      setPopupDialog({
+        type: 'error',
+        title: 'Verification Required',
+        message: 'Please enter your current password to verify your identity before saving admin information.',
+      });
+      return;
+    }
+
+    if (profileForm.currentPassword !== activeSavedPassword) {
+      setPopupDialog({
+        type: 'error',
+        title: 'Incorrect Current Password',
+        message: 'The current password you entered is incorrect. Please check and try again.',
+      });
+      return;
+    }
+
+    const isChangingPassword = Boolean(profileForm.newPassword || profileForm.confirmPassword);
 
     if (isChangingPassword) {
-      if (!profileForm.currentPassword) {
-        setPopupDialog({
-          type: 'error',
-          title: 'Verification Required',
-          message: 'Please enter your current password to verify your identity before changing password.',
-        });
-        return;
-      }
-
-      const activeSavedPassword = adminAccount.password || 'password123';
-      if (profileForm.currentPassword !== activeSavedPassword) {
-        setPopupDialog({
-          type: 'error',
-          title: 'Incorrect Current Password',
-          message: 'The current password you entered is incorrect. Please check and try again.',
-        });
-        return;
-      }
-
       if (!profileForm.newPassword) {
         setPopupDialog({
           type: 'error',
@@ -372,7 +369,7 @@ export default function Sidebar({
             </div>
 
             {/* Modal Body Form */}
-            <form onSubmit={handleSaveProfile} className="vin-admin-profile-body">
+            <form onSubmit={handleSaveProfile} className="vin-admin-profile-body" autoComplete="off">
               {/* User Avatar Card */}
               <div className="vin-admin-profile-card">
                 <div className="vin-admin-profile-avatar">
@@ -460,7 +457,9 @@ export default function Sidebar({
                       value={profileForm.currentPassword}
                       onChange={(e) => setProfileForm({ ...profileForm, currentPassword: e.target.value })}
                       placeholder="Enter current password to verify"
-                      autoComplete="current-password"
+                      autoComplete="off"
+                      name="admin-password-verification"
+                      required
                     />
                     <button
                       type="button"
