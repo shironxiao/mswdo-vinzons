@@ -68,6 +68,33 @@
   transform: translateY(-1px);
 }
 
+.vin-admin-btn-export {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  color: #6b21a8;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.vin-admin-btn-export:hover:not(:disabled) {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  transform: translateY(-1px);
+}
+
+.vin-admin-btn-export:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* Metric stats summary row */
 .vin-admin-hh-stats {
   display: grid;

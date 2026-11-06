@@ -3,8 +3,9 @@ import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
   CheckCircle2, Clock, Users, ChevronLeft, ChevronRight,
-  ChevronDown, LogOut, FileSpreadsheet,
+  ChevronDown, LogOut, FileSpreadsheet, Download,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { QRCodeSVG } from 'qrcode.react';
 import checkIcon from '../../assets/check.png';
 import removeIcon from '../../assets/remove.png';
@@ -700,6 +701,7 @@ export default function Household() {
   const { placements, refresh: refreshPlacements } = useEventRoomPlacements(selectedEvent?.id);
 
   const [activeTab, setActiveTab] = useState('active');        // 'active' | 'masterlist'
+  const [showExportPicker, setShowExportPicker] = useState(false);
   const [filterStub, setFilterStub] = useState('All');         // 'All' | 'Issued' | 'Not Issued'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -1107,6 +1109,77 @@ export default function Household() {
     }
   };
 
+  const exportHouseholdList = (exportType) => {
+    const isActiveExport = exportType === 'Active evacuees';
+    const exportHouseholds = isActiveExport ? activeEventHouseholds : households;
+    if (exportHouseholds.length === 0) {
+      setActionError(`There are no ${isActiveExport ? 'active evacuees' : 'households'} to export.`);
+      return;
+    }
+
+    setActionError('');
+    try {
+      const householdRows = exportHouseholds.map((household) => ({
+        'Household Code': household.householdCode || household.code || household.id,
+        'Head of Family': household.name || '',
+        'Head Age': household.age ?? '',
+        'Head Sex': household.sex || '',
+        'Head Occupation': household.headOccupation || '',
+        'Family Size': household.familyCount || 1,
+        Barangay: household.barangay || '',
+        'Purok / Sitio': household.purok || '',
+        'Evacuation Center': household.center || '',
+        Room: household.room || '',
+        'Evacuee Status': household.evacueeStatus || '',
+        Vulnerabilities: (household.vulnerabilities || []).join('; '),
+        'Stub Code': household.stubCode || '',
+        'Stub Issued': household.stubIssued ? 'Yes' : 'No',
+      }));
+      const peopleRows = exportHouseholds.flatMap((household) => {
+        const householdCode = household.householdCode || household.code || household.id;
+        const sharedFields = {
+          'Household Code': householdCode,
+          'Head of Family': household.name || '',
+          Barangay: household.barangay || '',
+          'Purok / Sitio': household.purok || '',
+        };
+        return [
+          {
+            ...sharedFields,
+            Name: household.name || '',
+            Relationship: 'Head',
+            Age: household.age ?? '',
+            'Age Unit': 'Years',
+            Sex: household.sex || '',
+            Occupation: household.headOccupation || '',
+            Vulnerabilities: (household.vulnerabilities || []).join('; '),
+          },
+          ...(household.members || []).map((member) => ({
+            ...sharedFields,
+            Name: member.name || '',
+            Relationship: member.relationship || 'Member',
+            Age: member.ageValue ?? member.age ?? '',
+            'Age Unit': member.ageUnit || 'Years',
+            Sex: member.sex || '',
+            Occupation: member.occupation || '',
+            Vulnerabilities: (member.vulnerabilities || []).join('; '),
+          })),
+        ];
+      });
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(householdRows), 'Households');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(peopleRows), 'People');
+      const eventLabel = selectedEvent?.event_name || 'current_operation';
+      const safeLabel = (isActiveExport ? eventLabel : 'masterlist').replace(/[^a-z0-9]+/gi, '_');
+      const listLabel = isActiveExport ? 'Active_Evacuees' : 'Masterlist';
+      XLSX.writeFile(workbook, `${listLabel}_${safeLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      console.error('Could not export household list:', error);
+      setActionError(`Could not export the ${isActiveExport ? 'active evacuees' : 'masterlist'}: ${error.message || 'Unknown error'}`);
+    }
+  };
+
   /* Sync modal on state changes */
   useEffect(() => {
     if (selectedHousehold) {
@@ -1401,6 +1474,18 @@ export default function Household() {
         </div>
 
         <div className="vin-admin-hh-header-actions">
+          <button
+            type="button"
+            className="vin-admin-btn-export"
+            onClick={() => {
+              setActionError('');
+              setShowExportPicker(true);
+            }}
+            disabled={households.length === 0 && activeEventHouseholds.length === 0}
+          >
+            <Download size={18} />
+            <span>Export List</span>
+          </button>
           <label className="vin-admin-btn-register" style={{ cursor: isImporting ? 'wait' : 'pointer' }}>
             <FileSpreadsheet size={18} />
             <span>{isImporting ? 'Importing…' : 'Import Excel Masterlist'}</span>
@@ -1422,6 +1507,22 @@ export default function Household() {
           </button>
         </div>
       </header>
+
+      {showExportPicker && (
+        <ChoiceSelectSheet
+          selected=""
+          options={[
+            `Active evacuees (${activeEventHouseholds.length})`,
+            `Masterlist (${households.length})`,
+          ]}
+          title="Choose a list to export"
+          onSelect={(choice) => exportHouseholdList(
+            choice.startsWith('Active evacuees') ? 'Active evacuees' : 'Masterlist'
+          )}
+          onClose={() => setShowExportPicker(false)}
+          allowEmpty={false}
+        />
+      )}
 
       {/* ── Active Operation & View Tabs ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
