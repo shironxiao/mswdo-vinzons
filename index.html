@@ -71,8 +71,6 @@
         justify-content: center;
         margin-bottom: 20px;
         box-sizing: border-box;
-        animation: pwaLogoZoomIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        will-change: transform, opacity;
       }
 
       .pwa-splash-logo {
@@ -88,7 +86,6 @@
         flex-direction: column;
         align-items: center;
         gap: 6px;
-        animation: pwaBrandFadeIn 0.65s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .pwa-splash-title {
@@ -120,7 +117,6 @@
         border-radius: 4px;
         overflow: hidden;
         position: relative;
-        animation: pwaBrandFadeIn 0.5s 0.3s both;
       }
 
       .pwa-splash-pulse {
@@ -130,32 +126,6 @@
         border-radius: 4px;
         position: absolute;
         animation: pwaPulseBar 1.2s infinite ease-in-out;
-      }
-
-      /* Zoom out (starts small) to Zoom in (grows bigger) */
-      @keyframes pwaLogoZoomIn {
-        0% {
-          opacity: 0;
-          transform: scale(0.35) translateY(12px);
-        }
-        50% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 1;
-          transform: scale(1) translateY(0);
-        }
-      }
-
-      @keyframes pwaBrandFadeIn {
-        0% {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-        }
       }
 
       @keyframes pwaPulseBar {
