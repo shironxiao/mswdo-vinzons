@@ -3,7 +3,7 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { EventContext } from '../context/eventContext.js';
-import { Menu, Check, AlertCircle, X, CalendarDays, History, ChevronDown, Search } from 'lucide-react';
+import { Check, AlertCircle, X, CalendarDays, History, ChevronDown, Search } from 'lucide-react';
 import { ChoiceSelectSheet } from './CenterSelectSheet.jsx';
 
 const DISASTER_TYPES = [
@@ -103,19 +103,23 @@ export default function EventSelector() {
         type="button"
         className="event-btn"
         onClick={() => setShowMenu(!showMenu)}
-        aria-label="Select event"
+        aria-label={selectedEvent ? `Selected operation: ${selectedEvent.event_name}` : 'Select operation'}
         aria-haspopup="dialog"
         aria-expanded={showMenu}
       >
         {selectedEvent ? (
           <>
-            {selectedEvent.status === 'Active' ? '🟢 Active:' : '⚪ Historical:'}{' '}
-            {selectedEvent.event_name}
+            <span className={`event-btn-status-dot ${selectedEvent.status === 'Active' ? 'active' : 'historical'}`} />
+            <span className="event-btn-status">
+              {selectedEvent.status === 'Active' ? 'Active' : 'Past operation'}
+            </span>
+            <span className="event-btn-divider" aria-hidden="true" />
+            <span className="event-btn-name">{selectedEvent.event_name}</span>
           </>
         ) : (
-          'Select Event'
+          <span className="event-btn-name">Select operation</span>
         )}
-        <Menu size={16} style={{ marginLeft: 4 }} />
+        <ChevronDown size={16} className="event-btn-chevron" aria-hidden="true" />
       </button>
       {showMenu && (
         <div className="event-modal-backdrop" onClick={() => setShowMenu(false)}>
