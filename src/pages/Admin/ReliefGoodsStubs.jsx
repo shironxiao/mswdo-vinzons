@@ -1,5 +1,5 @@
 import { useState, useMemo, useContext, useEffect } from 'react';
-import { Building, ChevronLeft, ChevronRight, CircleCheck, Clock3 } from 'lucide-react';
+import { Building, ChevronLeft, ChevronRight, CircleCheck, Clock3, History, PackageCheck, PackageOpen, X } from 'lucide-react';
 import './AdminFeatures.css';
 import {
   useEvacuationCenters,
@@ -7,6 +7,8 @@ import {
 } from '../../lib/evacuationCenters.js';
 import {
   getEventReliefStubRecords,
+  getAllReliefStubs,
+  getHouseholdReliefHistory,
   issueHouseholdStub,
   useEventRoomPlacements,
   useHouseholds,
@@ -33,6 +35,10 @@ export default function ReliefGoodsStubs() {
   const [stubRecordState, setStubRecordState] = useState({ eventId: null, records: [] });
   const [stubErrorState, setStubErrorState] = useState({ eventId: null, message: '' });
   const [issuingHouseholdId, setIssuingHouseholdId] = useState(null);
+  const [allStubsRecords, setAllStubsRecords] = useState([]);
+  const [selectedHistoryHousehold, setSelectedHistoryHousehold] = useState(null);
+  const [householdReliefHistory, setHouseholdReliefHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const pageSize = 8;
 
   const stubRecords = useMemo(
@@ -42,6 +48,30 @@ export default function ReliefGoodsStubs() {
   const stubError = stubErrorState.eventId === selectedEventId
     ? stubErrorState.message
     : '';
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAllStubs = () => {
+      getAllReliefStubs().then((stubs) => {
+        if (isMounted) setAllStubsRecords(stubs);
+      });
+    };
+    fetchAllStubs();
+
+    const channelAll = supabase
+      .channel('relief-stubs-global-count')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'relief_goods_stubs' },
+        fetchAllStubs
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channelAll);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedEventId || selectedEventId === 'default-active-event') return undefined;
@@ -94,6 +124,16 @@ export default function ReliefGoodsStubs() {
       return household ? { ...household, placement } : null;
     })
     .filter(Boolean), [placements, selectedEvent?.id, selectedEvent?.status, households]);
+
+  const reliefCountsByHousehold = useMemo(() => {
+    const map = new Map();
+    allStubsRecords.forEach((record) => {
+      if (record.stub_issued) {
+        map.set(record.household_id, (map.get(record.household_id) || 0) + 1);
+      }
+    });
+    return map;
+  }, [allStubsRecords]);
 
   const householdRows = useMemo(() => {
     const recordsByHousehold = new Map(
@@ -150,6 +190,32 @@ export default function ReliefGoodsStubs() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
 
+  const handleOpenHistory = async (household) => {
+    setSelectedHistoryHousehold(household);
+    setLoadingHistory(true);
+    try {
+      const history = await getHouseholdReliefHistory(household.id);
+      // If history is empty but current household is already marked as issued, synthesize current entry
+      if (history.length === 0 && household.stubIssued) {
+        history.push({
+          stubCode: household.stubCode || '—',
+          stubIssued: true,
+          stubIssuedAt: household.stubIssuedAt || new Date().toISOString(),
+          eventName: selectedEvent?.event_name || 'Operation Assistance',
+          eventType: selectedEvent?.event_type || 'Disaster Event',
+          centerName: household.centerName,
+          roomName: household.roomName,
+        });
+      }
+      setHouseholdReliefHistory(history);
+    } catch (err) {
+      console.warn('Error loading history:', err);
+      setHouseholdReliefHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const handleIssueStub = async (household) => {
     if (
       isReadOnly ||
@@ -162,11 +228,13 @@ export default function ReliefGoodsStubs() {
 
     try {
       await issueHouseholdStub(household.id, selectedEventId);
-      const [, records] = await Promise.all([
+      const [, records, allStubs] = await Promise.all([
         refreshHouseholds(),
         getEventReliefStubRecords(selectedEventId),
+        getAllReliefStubs(),
       ]);
       setStubRecordState({ eventId: selectedEventId, records });
+      setAllStubsRecords(allStubs);
     } catch (error) {
       setStubErrorState({
         eventId: selectedEventId,
@@ -257,6 +325,7 @@ export default function ReliefGoodsStubs() {
               <th>HOUSEHOLD SIZE</th>
               <th>STUB CODE</th>
               <th>STATUS</th>
+              <th>RELIEF RECEIVED</th>
               <th>ISSUED AT</th>
               <th>ACTION</th>
             </tr>
@@ -264,7 +333,7 @@ export default function ReliefGoodsStubs() {
           <tbody>
             {paginatedHouseholds.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No households match the current operation and filters.
                 </td>
               </tr>
@@ -290,6 +359,29 @@ export default function ReliefGoodsStubs() {
                     </span>
                   </td>
                   <td>
+                    {(() => {
+                      const count = Math.max(
+                        reliefCountsByHousehold.get(household.id) || 0,
+                        household.stubIssued ? 1 : 0
+                      );
+                      return count > 0 ? (
+                        <button
+                          type="button"
+                          className="vin-relief-history-badge-btn"
+                          onClick={() => handleOpenHistory(household)}
+                          title="Click to view complete relief history"
+                        >
+                          <History size={13} />
+                          <span>{count} {count === 1 ? 'Pack' : 'Packs'}</span>
+                        </button>
+                      ) : (
+                        <span className="vin-relief-count-zero" title="No relief issued yet">
+                          0 Received
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  <td>
                     {household.stubIssuedAt ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                         <Clock3 size={14} color="#64748b" />
@@ -298,26 +390,38 @@ export default function ReliefGoodsStubs() {
                     ) : '—'}
                   </td>
                   <td>
-                    {household.stubIssued ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {household.stubIssued ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#15803d', fontWeight: 700 }}>
-                        <CircleCheck size={16} />
-                        Issued
-                      </span>
-                    ) : (
+                          <CircleCheck size={16} />
+                          Issued
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="vin-btn-submit"
+                          onClick={() => handleIssueStub(household)}
+                          disabled={
+                            isReadOnly ||
+                            issuingHouseholdId === household.id ||
+                            !selectedEventId ||
+                            selectedEventId === 'default-active-event'
+                          }
+                        >
+                          {issuingHouseholdId === household.id ? 'Issuing…' : 'Issue stub'}
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        className="vin-btn-submit"
-                        onClick={() => handleIssueStub(household)}
-                        disabled={
-                          isReadOnly ||
-                          issuingHouseholdId === household.id ||
-                          !selectedEventId ||
-                          selectedEventId === 'default-active-event'
-                        }
+                        className="vin-btn-view-relief-history"
+                        onClick={() => handleOpenHistory(household)}
+                        title="View relief assistance history"
                       >
-                        {issuingHouseholdId === household.id ? 'Issuing…' : 'Issue stub'}
+                        <History size={14} />
+                        <span>History</span>
                       </button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -368,6 +472,157 @@ export default function ReliefGoodsStubs() {
               <span>Next</span>
               <ChevronRight size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Household Relief Assistance History Modal ── */}
+      {selectedHistoryHousehold && (
+        <div
+          className="vin-history-modal-overlay"
+          onClick={() => setSelectedHistoryHousehold(null)}
+        >
+          <div
+            className="vin-history-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="vin-history-modal-header">
+              <div className="vin-history-modal-title-group">
+                <h2 className="vin-history-modal-title">
+                  <PackageCheck size={22} color="#7c3aed" />
+                  Relief Assistance History
+                </h2>
+                <p className="vin-history-modal-subtitle">
+                  Historical log of relief goods, stubs, and assistance issued to this household.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="vin-history-modal-close-btn"
+                onClick={() => setSelectedHistoryHousehold(null)}
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="vin-history-modal-body">
+              {/* Profile & Total Stat Card */}
+              <div className="vin-history-summary-grid">
+                <div className="vin-history-hh-details">
+                  <span className="vin-history-hh-name">
+                    {selectedHistoryHousehold.name}
+                  </span>
+                  <div className="vin-history-hh-meta">
+                    <span><strong>Code:</strong> {selectedHistoryHousehold.householdCode}</span>
+                    <span>•</span>
+                    <span><strong>Center:</strong> {selectedHistoryHousehold.centerName}</span>
+                    <span>•</span>
+                    <span><strong>Room:</strong> {selectedHistoryHousehold.roomName}</span>
+                    <span>•</span>
+                    <span><strong>Family Size:</strong> {selectedHistoryHousehold.familyCount} members</span>
+                  </div>
+                </div>
+
+                <div className="vin-history-stat-badge">
+                  <span className="vin-history-stat-count">
+                    {householdReliefHistory.filter((h) => h.stubIssued).length}
+                  </span>
+                  <span className="vin-history-stat-label">Relief Received</span>
+                </div>
+              </div>
+
+              {/* History Table or Empty State */}
+              {loadingHistory ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  Loading relief distribution history…
+                </div>
+              ) : householdReliefHistory.length === 0 ? (
+                <div className="vin-history-empty">
+                  <PackageOpen size={36} color="#94a3b8" />
+                  <p style={{ margin: 0, fontWeight: 700, color: '#334155' }}>
+                    No Relief Goods Issued Yet
+                  </p>
+                  <small style={{ color: '#64748b' }}>
+                    This household has not received any relief goods stubs in recorded operations.
+                  </small>
+                </div>
+              ) : (
+                <div className="vin-history-table-wrap">
+                  <table className="vin-history-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>DISASTER OPERATION</th>
+                        <th>EVACUATION CENTER / ROOM</th>
+                        <th>STUB CODE</th>
+                        <th>DATE & TIME ISSUED</th>
+                        <th>STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {householdReliefHistory.map((item, idx) => (
+                        <tr key={item.stubCode + idx}>
+                          <td style={{ fontWeight: 700, color: '#6d28d9' }}>
+                            #{householdReliefHistory.length - idx}
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                              {item.eventName}
+                            </div>
+                            <small style={{ color: '#64748b' }}>{item.eventType}</small>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600, color: '#334155' }}>
+                              {item.centerName}
+                            </div>
+                            <small style={{ color: '#64748b' }}>{item.roomName}</small>
+                          </td>
+                          <td style={{ fontWeight: 700, color: '#0f172a' }}>
+                            {item.stubCode}
+                          </td>
+                          <td>
+                            {item.stubIssuedAt ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#475569' }}>
+                                <Clock3 size={13} color="#64748b" />
+                                {formatIssuedAt(item.stubIssuedAt)}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td>
+                            <span className={`vin-status-tag ${item.stubIssued ? 'active' : 'pending'}`}>
+                              {item.stubIssued ? (
+                                <>
+                                  <CircleCheck size={13} />
+                                  Issued
+                                </>
+                              ) : (
+                                'Pending'
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="vin-history-modal-footer">
+              <button
+                type="button"
+                className="vin-btn-cancel"
+                onClick={() => setSelectedHistoryHousehold(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

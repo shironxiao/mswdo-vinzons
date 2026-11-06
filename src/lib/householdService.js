@@ -592,6 +592,72 @@ export async function getEventReliefStubRecords(eventId) {
 }
 
 /**
+ * Fetch all relief stubs across all events to compute total relief counts per household
+ */
+export async function getAllReliefStubs() {
+  try {
+    const { data, error } = await supabase
+      .from('relief_goods_stubs')
+      .select('household_id, event_id, stub_code, stub_issued, stub_issued_at');
+    if (error) {
+      console.warn('Could not fetch all relief stubs:', error.message);
+      return [];
+    }
+    return data || [];
+  } catch (err) {
+    console.warn('getAllReliefStubs error:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch detailed relief assistance history for a specific household across events
+ */
+export async function getHouseholdReliefHistory(householdId) {
+  if (!householdId) return [];
+  try {
+    const [stubsRes, eventsRes, placementsRes] = await Promise.allSettled([
+      supabase
+        .from('relief_goods_stubs')
+        .select('household_id, event_id, stub_code, stub_issued, stub_issued_at')
+        .eq('household_id', householdId),
+      supabase
+        .from('evacuation_events')
+        .select('id, event_name, event_type, status, declared_at, created_at'),
+      supabase
+        .from('room_placements')
+        .select('event_id, center_id, room_id, center:evacuation_centers(id, name, location), room:rooms(id, room_name)')
+        .eq('household_id', householdId),
+    ]);
+
+    const stubs = (stubsRes.status === 'fulfilled' && stubsRes.value.data) ? stubsRes.value.data : [];
+    const events = (eventsRes.status === 'fulfilled' && eventsRes.value.data) ? eventsRes.value.data : [];
+    const placements = (placementsRes.status === 'fulfilled' && placementsRes.value.data) ? placementsRes.value.data : [];
+
+    const eventsMap = new Map(events.map((ev) => [ev.id, ev]));
+    const placementsMap = new Map(placements.map((p) => [p.event_id, p]));
+
+    return stubs.map((s) => {
+      const ev = eventsMap.get(s.event_id);
+      const pl = placementsMap.get(s.event_id);
+      return {
+        stubCode: s.stub_code || '—',
+        stubIssued: Boolean(s.stub_issued),
+        stubIssuedAt: s.stub_issued_at,
+        eventId: s.event_id,
+        eventName: ev?.event_name || (s.event_id === 'default-active-event' ? 'Active Operation' : 'Disaster Relief Operation'),
+        eventType: ev?.event_type || 'Relief Operation',
+        centerName: pl?.center?.name || 'Assigned Center',
+        roomName: pl?.room?.room_name || 'Assigned Room',
+      };
+    }).sort((a, b) => new Date(b.stubIssuedAt || 0) - new Date(a.stubIssuedAt || 0));
+  } catch (err) {
+    console.warn('Error fetching household relief history:', err);
+    return [];
+  }
+}
+
+/**
  * Mark a household stub as issued and persist the event-specific issue record.
  */
 export async function issueHouseholdStub(id, eventId = null) {
