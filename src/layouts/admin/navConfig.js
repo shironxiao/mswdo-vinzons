@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Building2,
+  MapPin,
   Home,
   Building,
   ClipboardCheck,
@@ -28,6 +29,12 @@ export const DEFAULT_ADMIN_NAV_SECTIONS = [
         label: 'Evacuation Center',
         path: '/admin/evacuation-center',
         icon: Building2,
+      },
+      {
+        id: 'barangay-assignments',
+        label: 'Barangay & Purok Assignments',
+        path: '/admin/barangay-assignments',
+        icon: MapPin,
       },
       {
         id: 'household',

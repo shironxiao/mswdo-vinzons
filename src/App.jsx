@@ -6,6 +6,7 @@ import MobileLayout from './layouts/mobile/MobileLayout';
 // Admin Pages
 import Dashboard from './pages/Admin/Dashboard';
 import EvacuationCenter from './pages/Admin/EvacuationCenter';
+import BarangayEvacuationAssignments from './pages/Admin/BarangayEvacuationAssignments';
 import Household from './pages/Admin/Household';
 import RoomPlacement from './pages/Admin/RoomPlacement';
 import EvacueeMonitoring from './pages/Admin/EvacueeMonitoring';
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="/admin" element={<EventProvider><AdminLayout /></EventProvider>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="evacuation-center" element={<EvacuationCenter />} />
+          <Route path="barangay-assignments" element={<BarangayEvacuationAssignments />} />
           <Route path="household" element={<Household />} />
           <Route path="room-placement" element={<RoomPlacement />} />
           <Route path="evacuee-monitoring" element={<EvacueeMonitoring />} />
