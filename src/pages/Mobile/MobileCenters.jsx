@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Search, Building, MapPin, Plus, X, ChevronRight,
-  ChevronLeft,
+  ChevronLeft, SlidersHorizontal,
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
@@ -105,6 +105,56 @@ function RoomsSheet({ center, onClose }) {
   );
 }
 
+function CenterFilterSheet({ status, centers, search, onApply, onClose }) {
+  const [draftStatus, setDraftStatus] = useState(status);
+  const options = ['All', 'Available', 'Occupied', 'Empty'];
+  const resultCount = centers.filter((center) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query || [center.name, center.fullName, center.location]
+      .some((value) => (value || '').toLowerCase().includes(query));
+    return matchesSearch && (draftStatus === 'All' || centerStatusLabel(center) === draftStatus);
+  }).length;
+
+  return (
+    <div className="vin-mob-sheet-overlay" onClick={onClose}>
+      <div className="vin-ctr-filter-sheet" onClick={(event) => event.stopPropagation()}>
+        <div className="vin-ctr-filter-handle" />
+        <div className="vin-ctr-filter-header">
+          <span className="vin-ctr-filter-title">Filters</span>
+          <button type="button" className="vin-ctr-filter-reset" onClick={() => setDraftStatus('All')}>
+            Reset
+          </button>
+        </div>
+        <div className="vin-ctr-filter-section">
+          <div className="vin-ctr-filter-label">Center Status</div>
+          <div className="vin-ctr-filter-options">
+            {options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`vin-ctr-filter-option${draftStatus === option ? ' active' : ''}`}
+                onClick={() => setDraftStatus(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="vin-ctr-filter-apply"
+          onClick={() => {
+            onApply(draftStatus);
+            onClose();
+          }}
+        >
+          Show {resultCount} result{resultCount === 1 ? '' : 's'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ──────────────────────────────────────────────
    MAIN PAGE
    ────────────────────────────────────────────── */
@@ -129,6 +179,7 @@ export default function MobileCenters() {
   })), [dbCenters, households]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Available' | 'Occupied' | 'Empty'
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [centerCreateError, setCenterCreateError] = useState('');
   const [selectedCenter, setSelectedCenter] = useState(null);
@@ -181,14 +232,6 @@ export default function MobileCenters() {
     }
   };
 
-  /* Status filter pill options (no numbers inside pills to prevent cutting off) */
-  const STATUS_PILLS = [
-    { id: 'All',       label: 'All',       dotClass: null },
-    { id: 'Available', label: 'Available', dotClass: 'green' },
-    { id: 'Occupied',  label: 'Occupied',  dotClass: 'red'   },
-    { id: 'Empty',     label: 'Empty',     dotClass: 'gray'  },
-  ];
-
   return (
     <div className="vin-mob-page">
       <header className="vin-mob-header">
@@ -217,24 +260,32 @@ export default function MobileCenters() {
         />
       </div>
 
-      {/* ── Status Filter Pills (Clean pills without numbers) ── */}
-      <div className="vin-ctr-status-pills-row">
-        {STATUS_PILLS.map((pill) => (
+      <div className="vin-ctr-filter-bar">
+        <button
+          type="button"
+          className={`vin-ctr-filter-trigger${filterStatus !== 'All' ? ' active' : ''}`}
+          onClick={() => setShowFilterSheet(true)}
+        >
+          <SlidersHorizontal size={14} />
+          <span>Filters</span>
+          {filterStatus !== 'All' && <span className="vin-ctr-filter-count">1</span>}
+        </button>
+        {filterStatus !== 'All' && (
           <button
-            key={pill.id}
             type="button"
-            className={`vin-ctr-status-pill ${filterStatus === pill.id ? 'active' : ''}`}
+            className="vin-ctr-filter-chip"
             onClick={() => {
-              setFilterStatus(pill.id);
+              setFilterStatus('All');
               setCurrentPage(1);
             }}
           >
-            {pill.dotClass && (
-              <span className={`vin-ctr-pill-dot ${pill.dotClass}`} />
-            )}
-            <span className="vin-ctr-pill-label">{pill.label}</span>
+            {filterStatus}
+            <X size={13} />
           </button>
-        ))}
+        )}
+        <span className="vin-ctr-filter-results">
+          {filtered.length} result{filtered.length === 1 ? '' : 's'}
+        </span>
       </div>
 
       {/* ── CENTER TABLE ── */}
@@ -342,6 +393,19 @@ export default function MobileCenters() {
       {/* ── ROOM DETAIL SHEET ── */}
       {selectedCenter && (
         <RoomsSheet center={selectedCenter} onClose={() => setSelectedCenter(null)} />
+      )}
+
+      {showFilterSheet && (
+        <CenterFilterSheet
+          status={filterStatus}
+          centers={centers}
+          search={search}
+          onApply={(status) => {
+            setFilterStatus(status);
+            setCurrentPage(1);
+          }}
+          onClose={() => setShowFilterSheet(false)}
+        />
       )}
 
       {/* ── ADD CENTER SHEET ── */}
