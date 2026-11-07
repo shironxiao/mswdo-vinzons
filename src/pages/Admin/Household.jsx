@@ -42,6 +42,7 @@ import { useRooms } from '../../lib/roomService.js';
 import { EventContext } from '../../context/eventContext.js';
 import { importMasterlist } from '../../lib/masterlistImport.js';
 import AdminSearchInput from '../../components/AdminSearchInput.jsx';
+import HouseholdReviewModal from '../../components/HouseholdReviewModal.jsx';
 
 const ADMIN_HOUSEHOLD_DRAFT_KEY = 'mswdo.admin.household-registration-draft';
 const REGISTRATION_YES_NO_FIELDS = [
@@ -722,6 +723,7 @@ export default function Household() {
   const [importError, setImportError] = useState('');
   const [actionError, setActionError] = useState('');
   const [modalMode, setModalMode] = useState(null);            // 'register' | 'edit' | null
+  const [showHouseholdReview, setShowHouseholdReview] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [registrationSaveError, setRegistrationSaveError] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
@@ -1190,6 +1192,7 @@ export default function Household() {
 
   /* ── Register / Edit Form Handlers ── */
   const openRegister = () => {
+    setShowHouseholdReview(false);
     const emptyForm = {
       id: `HH-00${households.length + 1}`,
       head: '',
@@ -1246,6 +1249,7 @@ export default function Household() {
 
   const openEdit = (item, e) => {
     e.stopPropagation();
+    setShowHouseholdReview(false);
     setDraftRestored(false);
     setValidationErrors({});
     setRegistrationSaveError('');
@@ -1310,8 +1314,8 @@ export default function Household() {
     });
   };
 
-  const handleSaveHousehold = async (e) => {
-    e.preventDefault();
+  const handleSaveHousehold = async (e, confirmReview = false) => {
+    e?.preventDefault();
     let errors = {};
     if (modalMode === 'register') {
       errors = validateHouseholdRegistration(activeForm);
@@ -1331,6 +1335,12 @@ export default function Household() {
       return;
     }
 
+    if (!confirmReview) {
+      setShowHouseholdReview(true);
+      return;
+    }
+
+    setShowHouseholdReview(false);
     if (modalMode === 'register') {
       setIsSavingHousehold(true);
       setRegistrationSaveError('');
@@ -2168,7 +2178,10 @@ export default function Household() {
 
       {/* ── Register / Edit Household Modal ── */}
       {modalMode && (
-        <div className="vin-admin-modal-overlay" onClick={() => setModalMode(null)}>
+        <div className="vin-admin-modal-overlay" onClick={() => {
+          setShowHouseholdReview(false);
+          setModalMode(null);
+        }}>
           <div className="vin-admin-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="vin-admin-modal-header">
               <h2 className="vin-admin-modal-title">
@@ -2177,7 +2190,10 @@ export default function Household() {
               <button
                 type="button"
                 className="vin-admin-modal-close-btn"
-                onClick={() => setModalMode(null)}
+                onClick={() => {
+                  setShowHouseholdReview(false);
+                  setModalMode(null);
+                }}
               >
                 <X size={18} />
               </button>
@@ -2762,11 +2778,20 @@ export default function Household() {
               <button type="submit" className="vin-admin-modal-submit-btn" disabled={isSavingHousehold}>
                 {isSavingHousehold
                   ? 'Saving household...'
-                  : modalMode === 'register' ? 'Register Household' : 'Save Changes'}
+                  : 'Review Information'}
               </button>
             </form>
           </div>
         </div>
+      )}
+      {showHouseholdReview && modalMode && (
+        <HouseholdReviewModal
+          form={activeForm}
+          mode={modalMode}
+          isSaving={isSavingHousehold}
+          onEdit={() => setShowHouseholdReview(false)}
+          onConfirm={() => handleSaveHousehold(null, true)}
+        />
       )}
 
       {/* ── Mobile-Style Filter Modal ── */}

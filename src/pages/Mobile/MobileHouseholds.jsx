@@ -18,6 +18,7 @@ import {
   GenderSelectSheet,
   ChoiceSelectSheet,
 } from '../../components/CenterSelectSheet';
+import HouseholdReviewModal from '../../components/HouseholdReviewModal.jsx';
 import {
   HOUSEHOLD_PROFILE_OPTIONS,
   HOUSEHOLD_RELATIONSHIPS,
@@ -890,6 +891,7 @@ export default function MobileHouseholds() {
   const [centerRooms, setCenterRooms] = useState(DEFAULT_CENTER_ROOMS);
   const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
+  const [showHouseholdReview, setShowHouseholdReview] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [registrationSaveError, setRegistrationSaveError] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
@@ -1044,6 +1046,7 @@ export default function MobileHouseholds() {
 
   /* ── Register / Edit ── */
   const openRegister = () => {
+    setShowHouseholdReview(false);
     const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
     const emptyForm = {
       head: '', headFirstName: '', headMiddleName: '', headLastName: '',
@@ -1084,6 +1087,7 @@ export default function MobileHouseholds() {
   };
   const openEdit = (item, e) => {
     e.stopPropagation();
+    setShowHouseholdReview(false);
     setDraftRestored(false);
     setValidationErrors({});
     setRegistrationSaveError('');
@@ -1140,8 +1144,8 @@ export default function MobileHouseholds() {
       return { ...prev, members };
     });
   };
-  const handleSaveHousehold = async (e) => {
-    e.preventDefault();
+  const handleSaveHousehold = async (e, confirmReview = false) => {
+    e?.preventDefault();
     let errors = {};
     if (modalMode === 'register') {
       errors = validateHouseholdRegistration(activeForm);
@@ -1160,6 +1164,12 @@ export default function MobileHouseholds() {
       return;
     }
 
+    if (!confirmReview) {
+      setShowHouseholdReview(true);
+      return;
+    }
+
+    setShowHouseholdReview(false);
     if (modalMode === 'register') {
       setIsSaving(true);
       setRegistrationSaveError('');
@@ -1592,13 +1602,19 @@ export default function MobileHouseholds() {
 
       {/* ── REGISTER / EDIT MODAL ── */}
       {modalMode && (
-        <div className="vin-mob-sheet-overlay" onClick={() => setModalMode(null)}>
+        <div className="vin-mob-sheet-overlay" onClick={() => {
+          setShowHouseholdReview(false);
+          setModalMode(null);
+        }}>
           <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
             <div className="vin-mob-sheet-header">
               <h2 className="vin-mob-sheet-title">
                 {modalMode === 'register' ? 'Register Household' : 'Edit Household'}
               </h2>
-              <button type="button" className="vin-mob-sheet-close" onClick={() => setModalMode(null)}>
+              <button type="button" className="vin-mob-sheet-close" onClick={() => {
+                setShowHouseholdReview(false);
+                setModalMode(null);
+              }}>
                 <X size={18} />
               </button>
             </div>
@@ -2068,11 +2084,20 @@ export default function MobileHouseholds() {
                 </div>
               ))}
               <button type="submit" className="vin-mob-sheet-submit-btn" disabled={isSaving}>
-                {isSaving ? 'Saving household...' : 'Save Household'}
+                {isSaving ? 'Saving household...' : 'Review Information'}
               </button>
             </form>
           </div>
         </div>
+      )}
+      {showHouseholdReview && modalMode && (
+        <HouseholdReviewModal
+          form={activeForm}
+          mode={modalMode}
+          isSaving={isSaving}
+          onEdit={() => setShowHouseholdReview(false)}
+          onConfirm={() => handleSaveHousehold(null, true)}
+        />
       )}
 
       {/* ── FORM CENTER PICKER ── */}
