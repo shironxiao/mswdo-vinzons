@@ -608,7 +608,12 @@ function StubIssuanceModal({ household, households, onIssue, onDecamp, readOnly 
    ────────────────────────────────────────────── */
 export default function Household() {
   const { centers } = useEvacuationCenters();
-  const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
+  const {
+    households,
+    setHouseholds,
+    refresh: refreshHouseholds,
+    error: householdFetchError,
+  } = useHouseholds(centers);
   const { rooms: databaseRooms } = useRooms(centers);
   const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { placements, refresh: refreshPlacements } = useEventRoomPlacements(selectedEvent?.id);
@@ -1431,6 +1436,15 @@ export default function Household() {
           </button>
         </div>
       </header>
+
+      {householdFetchError && (
+        <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>
+          Could not load households from the database: {householdFetchError}
+          <button type="button" onClick={refreshHouseholds} style={{ marginLeft: 8 }}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {showExportPicker && (
         <ChoiceSelectSheet

@@ -108,22 +108,10 @@ export function normalizeHousehold(row, centersList = []) {
 }
 
 /**
- * Hook to consume live households with Supabase realtime updates and offline cache
+ * Hook to consume households returned by Supabase with realtime updates.
  */
 export function useHouseholds(centersList = []) {
-  const [households, setHouseholds] = useState(() => {
-    try {
-      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-    return [];
-  });
-
+  const [households, setHouseholds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const fetchSequence = useRef(0);
@@ -160,19 +148,25 @@ export function useHouseholds(centersList = []) {
       if (err) throw err;
       if (requestId !== fetchSequence.current) return;
 
-      if (data) {
-        const normalized = data.map((row) => normalizeHousehold(row, centersList));
-        setHouseholds(normalized);
-        try {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
-        } catch {
-          // ignore
-        }
+      const normalized = (data || [])
+        .map((row) => normalizeHousehold(row, centersList))
+        .filter(Boolean);
+      setHouseholds(normalized);
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+      } catch {
+        // ignore
       }
       setError(null);
     } catch (err) {
       if (requestId !== fetchSequence.current) return;
-      console.warn('Could not fetch households from Supabase, using cache/fallback:', err?.message || err);
+      console.error('Could not fetch households from Supabase:', err?.message || err);
+      setHouseholds([]);
+      try {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+      } catch (storageError) {
+        console.warn('Could not clear stale cached households:', storageError);
+      }
       setError(err?.message || 'Failed to fetch households');
     } finally {
       if (requestId === fetchSequence.current) setLoading(false);

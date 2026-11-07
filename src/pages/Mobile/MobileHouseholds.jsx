@@ -664,7 +664,12 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
    ══════════════════════════════════════════════ */
 export default function MobileHouseholds() {
   const { centers } = useEvacuationCenters();
-  const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
+  const {
+    households,
+    setHouseholds,
+    refresh: refreshHouseholds,
+    error: householdFetchError,
+  } = useHouseholds(centers);
   const { activeEvent } = useActiveEvent();
   const { refresh: refreshPlacements } = useEventRoomPlacements(activeEvent?.id);
 
@@ -1185,6 +1190,15 @@ export default function MobileHouseholds() {
           <Plus size={16} /><span>Register</span>
         </button>
       </header>
+
+      {householdFetchError && (
+        <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>
+          Could not load households from the database: {householdFetchError}
+          <button type="button" onClick={refreshHouseholds} style={{ marginLeft: 8 }}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Search row */}
       <div className="vin-hh-toolbar">

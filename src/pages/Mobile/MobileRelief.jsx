@@ -1,36 +1,30 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Search, Ticket, CheckCircle, ChevronLeft } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
-
-const RELIEF_STUBS = [
-  { id: 'RG-10248', household: 'Antonio Magno', area: 'Room C-1', familySize: 4, issuedAt: 'Sept 24, 2026 • 08:32 PM', status: 'Marked Issued' },
-  { id: 'RG-10249', household: 'Rosa Santos', area: 'Room A-2', familySize: 4, issuedAt: 'Sept 24, 2026 • 08:35 PM', status: 'Marked Issued' },
-  { id: 'RG-10250', household: 'Patricia Cruz', area: 'Room C-2', familySize: 3, issuedAt: 'Sept 24, 2026 • 08:40 PM', status: 'Pending' },
-  { id: 'RG-10251', household: 'Juan Dela Cruz', area: 'Room A-1', familySize: 5, issuedAt: 'Sept 24, 2026 • 08:42 PM', status: 'Marked Issued' },
-];
+import { useHouseholds } from '../../lib/householdService.js';
 
 export default function MobileRelief() {
-  const [stubs, setStubs] = useState(RELIEF_STUBS);
+  const { households } = useHouseholds();
   const [search, setSearch] = useState('');
   const [selectedStub, setSelectedStub] = useState(null); // for relief-stub-detail modal
 
-  const filtered = stubs.filter((s) =>
-    s.household.toLowerCase().includes(search.toLowerCase()) ||
-    s.id.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const handleMarkReturned = () => {
-    alert(`Stub ${selectedStub.id} marked as Returned / Completed!`);
-    setSelectedStub(null);
-  };
-
-  const handleRevoke = () => {
-    if (confirm(`Revoke stub ${selectedStub.id}?`)) {
-      setStubs(stubs.filter((s) => s.id !== selectedStub.id));
-      setSelectedStub(null);
-    }
-  };
+  const filtered = useMemo(() => households
+    .filter((household) => household.stubCode)
+    .map((household) => ({
+      id: household.stubCode,
+      household: household.name || 'Household',
+      area: [household.room, household.center].filter(Boolean).join(' • '),
+      familySize: household.familyCount,
+      issuedAt: household.stubIssuedAt
+        ? new Date(household.stubIssuedAt).toLocaleString()
+        : 'Not issued',
+      status: household.stubIssued ? 'Marked Issued' : 'Pending',
+    }))
+    .filter((stub) =>
+      stub.household.toLowerCase().includes(search.toLowerCase()) ||
+      String(stub.id).toLowerCase().includes(search.toLowerCase())
+    ), [households, search]);
 
   return (
     <div className="vin-mob-page">
@@ -84,6 +78,11 @@ export default function MobileRelief() {
             </span>
           </div>
         ))}
+        {filtered.length === 0 && (
+          <p role="status" style={{ padding: 16, color: '#64748b', textAlign: 'center' }}>
+            No relief stubs found in the database.
+          </p>
+        )}
       </div>
 
       {/* ========================================================
@@ -129,19 +128,10 @@ export default function MobileRelief() {
 
             <button
               type="button"
-              className="vin-mob-sheet-submit-btn"
-              onClick={handleMarkReturned}
-              style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1.5px solid #d2ded5' }}
+              onClick={() => setSelectedStub(null)}
+              style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 700, fontSize: '0.92rem', cursor: 'pointer', padding: '8px' }}
             >
-              Mark as Returned / Completed
-            </button>
-
-            <button
-              type="button"
-              onClick={handleRevoke}
-              style={{ background: 'none', border: 'none', color: '#dc2626', fontWeight: 700, fontSize: '0.92rem', cursor: 'pointer', padding: '8px' }}
-            >
-              Revoke
+              Close
             </button>
           </div>
         </div>
