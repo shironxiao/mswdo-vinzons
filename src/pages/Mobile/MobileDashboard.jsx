@@ -54,7 +54,7 @@ export default function MobileDashboard() {
           stub_issued,
           stub_issued_at,
           created_at,
-          center:evacuation_centers ( id, name, location ),
+          center:evacuation_centers!households_center_id_fkey ( id, name, location ),
           room:rooms ( id, room_name ),
           members:household_members ( id )
         `)

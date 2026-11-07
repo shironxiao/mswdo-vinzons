@@ -138,7 +138,7 @@ export function useHouseholds(centersList = []) {
           stub_issued,
           stub_issued_at,
           created_at,
-          center:evacuation_centers ( id, name, location ),
+          center:evacuation_centers!households_center_id_fkey ( id, name, location ),
           room:rooms ( id, room_name ),
           profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
           members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
@@ -979,7 +979,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
         stub_issued,
         stub_issued_at,
         created_at,
-        center:evacuation_centers ( id, name, location ),
+        center:evacuation_centers!households_center_id_fkey ( id, name, location ),
         room:rooms ( id, room_name ),
         profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
         members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
