@@ -1,4 +1,20 @@
 export const HOUSEHOLD_PROFILE_OPTIONS = {
+  houseCharacteristics: [
+    'Concrete',
+    'Semi Concrete',
+    'Half Concrete',
+    'Light Materials',
+    'Nipa',
+    'Concrete/Nipa Roof',
+    'Concrete/ half body',
+    'Concrete/LightMaterials',
+    'Concrete/With Light Materials',
+    'Concrete/2 storey',
+    'half nipa/ half concrete',
+    'Nipa / Wood',
+    'Small Concrete',
+    'loft House',
+  ],
   govAssistanceAvailed: [
     '4Ps (Pantawid Pamilyang Pilipino Program)',
     'AICS (Assistance to Individuals in Crisis Situation)',

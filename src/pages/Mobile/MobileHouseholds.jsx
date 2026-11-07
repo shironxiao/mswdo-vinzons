@@ -1709,10 +1709,14 @@ export default function MobileHouseholds() {
                   </div>
                 </div>
                 <div className="vin-mob-input-group">
-                  <label className="vin-mob-input-label" htmlFor="mobile-characteristics-remarks">CHARACTERISTICS / REMARKS</label>
-                  <textarea id="mobile-characteristics-remarks" placeholder="Additional household characteristics"
-                    className="vin-mob-select" rows={3} value={activeForm.characteristicsRemarks}
-                    onChange={(e) => setActiveForm({ ...activeForm, characteristicsRemarks: e.target.value })} />
+                  <span className="vin-mob-input-label">CHARACTERISTICS OF THE HOUSE</span>
+                  <button type="button" id="mobile-characteristics-remarks" className="vin-mob-select"
+                    aria-haspopup="dialog"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}
+                    onClick={() => setShowFormChoicePicker({ target: 'head', field: 'characteristicsRemarks' })}>
+                    <span>{activeForm.characteristicsRemarks || 'Select house characteristics'}</span>
+                    <ChevronDown size={16} />
+                  </button>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2093,16 +2097,24 @@ export default function MobileHouseholds() {
       {showFormChoicePicker && (
         <ChoiceSelectSheet
           selected={showFormChoicePicker.target === 'head'
-            ? activeForm.headOccupation
+            ? activeForm[showFormChoicePicker.field]
             : activeForm.members[showFormChoicePicker.index]?.[showFormChoicePicker.field]}
-          options={showFormChoicePicker.field === 'relationship' ? HOUSEHOLD_RELATIONSHIPS : OCCUPATION_OPTIONS}
+          options={
+            showFormChoicePicker.field === 'relationship'
+              ? HOUSEHOLD_RELATIONSHIPS
+              : showFormChoicePicker.field === 'characteristicsRemarks'
+                ? HOUSEHOLD_PROFILE_OPTIONS.houseCharacteristics
+                : OCCUPATION_OPTIONS
+          }
           title={showFormChoicePicker.field === 'relationship'
             ? 'Select Relationship to Head'
-            : showFormChoicePicker.target === 'head' ? 'Select Head Occupation' : 'Select Member Occupation'}
-          allowOther={showFormChoicePicker.field === 'occupation'}
+            : showFormChoicePicker.field === 'characteristicsRemarks'
+              ? 'Characteristics of the House'
+              : showFormChoicePicker.target === 'head' ? 'Select Head Occupation' : 'Select Member Occupation'}
+          allowOther={showFormChoicePicker.field === 'occupation' || showFormChoicePicker.field === 'characteristicsRemarks'}
           onSelect={(value) => {
             if (showFormChoicePicker.target === 'head') {
-              setActiveForm((prev) => ({ ...prev, headOccupation: value }));
+              setActiveForm((prev) => ({ ...prev, [showFormChoicePicker.field]: value }));
             } else {
               setActiveForm((prev) => ({
                 ...prev,

@@ -23,7 +23,10 @@ function detailsForPerson(person, includeHouseholdVulnerabilities = false) {
     ['Received relief assistance', person.hasReceivedReliefAssistance],
     ['Other income source', person.otherIncomeSource],
     ['Flood depth', person.floodDepthLevel],
-    ['Characteristics / remarks', person.characteristicsRemarks],
+    [
+      includeHouseholdVulnerabilities ? 'Characteristics of the House' : 'Additional remarks',
+      person.characteristicsRemarks,
+    ],
   ];
 
   if (person.ageUnit) {
