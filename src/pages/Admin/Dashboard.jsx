@@ -39,10 +39,32 @@ export default function Dashboard() {
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const { logs } = useMonitoringLogs(centers);
 
-  const eventPlacements = useMemo(() => placements.filter((placement) => (
-    placement.event_id === selectedEvent?.id &&
-    (isReadOnly || placement.status === 'Evacuated')
-  )), [placements, selectedEvent?.id, isReadOnly]);
+  const eventPlacements = useMemo(() => {
+    const selectedPlacements = placements.filter((placement) => (
+      placement.event_id === selectedEvent?.id &&
+      (isReadOnly || placement.status === 'Evacuated')
+    ));
+    if (isReadOnly || selectedEvent?.status !== 'Active') return selectedPlacements;
+
+    const placedHouseholdIds = new Set(selectedPlacements.map((placement) => placement.household_id));
+    const unplacedActiveHouseholds = households
+      .filter((household) => (
+        household.evacueeStatus === 'Active' &&
+        household.centerId &&
+        !placedHouseholdIds.has(household.id)
+      ))
+      .map((household) => ({
+        household_id: household.id,
+        center_id: household.centerId,
+        room_id: household.roomId,
+        event_id: selectedEvent.id,
+        status: 'Evacuated',
+        check_in_at: household.createdAt,
+        check_out_at: null,
+      }));
+
+    return [...selectedPlacements, ...unplacedActiveHouseholds];
+  }, [placements, selectedEvent, isReadOnly, households]);
   const eventHouseholds = useMemo(() => eventPlacements.map((placement) => {
     const household = households.find((item) => item.id === placement.household_id);
     return household ? { ...household, placement } : null;

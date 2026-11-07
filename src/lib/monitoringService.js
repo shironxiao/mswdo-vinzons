@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_monitoring_logs';
@@ -17,7 +17,7 @@ export function normalizeMonitoringLog(row, centersList = []) {
     }
   }
 
-  const roomName = row.room?.room_name || 'Room 1';
+  const roomName = row.room?.room_name || 'Unassigned';
   const headName = row.household?.head_name || 'Household';
 
   return {
@@ -51,7 +51,7 @@ export function useMonitoringLogs(centersList = []) {
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
@@ -60,10 +60,11 @@ export function useMonitoringLogs(centersList = []) {
   });
 
   const [loading, setLoading] = useState(true);
+  const requestId = useRef(0);
 
   const fetchLogs = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('monitoring_logs')
         .select(`
@@ -89,33 +90,66 @@ export function useMonitoringLogs(centersList = []) {
 
       if (error) throw error;
 
-      if (data) {
-        const normalized = data.map((r) => normalizeMonitoringLog(r, centersList));
-        setLogs(normalized);
-        try {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
-        } catch {
-          // ignore
-        }
+      if (currentRequest !== requestId.current) return;
+      const normalized = (data || []).map((r) => normalizeMonitoringLog(r, centersList));
+      setLogs(normalized);
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+      } catch {
+        // ignore
       }
     } catch (err) {
-      console.warn('Could not fetch monitoring_logs from Supabase, using cache/fallback:', err);
+      if (currentRequest === requestId.current) {
+        console.warn('Could not fetch monitoring_logs from Supabase, using cache/fallback:', err);
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   }, [centersList]);
 
   useEffect(() => {
-    fetchLogs();
+    const initialFetch = window.setTimeout(fetchLogs, 0);
+    let refreshTimeout;
+    const scheduleRefresh = () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      refreshTimeout = window.setTimeout(fetchLogs, 250);
+    };
 
     const channel = supabase
       .channel('monitoring-logs-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, () => {
-        fetchLogs();
-      })
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, scheduleRefresh)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') scheduleRefresh();
+      });
+    const crossTabChannel = typeof BroadcastChannel === 'undefined'
+      ? null
+      : new BroadcastChannel('vinzons-monitoring-logs');
+    crossTabChannel?.addEventListener('message', scheduleRefresh);
+
+    const refreshWhenOnline = () => scheduleRefresh();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
+    }, 30000);
+
+    window.addEventListener('online', refreshWhenOnline);
+    window.addEventListener('focus', refreshWhenOnline);
+    window.addEventListener('pageshow', refreshWhenOnline);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('online', refreshWhenOnline);
+      window.removeEventListener('focus', refreshWhenOnline);
+      window.removeEventListener('pageshow', refreshWhenOnline);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      crossTabChannel?.removeEventListener('message', scheduleRefresh);
+      crossTabChannel?.close();
       supabase.removeChannel(channel);
     };
   }, [fetchLogs]);
@@ -147,5 +181,10 @@ export async function recordMonitoringLog(logData) {
     .single();
 
   if (error) throw error;
+  if (typeof BroadcastChannel !== 'undefined') {
+    const channel = new BroadcastChannel('vinzons-monitoring-logs');
+    channel.postMessage({ type: 'updated' });
+    channel.close();
+  }
   return data;
 }

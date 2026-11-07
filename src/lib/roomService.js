@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_rooms';
@@ -53,7 +53,7 @@ export function useRooms(centersList = []) {
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
@@ -62,10 +62,11 @@ export function useRooms(centersList = []) {
   });
 
   const [loading, setLoading] = useState(true);
+  const requestId = useRef(0);
 
   const fetchRooms = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('rooms')
         .select(`
@@ -80,33 +81,60 @@ export function useRooms(centersList = []) {
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const normalized = data.map((r) => normalizeRoom(r, centersList));
-        setRooms(normalized);
-        try {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
-        } catch {
-          // ignore
-        }
+      if (currentRequest !== requestId.current) return;
+      const normalized = (data || []).map((r) => normalizeRoom(r, centersList));
+      setRooms(normalized);
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+      } catch {
+        // ignore
       }
     } catch (err) {
-      console.warn('Could not fetch rooms from Supabase, using cache/fallback:', err);
+      if (currentRequest === requestId.current) {
+        console.warn('Could not fetch rooms from Supabase, using cache/fallback:', err);
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   }, [centersList]);
 
   useEffect(() => {
-    fetchRooms();
+    const initialFetch = window.setTimeout(fetchRooms, 0);
+    let refreshTimeout;
+    const scheduleRefresh = () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      refreshTimeout = window.setTimeout(fetchRooms, 250);
+    };
 
     const channel = supabase
       .channel('rooms-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
-        fetchRooms();
-      })
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, scheduleRefresh)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') scheduleRefresh();
+      });
+
+    const refreshWhenOnline = () => scheduleRefresh();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
+    }, 30000);
+
+    window.addEventListener('online', refreshWhenOnline);
+    window.addEventListener('focus', refreshWhenOnline);
+    window.addEventListener('pageshow', refreshWhenOnline);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('online', refreshWhenOnline);
+      window.removeEventListener('focus', refreshWhenOnline);
+      window.removeEventListener('pageshow', refreshWhenOnline);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
       supabase.removeChannel(channel);
     };
   }, [fetchRooms]);

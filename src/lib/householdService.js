@@ -1,70 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
 
-/**
- * Fallback seeds if device is completely offline on initial first-time load
- */
-export const FALLBACK_HOUSEHOLDS = [
-  {
-    id: 'b6e91243-57e8-4247-8cb0-ef5a676f22f1',
-    householdCode: 'HH-001',
-    name: 'Antonio Magno',
-    age: 45,
-    sex: 'Male',
-    vulnerabilities: [],
-    center: 'LGU EC (Mangcaway)',
-    centerId: null,
-    room: 'Room 1',
-    roomId: null,
-    familyCount: 4,
-    members: [
-      { name: 'Luz Magno', age: 58, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
-      { name: 'Pablo Magno', age: 20, sex: 'Male', vulnerabilities: [] },
-      { name: 'Sofia Magno', age: 17, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-001001',
-    stubIssued: false,
-  },
-  {
-    id: '6249acf5-7114-4a4e-a40e-5d66c92cc729',
-    householdCode: 'HH-002',
-    name: 'Rosa Santos',
-    age: 40,
-    sex: 'Female',
-    vulnerabilities: [],
-    center: 'LGU EC (Mangcaway)',
-    centerId: null,
-    room: 'Room 2',
-    roomId: null,
-    familyCount: 4,
-    members: [
-      { name: 'Pedro Santos', age: 42, sex: 'Male', vulnerabilities: [] },
-      { name: 'Maya Santos', age: 16, sex: 'Female', vulnerabilities: [] },
-      { name: 'Leo Santos', age: 12, sex: 'Male', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-001002',
-    stubIssued: true,
-  },
-  {
-    id: '4ac1d904-00bd-4e8f-912a-1b069a8554d2',
-    householdCode: 'HH-003',
-    name: 'Patricia Cruz',
-    age: 35,
-    sex: 'Female',
-    vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
-    center: 'LGU EC (Mangcaway)',
-    centerId: null,
-    room: 'Room 1',
-    roomId: null,
-    familyCount: 3,
-    members: [
-      { name: 'Mark Cruz', age: 38, sex: 'Male', vulnerabilities: [] },
-      { name: 'Lina Cruz', age: 10, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-003014',
-    stubIssued: false,
-  },
-];
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_households';
 const HOUSEHOLDS_CHANGED_EVENT = 'vinzons-households-changed';
@@ -104,7 +40,7 @@ export function normalizeHousehold(row, centersList = []) {
     }
   }
 
-  const roomName = row.room?.room_name || 'Room 1';
+  const roomName = row.room?.room_name || 'Unassigned';
   const members = Array.isArray(row.members)
     ? row.members.map((m) => {
         const memberProfile = Array.isArray(m.profile) ? m.profile[0] : m.profile;
@@ -180,12 +116,12 @@ export function useHouseholds(centersList = []) {
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
     }
-    return FALLBACK_HOUSEHOLDS;
+    return [];
   });
 
   const [loading, setLoading] = useState(true);
@@ -341,6 +277,7 @@ export function useEventRoomPlacements(eventId) {
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') scheduleRefresh();
       });
+    householdSyncChannel?.addEventListener('message', scheduleRefresh);
 
     const refreshWhenOnline = () => scheduleRefresh();
     const refreshWhenVisible = () => {
@@ -363,6 +300,7 @@ export function useEventRoomPlacements(eventId) {
       window.removeEventListener('focus', refreshWhenOnline);
       window.removeEventListener('pageshow', refreshWhenOnline);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
+      householdSyncChannel?.removeEventListener('message', scheduleRefresh);
       supabase.removeChannel(channel);
     };
   }, [eventId, fetchPlacements]);
@@ -373,7 +311,7 @@ export function useEventRoomPlacements(eventId) {
 /**
  * Register a new household and its members into Supabase
  */
-export async function createHousehold(formData, centersList = []) {
+export async function createHousehold(formData, centersList = [], eventId = null) {
   // 1. Resolve center_id
   let centerId = formData.centerId;
   if (!centerId && formData.center) {
@@ -388,22 +326,25 @@ export async function createHousehold(formData, centersList = []) {
   // 2. Resolve room_id
   let roomId = null;
   if (centerId && formData.room && formData.room !== 'Unassigned') {
-    const { data: roomData } = await supabase
+    const { data: roomData, error: roomLookupError } = await supabase
       .from('rooms')
       .select('id')
       .eq('center_id', centerId)
       .eq('room_name', formData.room)
       .maybeSingle();
 
+    if (roomLookupError) throw roomLookupError;
+
     if (roomData) {
       roomId = roomData.id;
     } else {
       // Auto-create room if it doesn't exist
-      const { data: newRoom } = await supabase
+      const { data: newRoom, error: roomCreateError } = await supabase
         .from('rooms')
         .insert({ center_id: centerId, room_name: formData.room, capacity_individuals: 30 })
         .select('id')
         .single();
+      if (roomCreateError) throw roomCreateError;
       if (newRoom) roomId = newRoom.id;
     }
   }
@@ -476,26 +417,33 @@ export async function createHousehold(formData, centersList = []) {
         if (memberProfileError) throw memberProfileError;
       }
     }
+    notifyHouseholdChanges();
   }
 
   // 5. Optionally record initial room_placement & relief stub if assigned to a center
   if (centerId) {
-    try {
-      await supabase.from('room_placements').insert({
-        household_id: insertedH.id,
-        center_id: centerId,
-        room_id: roomId,
-        status: 'Evacuated',
-        check_in_at: new Date().toISOString(),
-      });
-      await supabase.from('relief_goods_stubs').insert({
-        household_id: insertedH.id,
-        stub_code: stubCode,
-        stub_issued: Boolean(formData.stubIssued),
-        stub_issued_at: formData.stubIssued ? new Date().toISOString() : null,
-      });
-    } catch {
-      // Ignore if operational tables are not yet queried
+    const activeEventId = eventId && eventId !== 'default-active-event' ? eventId : null;
+    const { error: placementError } = await supabase.from('room_placements').insert({
+      household_id: insertedH.id,
+      center_id: centerId,
+      room_id: roomId,
+      event_id: activeEventId,
+      status: 'Evacuated',
+      check_in_at: new Date().toISOString(),
+    });
+    if (placementError) {
+      console.error('Household saved, but its evacuation placement could not be recorded:', placementError);
+    }
+
+    const { error: stubError } = await supabase.from('relief_goods_stubs').insert({
+      household_id: insertedH.id,
+      event_id: activeEventId,
+      stub_code: stubCode,
+      stub_issued: Boolean(formData.stubIssued),
+      stub_issued_at: formData.stubIssued ? new Date().toISOString() : null,
+    });
+    if (stubError) {
+      console.error('Household saved, but its relief stub record could not be created:', stubError);
     }
   }
 
@@ -790,6 +738,7 @@ export async function issueHouseholdStub(id, eventId = null) {
     }
   }
 
+  notifyHouseholdChanges();
   return data;
 }
 
@@ -883,6 +832,7 @@ export async function checkInHousehold({ householdId, centerId, roomId, roomName
     console.warn('relief_goods_stubs insert failed:', err);
   }
 
+  notifyHouseholdChanges();
   return { success: true, stubCode: code };
 }
 
@@ -898,7 +848,6 @@ export async function transferHouseholdRoom({
   centerId,
   roomId = null,
   roomName = null,
-  reason = '',
 }) {
   if (!householdId) throw new Error('Household ID is required for transfer.');
   if (!centerId) throw new Error('Target evacuation center is required.');
@@ -977,6 +926,7 @@ export async function transferHouseholdRoom({
 
   if (householdError) throw householdError;
 
+  notifyHouseholdChanges();
   return { success: true, centerId, roomId: resolvedRoomId };
 }
 
@@ -1004,6 +954,7 @@ export async function decampHousehold(householdId, eventId = null) {
 
   if (hErr) throw hErr;
 
+  notifyHouseholdChanges();
   return { success: true };
 }
 

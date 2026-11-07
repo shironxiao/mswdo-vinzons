@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
-  Search, Activity, X, Clock, CheckCircle2, XCircle, ChevronDown,
+  Search, X, Clock, CheckCircle2, XCircle, ChevronDown,
   ChevronLeft, ChevronRight, SlidersHorizontal, AlertTriangle, Building,
   QrCode, Ticket, PackageCheck, User,
 } from 'lucide-react';
@@ -13,178 +13,12 @@ import removeIcon from '../../assets/remove.png';
 import {
   useEvacuationCenters,
   isCenterMatch,
-  getRoomsForCenter,
 } from '../../lib/evacuationCenters';
 import { useHouseholds, issueHouseholdStub } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 import QrScannerModal from '../../components/QrScannerModal';
-
-const INITIAL_MONITOR_DATA = [
-  {
-    id: 1,
-    name: 'Antonio Magno',
-    center: 'LGU EC (Mangcaway)',
-    room: 'Room 1',
-    ratio: '4/4',
-    timestamp: '9/17/2026, 5:00:00 PM',
-    status: 'Recorded',
-    members: ['Antonio Magno', 'Luz Magno', 'Pablo Magno', 'Sofia Magno'],
-  },
-  {
-    id: 2,
-    name: 'Rosa Santos',
-    center: 'LGU EC (Mangcaway)',
-    room: 'Room 2',
-    ratio: '4/4',
-    timestamp: '9/17/2026, 4:30:00 PM',
-    status: 'Recorded',
-    members: ['Rosa Santos', 'Pedro Santos', 'Maya Santos', 'Leo Santos'],
-  },
-  {
-    id: 3,
-    name: 'Patricia Cruz',
-    center: 'LGU EC (Bliss)',
-    room: 'Room 1',
-    ratio: '0/3',
-    timestamp: '9/17/2026, 1:00:00 PM',
-    status: 'Absent',
-    members: ['Patricia Cruz', 'Mark Cruz', 'Lina Cruz'],
-  },
-  {
-    id: 4,
-    name: 'Juan Dela Cruz',
-    center: 'PLGU EC (Mat-I)',
-    room: 'Room 1',
-    ratio: '5/5',
-    timestamp: '9/17/2026, 3:00:00 PM',
-    status: 'Recorded',
-    members: ['Juan Dela Cruz', 'Maria Dela Cruz', 'John Dela Cruz'],
-  },
-  {
-    id: 5,
-    name: 'Elena Bautista',
-    center: 'Pinagtigasan EC',
-    room: 'Room 1',
-    ratio: '3/3',
-    timestamp: '9/17/2026, 2:15:00 PM',
-    status: 'Recorded',
-    members: ['Elena Bautista', 'Carlos Bautista', 'Jenny Bautista'],
-  },
-  {
-    id: 6,
-    name: 'Roberto Diaz',
-    center: 'St. Peter Parish AVR',
-    room: 'Room 2',
-    ratio: '2/2',
-    timestamp: '9/17/2026, 1:45:00 PM',
-    status: 'Recorded',
-    members: ['Roberto Diaz', 'Clara Diaz'],
-  },
-  {
-    id: 7,
-    name: 'Carmen Ramos',
-    center: 'Biday EC',
-    room: 'Room 3',
-    ratio: '0/4',
-    timestamp: '9/17/2026, 12:30:00 PM',
-    status: 'Absent',
-    members: ['Carmen Ramos', 'Danilo Ramos', 'Mia Ramos', 'Leo Ramos'],
-  },
-  {
-    id: 8,
-    name: 'Fernando Lopez',
-    center: 'Sugod EC',
-    room: 'Room 2',
-    ratio: '3/3',
-    timestamp: '9/17/2026, 11:20:00 AM',
-    status: 'Recorded',
-    members: ['Fernando Lopez', 'Grace Lopez', 'Joy Lopez'],
-  },
-  {
-    id: 9,
-    name: 'Teresa Morales',
-    center: 'Mormons',
-    room: 'Room 1',
-    ratio: '3/3',
-    timestamp: '9/17/2026, 10:45:00 AM',
-    status: 'Recorded',
-    members: ['Teresa Morales', 'Ramon Morales', 'Ella Morales'],
-  },
-  {
-    id: 10,
-    name: 'Danilo Soriano',
-    center: 'Marabe Church',
-    room: 'Room 4',
-    ratio: '0/2',
-    timestamp: '9/17/2026, 10:15:00 AM',
-    status: 'Absent',
-    members: ['Danilo Soriano', 'Beth Soriano'],
-  },
-  {
-    id: 11,
-    name: 'Marites Villanueva',
-    center: 'Adorno Fathers',
-    room: 'Room 1',
-    ratio: '3/3',
-    timestamp: '9/17/2026, 9:30:00 AM',
-    status: 'Recorded',
-    members: ['Marites Villanueva', 'Joshua Villanueva', 'Hannah Villanueva'],
-  },
-  {
-    id: 12,
-    name: 'Gregorio Santos',
-    center: 'Mangcawayan EC',
-    room: 'Room 2',
-    ratio: '0/2',
-    timestamp: '9/17/2026, 9:00:00 AM',
-    status: 'Absent',
-    members: ['Gregorio Santos', 'Amparo Santos'],
-  },
-  {
-    id: 13,
-    name: 'Lorna Reyes',
-    center: 'Our Lady of Fatima Shrine',
-    room: 'Room 3',
-    ratio: '4/4',
-    timestamp: '9/17/2026, 8:30:00 AM',
-    status: 'Recorded',
-    members: ['Lorna Reyes', 'Ben Reyes', 'Kim Reyes', 'Chris Reyes'],
-  },
-  {
-    id: 14,
-    name: 'Mario Aguit',
-    center: 'Brgy. Hall (Aguit-it)',
-    room: 'Room 1',
-    ratio: '2/2',
-    timestamp: '9/17/2026, 8:00:00 AM',
-    status: 'Recorded',
-    members: ['Mario Aguit', 'Sandra Aguit'],
-  },
-];
-
-/* Exactly 13 Official Vinzons Evacuation Centers */
-const OFFICIAL_EVAC_CENTERS = [
-  { name: 'LGU EC (Mangcaway)',          location: 'Mangcaway Brgy. Cal. Sur, Vinzons, CN' },
-  { name: 'LGU EC (Bliss)',              location: 'Bliss Brgy. Cal Sur, VCN' },
-  { name: 'PLGU EC (Mat-I)',             location: 'Mat – I Brgy. Sto. Domingo, VCN' },
-  { name: 'Pinagtigasan EC',             location: 'P – 1 Brgy. Pinagtigasan, VCN' },
-  { name: 'St. Peter Parish AVR',        location: 'Brgy Poblacion III' },
-  { name: 'Biday EC',                    location: 'Brgy. Banocboc, VCN' },
-  { name: 'Sugod EC',                    location: 'Brgy. Banocboc, VCN' },
-  { name: 'Mormons',                     location: 'Brgy. Calangcawan Sur, VCN' },
-  { name: 'Marabe Church',               location: 'Brgy. Calangcawan Sur, VCN' },
-  { name: 'Adorno Fathers',              location: 'Sto. Domingo, VCN' },
-  { name: 'Mangcawayan EC',              location: 'Mangcawayan Is., VCN' },
-  { name: 'Our Lady of Fatima Shrine',   location: 'Mangcawayan Brgy. Calangawan Sur, VCN' },
-  { name: 'Brgy. Hall (Aguit-it)',       location: 'Brgy. Aguit – it, VCN' },
-];
-
-const CENTERS = ['All Centers', ...OFFICIAL_EVAC_CENTERS.map((c) => c.name)];
-
-/* Each center has 5 rooms */
-const ROOMS = ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
 
 export default function MobileMonitor() {
   const { centers } = useEvacuationCenters();
@@ -213,7 +47,6 @@ export default function MobileMonitor() {
 
   // Dynamic monitor records derived from live Supabase households & monitoring logs
   const records = useMemo(() => {
-    if (!households || households.length === 0) return INITIAL_MONITOR_DATA;
     return households.map((h, idx) => {
       const allNames = [h.name, ...(h.members || []).map((m) => m.name || m)];
       const total = allNames.length;
@@ -221,7 +54,7 @@ export default function MobileMonitor() {
       // Find most recent monitoring log for this household
       const latestLog = logs.find((l) => l.householdId === h.id);
 
-      let status = 'Present';
+      let status = h.evacueeStatus === 'Decamped' ? 'Decamped' : 'Present';
       let ratio = `${total}/${total}`;
       let dateFormatted = h.createdAt
         ? new Date(h.createdAt).toLocaleString('en-US', {
@@ -247,10 +80,6 @@ export default function MobileMonitor() {
         });
       }
 
-      if (h.evacueeStatus === 'Decamped') {
-        status = 'Decamped';
-      }
-
       // Check for local optimistic override
       const override = attendanceOverrides[h.id];
       if (override) {
@@ -265,8 +94,8 @@ export default function MobileMonitor() {
         centerId: h.centerId,
         roomId: h.roomId,
         name: h.name,
-        center: h.center || 'LGU EC (Mangcaway)',
-        room: h.room || 'Room 1',
+        center: h.center || 'Unassigned Center',
+        room: h.room || 'Unassigned',
         ratio,
         timestamp: dateFormatted,
         status,
@@ -314,9 +143,6 @@ export default function MobileMonitor() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, filterStatus, filterRelief, filterCenter, filterRoom]);
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRecords = filtered.slice(startIndex, startIndex + pageSize);
@@ -546,7 +372,10 @@ export default function MobileMonitor() {
             type="text"
             placeholder="Search family or room…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="vin-mob-search-input"
           />
         </div>
@@ -580,7 +409,10 @@ export default function MobileMonitor() {
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterStatus('All')}
+            onClick={() => {
+              setFilterStatus('All');
+              setCurrentPage(1);
+            }}
           >
             <span>{filterStatus}</span>
             <X size={13} className="vin-hh-chip-close" />
@@ -590,7 +422,10 @@ export default function MobileMonitor() {
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterRelief('All')}
+            onClick={() => {
+              setFilterRelief('All');
+              setCurrentPage(1);
+            }}
           >
             <span>Relief: {filterRelief}</span>
             <X size={13} className="vin-hh-chip-close" />
@@ -600,7 +435,10 @@ export default function MobileMonitor() {
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterCenter('All Centers')}
+            onClick={() => {
+              setFilterCenter('All Centers');
+              setCurrentPage(1);
+            }}
           >
             <span>{filterCenter.split(' ').slice(0, 2).join(' ')}</span>
             <X size={13} className="vin-hh-chip-close" />
@@ -610,7 +448,10 @@ export default function MobileMonitor() {
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterRoom('All Rooms')}
+            onClick={() => {
+              setFilterRoom('All Rooms');
+              setCurrentPage(1);
+            }}
           >
             <span>{filterRoom}</span>
             <X size={13} className="vin-hh-chip-close" />
@@ -1066,6 +907,7 @@ export default function MobileMonitor() {
             setFilterRelief(relief);
             setFilterCenter(center);
             setFilterRoom(room);
+            setCurrentPage(1);
           }}
           onClose={() => setShowFilterSheet(false)}
         />

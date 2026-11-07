@@ -8,32 +8,10 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
+import { useHouseholds } from '../../lib/householdService.js';
+import { useMonitoringLogs } from '../../lib/monitoringService.js';
 import { supabase } from '../../lib/supabase.js';
 import './MobileCommon.css';
-
-// Seed fallback data
-const SEED_HOUSEHOLDS = [
-  { id: 1, name: 'Antonio Magno', familyCount: 4, center: 'LGU EC (Mangcaway)', room: 'Room 1', stubCode: null },
-  { id: 2, name: 'Rosa Santos', familyCount: 4, center: 'LGU EC (Mangcaway)', room: 'Room 2', stubCode: 'STB-001002' },
-  { id: 3, name: 'Patricia Cruz', familyCount: 3, center: 'LGU EC (Bliss)', room: 'Room 1', stubCode: null },
-  { id: 4, name: 'Juan Dela Cruz', familyCount: 5, center: 'PLGU EC (Mat-I)', room: 'Room 2', stubCode: 'STB-001004' },
-  { id: 5, name: 'Carmen Reyes', familyCount: 3, center: 'PLGU EC (Mat-I)', room: 'Room 1', stubCode: null },
-  { id: 6, name: 'Domingo Ramos', familyCount: 2, center: 'LGU EC (Bliss)', room: 'Room 3', stubCode: 'STB-001006' },
-];
-
-const SEED_STUBS = [
-  { id: 'RG-10248', household: 'Antonio Magno', area: 'Room 1, LGU EC (Mangcaway)', status: 'Marked Issued' },
-  { id: 'RG-10249', household: 'Rosa Santos', area: 'Room 2, LGU EC (Mangcaway)', status: 'Marked Issued' },
-  { id: 'RG-10250', household: 'Patricia Cruz', area: 'Room 1, LGU EC (Bliss)', status: 'Pending' },
-  { id: 'RG-10251', household: 'Juan Dela Cruz', area: 'Room 2, PLGU EC (Mat-I)', status: 'Marked Issued' },
-];
-
-const SEED_MONITORING = [
-  { id: 1, name: 'Antonio Magno', status: 'Recorded', present: 4, total: 4 },
-  { id: 2, name: 'Rosa Santos', status: 'Recorded', present: 4, total: 4 },
-  { id: 3, name: 'Patricia Cruz', status: 'Absent', present: 0, total: 3 },
-  { id: 4, name: 'Juan Dela Cruz', status: 'Recorded', present: 5, total: 5 },
-];
 
 const RECENT_ACTIVITY_LIMIT = 5;
 
@@ -58,6 +36,8 @@ function getCenterAndRoom(row, centers) {
 export default function MobileDashboard() {
   const navigate = useNavigate();
   const { centers } = useEvacuationCenters();
+  const { households } = useHouseholds(centers);
+  const { logs } = useMonitoringLogs(centers);
   const [recentActivities, setRecentActivities] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState(false);
@@ -174,6 +154,11 @@ export default function MobileDashboard() {
 
   useEffect(() => {
     let isMounted = true;
+    let refreshTimeout;
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimeout);
+      refreshTimeout = window.setTimeout(loadRecentActivities, 250);
+    };
     const loadRecentActivities = async () => {
       try {
         await fetchRecentActivities();
@@ -191,80 +176,45 @@ export default function MobileDashboard() {
       .channel('mobile-dashboard-recent-activity')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, loadRecentActivities)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, loadRecentActivities)
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') scheduleRefresh();
+      });
+    const householdChannel = typeof BroadcastChannel === 'undefined'
+      ? null
+      : new BroadcastChannel('vinzons-households');
+    const monitoringChannel = typeof BroadcastChannel === 'undefined'
+      ? null
+      : new BroadcastChannel('vinzons-monitoring-logs');
+    householdChannel?.addEventListener('message', scheduleRefresh);
+    monitoringChannel?.addEventListener('message', scheduleRefresh);
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
+    }, 30000);
+    window.addEventListener('online', scheduleRefresh);
+    window.addEventListener('focus', scheduleRefresh);
+    document.addEventListener('visibilitychange', scheduleRefresh);
 
     return () => {
       isMounted = false;
+      window.clearTimeout(refreshTimeout);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('online', scheduleRefresh);
+      window.removeEventListener('focus', scheduleRefresh);
+      document.removeEventListener('visibilitychange', scheduleRefresh);
+      householdChannel?.removeEventListener('message', scheduleRefresh);
+      monitoringChannel?.removeEventListener('message', scheduleRefresh);
+      householdChannel?.close();
+      monitoringChannel?.close();
       supabase.removeChannel(channel);
     };
   }, [fetchRecentActivities]);
 
-  // Dynamic metrics state
-  const [metrics, setMetrics] = useState({
-    householdsCount: SEED_HOUSEHOLDS.length,
-    evacueesCount: SEED_HOUSEHOLDS.reduce((acc, h) => acc + (h.familyCount || 0), 0),
-    centersCount: centers.length || 10,
-    stubsCount: SEED_STUBS.filter((s) => s.status === 'Marked Issued').length,
-    monitoringCount: SEED_MONITORING.filter((m) => m.status === 'Recorded').length,
-    isLoading: true,
-  });
-
-  // Fetch dynamic stats from Supabase or fallback
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchDynamicStats() {
-      try {
-        let hhCount = SEED_HOUSEHOLDS.length;
-        let evacuees = SEED_HOUSEHOLDS.reduce((acc, h) => acc + (h.familyCount || 0), 0);
-        let stubs = SEED_STUBS.filter((s) => s.status === 'Marked Issued').length;
-        let monitored = SEED_MONITORING.filter((m) => m.status === 'Recorded').length;
-
-        // Attempt Supabase fetch
-        if (supabase) {
-          const [hhRes, stubsRes] = await Promise.allSettled([
-            supabase.from('households').select('id, members_count', { count: 'exact' }),
-            supabase.from('relief_stubs').select('id, status', { count: 'exact' }),
-          ]);
-
-          if (hhRes.status === 'fulfilled' && hhRes.value?.data && hhRes.value.data.length > 0) {
-            hhCount = hhRes.value.data.length;
-            evacuees = hhRes.value.data.reduce((sum, h) => sum + (h.members_count || 1), 0);
-          }
-
-          if (stubsRes.status === 'fulfilled' && stubsRes.value?.data && stubsRes.value.data.length > 0) {
-            stubs = stubsRes.value.data.filter((s) => s.status === 'Issued' || s.status === 'Marked Issued').length;
-          }
-        }
-
-        if (isMounted) {
-          setMetrics({
-            householdsCount: hhCount,
-            evacueesCount: evacuees,
-            centersCount: centers.length || 10,
-            stubsCount: stubs,
-            monitoringCount: monitored,
-            isLoading: false,
-          });
-        }
-      } catch (err) {
-        console.warn('Dashboard live metrics fetch error, using seeded data:', err);
-        if (isMounted) {
-          setMetrics((prev) => ({
-            ...prev,
-            centersCount: centers.length || 10,
-            isLoading: false,
-          }));
-        }
-      }
-    }
-
-    fetchDynamicStats();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [centers]);
+  const metrics = {
+    householdsCount: households.length,
+    centersCount: centers.length,
+    stubsCount: households.filter((household) => household.stubIssued).length,
+    monitoringCount: new Set(logs.map((log) => log.householdId)).size,
+  };
 
   return (
     <div className="vin-mob-page">

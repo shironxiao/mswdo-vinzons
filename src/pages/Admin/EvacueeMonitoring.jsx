@@ -33,19 +33,44 @@ export default function EvacueeMonitoring() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  const eventHouseholds = useMemo(() => placements
-    .filter((placement) => placement.event_id === selectedEvent?.id)
-    .map((placement) => {
-      const household = households.find((item) => item.id === placement.household_id);
-      if (!household) return null;
-      const center = centers.find((item) => item.id === placement.center_id);
-      return {
+  const eventHouseholds = useMemo(() => {
+    const activePlacements = placements
+      .filter((placement) => placement.event_id === selectedEvent?.id)
+      .map((placement) => {
+        const household = households.find((item) => item.id === placement.household_id);
+        if (!household) return null;
+        const center = centers.find((item) => item.id === placement.center_id);
+        return {
+          ...household,
+          center: center?.displayName || center?.name || household.center,
+          eventPlacement: placement,
+        };
+      })
+      .filter(Boolean);
+
+    if (selectedEvent?.status !== 'Active') return activePlacements;
+
+    const placedIds = new Set(activePlacements.map((household) => household.id));
+    const unplacedActiveHouseholds = households
+      .filter((household) => (
+        household.evacueeStatus === 'Active' &&
+        household.centerId &&
+        !placedIds.has(household.id)
+      ))
+      .map((household) => ({
         ...household,
-        center: center?.displayName || center?.name || household.center,
-        eventPlacement: placement,
-      };
-    })
-    .filter(Boolean), [placements, selectedEvent?.id, households, centers]);
+        eventPlacement: {
+          event_id: selectedEvent.id,
+          center_id: household.centerId,
+          room_id: household.roomId,
+          status: 'Evacuated',
+          check_in_at: household.createdAt,
+          check_out_at: null,
+        },
+      }));
+
+    return [...activePlacements, ...unplacedActiveHouseholds];
+  }, [placements, selectedEvent, households, centers]);
 
   // Derive monitoring verification records combining live Supabase logs & registered households
   const monitoringRecords = useMemo(() => {
@@ -74,7 +99,7 @@ export default function EvacueeMonitoring() {
           id: latestLog.id || `LOG-${h.id}`,
           code,
           center: latestLog.center || h.center || 'Unassigned Center',
-          room: latestLog.room || h.room || 'Room 1',
+          room: latestLog.room || h.room || 'Unassigned',
           householdHead: latestLog.headName || h.name,
           householdCode: latestLog.householdCode || h.code || `HH-${String(index + 1).padStart(3, '0')}`,
           checked: `${latestLog.presentCount}/${latestLog.totalMembers}`,
@@ -105,7 +130,7 @@ export default function EvacueeMonitoring() {
         id: `HH-MON-${h.id || index + 1}`,
         code,
         center: h.center || 'Unassigned Center',
-        room: h.room || 'Room 1',
+        room: h.room || 'Unassigned',
         householdHead: h.name,
         householdCode: h.code || `HH-${String(index + 1).padStart(3, '0')}`,
         checked: `${totalCount}/${totalCount}`,

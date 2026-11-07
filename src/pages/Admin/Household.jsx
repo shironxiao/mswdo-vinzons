@@ -14,7 +14,6 @@ import './AdminHousehold.css';
 import {
   useEvacuationCenters,
   isCenterMatch,
-  getRoomsForCenter,
 } from '../../lib/evacuationCenters.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import {
@@ -127,93 +126,6 @@ function ValidatedField({ as: Control = 'input', field, errors, className = '', 
   );
 }
 
-/* ──────────────────────────────────────────────
-   Seed Data (synced with mobile structure)
-   ────────────────────────────────────────────── */
-const INITIAL_HOUSEHOLDS = [
-  {
-    id: 'HH-001',
-    name: 'Antonio Magno',
-    age: 45,
-    sex: 'Male',
-    vulnerabilities: [],
-    center: 'Vinzons Central Elementary School',
-    room: 'C-1',
-    familyCount: 4,
-    members: [
-      { name: 'Luz Magno', age: 58, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
-      { name: 'Pablo Magno', age: 20, sex: 'Male', vulnerabilities: [] },
-      { name: 'Sofia Magno', age: 17, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-001001',
-    stubIssued: false,
-  },
-  {
-    id: 'HH-002',
-    name: 'Rosa Santos',
-    age: 40,
-    sex: 'Female',
-    vulnerabilities: [],
-    center: 'Vinzons Central Elementary School',
-    room: 'A-2',
-    familyCount: 4,
-    members: [
-      { name: 'Pedro Santos', age: 42, sex: 'Male', vulnerabilities: [] },
-      { name: 'Maya Santos', age: 16, sex: 'Female', vulnerabilities: [] },
-      { name: 'Leo Santos', age: 12, sex: 'Male', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-001002',
-    stubIssued: true,
-  },
-  {
-    id: 'HH-003',
-    name: 'Patricia Cruz',
-    age: 35,
-    sex: 'Female',
-    vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
-    center: 'Vinzons Gymnasium',
-    room: 'B-1',
-    familyCount: 3,
-    members: [
-      { name: 'Mark Cruz', age: 38, sex: 'Male', vulnerabilities: [] },
-      { name: 'Lina Cruz', age: 10, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-003014',
-    stubIssued: false,
-  },
-  {
-    id: 'HH-004',
-    name: 'Juan Dela Cruz',
-    age: 50,
-    sex: 'Male',
-    vulnerabilities: ['PERSONS W/ DISABILITY'],
-    center: 'Calaguas National High School',
-    room: 'A-1',
-    familyCount: 3,
-    members: [
-      { name: 'Maria Dela Cruz', age: 48, sex: 'Female', vulnerabilities: [] },
-      { name: 'John Dela Cruz', age: 22, sex: 'Male', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-004021',
-    stubIssued: true,
-  },
-  {
-    id: 'HH-005',
-    name: 'Elena Bautista',
-    age: 42,
-    sex: 'Female',
-    vulnerabilities: ['SOLO PARENT'],
-    center: 'Vinzons Central Elementary School',
-    room: 'Room 103',
-    familyCount: 3,
-    members: [
-      { name: 'Carlos Bautista', age: 14, sex: 'Male', vulnerabilities: [] },
-      { name: 'Jenny Bautista', age: 9, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-005018',
-    stubIssued: false,
-  },
-];
 
 
 
@@ -419,7 +331,7 @@ function printAllStubs(issuedList) {
             window.print();
           }, 250);
         };
-      <\/script>
+      </script>
     </body>
     </html>
   `);
@@ -461,7 +373,7 @@ function printStub(household) {
         <div class="head-name">${household.name}</div>
       </div>
     </div>
-    <script>window.onload=()=>setTimeout(()=>window.print(), 200);<\/script>
+    <script>window.onload=()=>setTimeout(()=>window.print(), 200);</script>
     </body></html>
   `);
   win.document.close();
@@ -712,11 +624,13 @@ export default function Household() {
   const pageSize = 8;
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
+  const displayedSelectedHousehold = selectedHousehold
+    ? households.find((item) => item.id === selectedHousehold.id) || selectedHousehold
+    : null;
   const [checkInTarget, setCheckInTarget] = useState(null);
   const [checkInCenterId, setCheckInCenterId] = useState('');
   const [checkInRoom, setCheckInRoom] = useState('');
   const [checkInError, setCheckInError] = useState('');
-  const [checkInFeedback, setCheckInFeedback] = useState(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState('');
@@ -813,22 +727,41 @@ export default function Household() {
     () => placements.filter((placement) => placement.event_id === selectedEvent?.id),
     [placements, selectedEvent?.id]
   );
-  const eventHouseholds = useMemo(() => currentEventPlacements
-    .map((placement) => {
-      const household = households.find((item) => item.id === placement.household_id);
-      if (!household) return null;
-      const center = centers.find((item) => item.id === placement.center_id);
-      const room = databaseRooms.find((item) => item.id === placement.room_id);
-      return {
+  const eventHouseholds = useMemo(() => {
+    const placedHouseholds = currentEventPlacements
+      .map((placement) => {
+        const household = households.find((item) => item.id === placement.household_id);
+        if (!household) return null;
+        const center = centers.find((item) => item.id === placement.center_id);
+        const room = databaseRooms.find((item) => item.id === placement.room_id);
+        return {
+          ...household,
+          center: center?.displayName || center?.name || household.center,
+          room: room?.roomName || household.room,
+          evacueeStatus: placement.status === 'Evacuated' ? 'Active' : 'Decamped',
+          placementId: placement.id,
+          eventId: placement.event_id,
+        };
+      })
+      .filter(Boolean);
+
+    if (selectedEvent?.status !== 'Active') return placedHouseholds;
+
+    const placedIds = new Set(placedHouseholds.map((household) => household.id));
+    const unplacedActiveHouseholds = households
+      .filter((household) => (
+        household.evacueeStatus === 'Active' &&
+        household.centerId &&
+        !placedIds.has(household.id)
+      ))
+      .map((household) => ({
         ...household,
-        center: center?.displayName || center?.name || household.center,
-        room: room?.roomName || household.room,
-        evacueeStatus: placement.status === 'Evacuated' ? 'Active' : 'Decamped',
-        placementId: placement.id,
-        eventId: placement.event_id,
-      };
-    })
-    .filter(Boolean), [currentEventPlacements, households, centers, databaseRooms]);
+        placementId: null,
+        eventId: selectedEvent.id,
+      }));
+
+    return [...placedHouseholds, ...unplacedActiveHouseholds];
+  }, [currentEventPlacements, households, centers, databaseRooms, selectedEvent]);
 
   const activeEventHouseholds = useMemo(
     () => eventHouseholds.filter((household) => household.evacueeStatus === 'Active'),
@@ -886,16 +819,7 @@ export default function Household() {
             capacity: Number(r.capacity) || 30,
           }));
 
-    const effectiveRooms =
-      baseRooms.length > 0
-        ? baseRooms
-        : [
-            { id: 'Room 1', roomId: 'Room 1', name: 'Room 1', capacity: 30 },
-            { id: 'Room 2', roomId: 'Room 2', name: 'Room 2', capacity: 25 },
-            { id: 'Room 3', roomId: 'Room 3', name: 'Room 3', capacity: 25 },
-            { id: 'Room 4', roomId: 'Room 4', name: 'Room 4', capacity: 20 },
-            { id: 'Room 5', roomId: 'Room 5', name: 'Room 5', capacity: 20 },
-          ];
+    const effectiveRooms = baseRooms;
 
     const activePlacementsInCenter = currentEventPlacements.filter(
       (p) => p.status === 'Evacuated' && p.center_id === selectedCenterObj.id
@@ -1009,7 +933,6 @@ export default function Household() {
     setCheckInCenterId(defaultCenter?.id || '');
     setCheckInRoom(household.room && household.room !== 'Unassigned' ? household.room : '');
     setCheckInError('');
-    setCheckInFeedback(null);
   };
 
   const executeCheckIn = async (roomName, roomId = null) => {
@@ -1024,7 +947,6 @@ export default function Household() {
 
     setIsCheckingIn(true);
     setCheckInError('');
-    setCheckInFeedback(null);
     try {
       await checkInHousehold({
         householdId: checkInTarget.id,
@@ -1084,11 +1006,6 @@ export default function Household() {
     setCheckInRoom(room.name || room.id);
     setCheckInError('');
     executeCheckIn(room.name || room.id, room.roomId);
-  };
-
-  const handleCheckIn = async (event) => {
-    if (event?.preventDefault) event.preventDefault();
-    await executeCheckIn(checkInRoom);
   };
 
   const handleImportFile = async (event) => {
@@ -1181,14 +1098,6 @@ export default function Household() {
       setActionError(`Could not export the ${isActiveExport ? 'active evacuees' : 'masterlist'}: ${error.message || 'Unknown error'}`);
     }
   };
-
-  /* Sync modal on state changes */
-  useEffect(() => {
-    if (selectedHousehold) {
-      const fresh = households.find((h) => h.id === selectedHousehold.id);
-      if (fresh) setSelectedHousehold(fresh);
-    }
-  }, [households]); // eslint-disable-line
 
   /* ── Register / Edit Form Handlers ── */
   const openRegister = () => {
@@ -1387,7 +1296,10 @@ export default function Household() {
             stubCode: generatedCode,
             stubIssued: false,
           },
-          centers
+          centers,
+          selectedEvent?.status === 'Active' && selectedEvent.id !== 'default-active-event'
+            ? selectedEvent.id
+            : null
         );
         try {
           window.sessionStorage.removeItem(ADMIN_HOUSEHOLD_DRAFT_KEY);
@@ -1887,7 +1799,7 @@ export default function Household() {
       {/* ── Stub Issuance Modal ── */}
       {selectedHousehold && (
         <StubIssuanceModal
-          household={selectedHousehold}
+          household={displayedSelectedHousehold}
           households={households}
           onIssue={issueStub}
           onDecamp={handleDecamp}
@@ -2850,6 +2762,7 @@ export default function Household() {
           selected={activeForm[showFormProfilePicker]}
           options={HOUSEHOLD_PROFILE_OPTIONS[showFormProfilePicker]}
           multiple={showFormProfilePicker === 'govAssistanceAvailed'}
+          selectImmediately={showFormProfilePicker === 'floodDepthLevel'}
           title={{
             govAssistanceAvailed: 'Select Government Assistance',
             floodDepthLevel: 'Select Flood Depth',

@@ -312,7 +312,7 @@ export function RoomSelectSheet({
 
   const initialSelected =
     !showAllOption && (!selected || selected === 'All Rooms')
-      ? (roomsList[0]?.id || 'Room 1')
+      ? (roomsList[0]?.id || (includeUnassigned ? 'Unassigned' : ''))
       : (selected || 'All Rooms');
 
   const [tempSelected, setTempSelected] = useState(initialSelected);
@@ -571,6 +571,7 @@ export function ProfileSelectSheet({
   selected,
   options,
   multiple = false,
+  selectImmediately = false,
   title,
   otherMaxLength = 100,
   onSelect,
@@ -594,6 +595,10 @@ export function ProfileSelectSheet({
       );
     } else {
       setTempSelected(option ? [option] : []);
+      if (selectImmediately) {
+        onSelect(option);
+        onClose();
+      }
     }
   };
 
@@ -685,9 +690,11 @@ export function ProfileSelectSheet({
             onChange={(e) => setOtherValue(e.target.value)}
           />
         </label>
-        <button type="button" className="vin-center-picker-submit" onClick={handleConfirm}>
-          {multiple ? `Apply (${tempSelected.length + (otherValue.trim() ? 1 : 0)} selected)` : 'Select'}
-        </button>
+        {(!selectImmediately || multiple) && (
+          <button type="button" className="vin-center-picker-submit" onClick={handleConfirm}>
+            {multiple ? `Apply (${tempSelected.length + (otherValue.trim() ? 1 : 0)} selected)` : 'Select'}
+          </button>
+        )}
       </div>
     </div>
   );

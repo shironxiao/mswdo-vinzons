@@ -1,4 +1,4 @@
-import { createElement, useState, useEffect } from 'react';
+import { createElement, useState, useEffect, useMemo } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2,
   AlertTriangle, ChevronDown, Building,
@@ -33,7 +33,8 @@ import {
   useHouseholds,
   createHousehold,
   updateHousehold,
-  searchMasterHouseholds,
+  useEventRoomPlacements,
+  transferHouseholdRoom,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 
@@ -119,208 +120,6 @@ function ValidatedMobileField({ as: Control = 'input', field, errors, className 
     </div>
   );
 }
-
-/* ──────────────────────────────────────────────
-   Seed data – replace with Dexie in production
-   ────────────────────────────────────────────── */
-const SEED = [
-  {
-    id: 1,
-    name: 'Antonio Magno',
-    age: 45, sex: 'Male', vulnerabilities: [],
-    center: 'LGU EC (Mangcaway)',
-    room: 'Room 1', familyCount: 4,
-    members: [
-      { name: 'Luz Magno',   age: 58, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
-      { name: 'Pablo Magno', age: 20, sex: 'Male',   vulnerabilities: []   },
-      { name: 'Sofia Magno', age: 17, sex: 'Female', vulnerabilities: []   },
-    ],
-    stubCode: 'STB-001001',
-    stubIssued: false,
-  },
-  {
-    id: 2,
-    name: 'Rosa Santos',
-    age: 40, sex: 'Female', vulnerabilities: [],
-    center: 'LGU EC (Mangcaway)',
-    room: 'Room 2', familyCount: 4,
-    members: [
-      { name: 'Pedro Santos', age: 42, sex: 'Male',   vulnerabilities: [] },
-      { name: 'Maya Santos',  age: 16, sex: 'Female', vulnerabilities: [] },
-      { name: 'Leo Santos',   age: 12, sex: 'Male',   vulnerabilities: [] },
-    ],
-    stubCode: 'STB-001002',
-    stubIssued: true,
-  },
-  {
-    id: 3,
-    name: 'Patricia Cruz',
-    age: 35, sex: 'Female', vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
-    center: 'LGU EC (Bliss)',
-    room: 'Room 1', familyCount: 3,
-    members: [
-      { name: 'Mark Cruz', age: 38, sex: 'Male',   vulnerabilities: [] },
-      { name: 'Lina Cruz', age: 10, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-003014',
-    stubIssued: false,
-  },
-  {
-    id: 4,
-    name: 'Juan Dela Cruz',
-    age: 50, sex: 'Male', vulnerabilities: ['PERSONS W/ DISABILITY'],
-    center: 'PLGU EC (Mat-I)',
-    room: 'Room 3', familyCount: 3,
-    members: [
-      { name: 'Maria Dela Cruz', age: 48, sex: 'Female', vulnerabilities: [] },
-      { name: 'John Dela Cruz',  age: 22, sex: 'Male',   vulnerabilities: [] },
-    ],
-    stubCode: 'STB-004021',
-    stubIssued: true,
-  },
-  {
-    id: 5,
-    name: 'Elena Bautista',
-    age: 42, sex: 'Female', vulnerabilities: ['SOLO PARENT'],
-    center: 'Pinagtigasan EC',
-    room: 'Unassigned', familyCount: 3,
-    members: [
-      { name: 'Carlos Bautista', age: 14, sex: 'Male',   vulnerabilities: [] },
-      { name: 'Jenny Bautista',  age: 9,  sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-005018',
-    stubIssued: false,
-  },
-  {
-    id: 6,
-    name: 'Roberto Diaz',
-    age: 55, sex: 'Male', vulnerabilities: ['SENIOR CITIZEN'],
-    center: 'St. Peter Parish AVR',
-    room: 'Room 1', familyCount: 2,
-    members: [
-      { name: 'Clara Diaz', age: 52, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-006033',
-    stubIssued: true,
-  },
-  {
-    id: 7,
-    name: 'Carmen Ramos',
-    age: 29, sex: 'Female', vulnerabilities: ['PREGNANT', 'LACTATING MOTHERS'],
-    center: 'Biday EC',
-    room: 'Room 2', familyCount: 4,
-    members: [
-      { name: 'Danilo Ramos', age: 31, sex: 'Male',   vulnerabilities: [] },
-      { name: 'Mia Ramos',    age: 5,  sex: 'Female', vulnerabilities: [] },
-      { name: 'Leo Ramos',    age: 2,  sex: 'Male',   vulnerabilities: [] },
-    ],
-    stubCode: 'STB-007015',
-    stubIssued: false,
-  },
-  {
-    id: 8,
-    name: 'Fernando Lopez',
-    age: 48, sex: 'Male', vulnerabilities: ['PERSONS W/ DISABILITY'],
-    center: 'Sugod EC',
-    room: 'Room 4', familyCount: 3,
-    members: [
-      { name: 'Grace Lopez', age: 44, sex: 'Female', vulnerabilities: [] },
-      { name: 'Joy Lopez',   age: 18, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-008012',
-    stubIssued: true,
-  },
-  {
-    id: 9,
-    name: 'Teresa Morales',
-    age: 38, sex: 'Female', vulnerabilities: [],
-    center: 'Mormons',
-    room: 'Room 1', familyCount: 3,
-    members: [
-      { name: 'Ramon Morales', age: 40, sex: 'Male', vulnerabilities: [] },
-      { name: 'Ella Morales',  age: 8,  sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-009045',
-    stubIssued: true,
-  },
-  {
-    id: 10,
-    name: 'Danilo Soriano',
-    age: 51, sex: 'Male', vulnerabilities: [],
-    center: 'Marabe Church',
-    room: 'Unassigned', familyCount: 2,
-    members: [
-      { name: 'Beth Soriano', age: 49, sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-010028',
-    stubIssued: false,
-  },
-  {
-    id: 11,
-    name: 'Marites Villanueva',
-    age: 34, sex: 'Female', vulnerabilities: ['SOLO PARENT'],
-    center: 'Adorno Fathers',
-    room: 'Room 5', familyCount: 3,
-    members: [
-      { name: 'Joshua Villanueva', age: 11, sex: 'Male', vulnerabilities: [] },
-      { name: 'Hannah Villanueva', age: 6,  sex: 'Female', vulnerabilities: [] },
-    ],
-    stubCode: 'STB-011089',
-    stubIssued: true,
-  },
-  {
-    id: 12,
-    name: 'Gregorio Santos',
-    age: 62, sex: 'Male', vulnerabilities: ['SENIOR CITIZEN'],
-    center: 'Mangcawayan EC',
-    room: 'Room 3', familyCount: 2,
-    members: [
-      { name: 'Amparo Santos', age: 60, sex: 'Female', vulnerabilities: ['SENIOR CITIZEN'] },
-    ],
-    stubCode: 'STB-012007',
-    stubIssued: false,
-  },
-];
-
-/* Exactly 13 Official Vinzons Evacuation Centers */
-const OFFICIAL_EVAC_CENTERS = [
-  { name: 'LGU EC (Mangcaway)', fullName: 'LGU EC', location: 'Mangcaway Brgy. Cal. Sur, Vinzons, CN' },
-  { name: 'LGU EC (Bliss)', fullName: 'LGU EC', location: 'Bliss Brgy. Cal Sur, VCN' },
-  { name: 'PLGU EC (Mat-I)', fullName: 'PLGU EC', location: 'Mat – I Brgy. Sto. Domingo, VCN' },
-  { name: 'Pinagtigasan EC', fullName: 'Pinagtigasan EC', location: 'P – 1 Brgy. Pinagtigasan, VCN' },
-  { name: 'St. Peter Parish AVR', fullName: 'St. Peter Parish AVR', location: 'Brgy Poblacion III' },
-  { name: 'Biday EC', fullName: 'Biday EC', location: 'Brgy. Banocboc, VCN' },
-  { name: 'Sugod EC', fullName: 'Sugod EC', location: 'Brgy. Banocboc, VCN' },
-  { name: 'Mormons', fullName: 'Mormons', location: 'Brgy. Calangcawan Sur, VCN' },
-  { name: 'Marabe Church', fullName: 'Marabe Church', location: 'Brgy. Calangcawan Sur, VCN' },
-  { name: 'Adorno Fathers', fullName: 'Adorno Fathers', location: 'Sto. Domingo, VCN' },
-  { name: 'Mangcawayan EC', fullName: 'Mangcawayan EC', location: 'Mangcawayan Is., VCN' },
-  { name: 'Our Lady of Fatima Shrine', fullName: 'Our Lady of Fatima Shrine', location: 'Mangcawayan Brgy. Calangawan Sur, VCN' },
-  { name: 'Brgy. Hall (Aguit-it)', fullName: 'Brgy. Hall', location: 'Brgy. Aguit – it, VCN' },
-];
-
-const CENTERS = [
-  'All Centers',
-  ...OFFICIAL_EVAC_CENTERS.map((c) => c.name),
-];
-
-/* Each center has 5 rooms: Room 1 through Room 5 */
-const OFFICIAL_ROOMS = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
-
-const createCenterRooms = () => {
-  const map = {};
-  OFFICIAL_EVAC_CENTERS.forEach((c) => {
-    map[c.name] = [
-      { id: 'Room 1', name: 'Room 1', capacity: 30, occupied: 12 },
-      { id: 'Room 2', name: 'Room 2', capacity: 25, occupied: 8 },
-      { id: 'Room 3', name: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', name: 'Room 4', capacity: 20, occupied: 15 },
-      { id: 'Room 5', name: 'Room 5', capacity: 20, occupied: 5 },
-    ];
-  });
-  return map;
-};
-const DEFAULT_CENTER_ROOMS = createCenterRooms();
 
 /* ──────────────────────────────────────────────
    Helpers
@@ -475,12 +274,6 @@ function StubIssuancePanel({ household, households, onClose }) {
    Filter Dropdown (legacy — replaced by HHFilterSheet)
    ────────────────────────────────────────────── */
 
-/* All rooms across all centers for the room dropdown (Rooms 1 through 5) */
-const ALL_ROOMS_BY_CENTER = {};
-OFFICIAL_EVAC_CENTERS.forEach((c) => {
-  ALL_ROOMS_BY_CENTER[c.name] = [...OFFICIAL_ROOMS];
-});
-
 /* ──────────────────────────────────────────────
    Household Filter Sheet (bottom-sheet panel)
    ────────────────────────────────────────────── */
@@ -631,7 +424,7 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
   const [selectedCenter, setSelectedCenter] = useState(
     household.center && household.center !== 'All Centers'
       ? household.center
-      : (centersList[0]?.displayName || 'LGU EC (Mangcaway)')
+      : (centersList[0]?.displayName || centersList[0]?.name || '')
   );
   const [feedback, setFeedback] = useState(null);
 
@@ -639,13 +432,7 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
     (c) => c.displayName === selectedCenter || c.name === selectedCenter
   );
 
-  const rooms = (centerRooms && centerRooms[selectedCenter]) || matchedCenterObj?.rooms || [
-    { id: 'Room 1', name: 'Room 1', capacity: 30, occupied: 0 },
-    { id: 'Room 2', name: 'Room 2', capacity: 25, occupied: 0 },
-    { id: 'Room 3', name: 'Room 3', capacity: 25, occupied: 0 },
-    { id: 'Room 4', name: 'Room 4', capacity: 20, occupied: 0 },
-    { id: 'Room 5', name: 'Room 5', capacity: 20, occupied: 0 },
-  ];
+  const rooms = (centerRooms && centerRooms[selectedCenter]) || matchedCenterObj?.rooms || [];
   const neededSlots = household.familyCount || 1;
 
   // Auto-Assign Logic
@@ -879,6 +666,7 @@ export default function MobileHouseholds() {
   const { centers } = useEvacuationCenters();
   const { households, setHouseholds, refresh: refreshHouseholds } = useHouseholds(centers);
   const { activeEvent } = useActiveEvent();
+  const { refresh: refreshPlacements } = useEventRoomPlacements(activeEvent?.id);
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Active' | 'Not Active'
@@ -888,7 +676,25 @@ export default function MobileHouseholds() {
   const [openFilter, setOpenFilter] = useState(null);
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [assigningHousehold, setAssigningHousehold] = useState(null);
-  const [centerRooms, setCenterRooms] = useState(DEFAULT_CENTER_ROOMS);
+  const displayedSelectedHousehold = selectedHousehold
+    ? households.find((item) => item.id === selectedHousehold.id) || selectedHousehold
+    : null;
+  const displayedAssigningHousehold = assigningHousehold
+    ? households.find((item) => item.id === assigningHousehold.id) || assigningHousehold
+    : null;
+  const centerRooms = useMemo(() => Object.fromEntries(centers.map((center) => {
+    const centerName = center.displayName || center.name;
+    const rooms = (center.rooms || []).map((room) => ({
+      ...room,
+      occupied: households
+        .filter((household) => household.evacueeStatus === 'Active' && household.centerId === center.id)
+        .filter((household) =>
+          (room.dbId && household.roomId === room.dbId) || household.room === room.name
+        )
+        .reduce((sum, household) => sum + (household.familyCount || 1), 0),
+    }));
+    return [centerName, rooms];
+  })), [centers, households]);
   const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
   const [showHouseholdReview, setShowHouseholdReview] = useState(false);
@@ -920,8 +726,8 @@ export default function MobileHouseholds() {
   const [activeForm, setActiveForm] = useState({
     head: '', headFirstName: '', headMiddleName: '', headLastName: '', age: '', sex: 'Male',
     barangay: '', purok: '', headOccupation: '',
-    center: 'LGU EC (Mangcaway)',
-    room: 'Room 1', vulnerabilities: [], members: [],
+    center: '',
+    room: 'Unassigned', vulnerabilities: [], members: [],
     monthlyIncome: '',
     hasWorkedDole: null, doleEmploymentYear: '',
     hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
@@ -993,65 +799,75 @@ export default function MobileHouseholds() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, filterStatus, filterCenter, filterRoom]);
-
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
 
   /* ── Room assignment ── */
-  const handleAssignRoom = (hhId, roomId, centerName, neededSlots) => {
-    setHouseholds((prev) =>
-      prev.map((h) => {
-        if (h.id === hhId) {
-          return { ...h, room: roomId, center: centerName };
-        }
-        return h;
-      })
+  const handleAssignRoom = async (hhId, roomId, centerName) => {
+    const center = centers.find((item) =>
+      item.displayName === centerName || item.name === centerName
     );
+    const room = centerRooms[centerName]?.find((item) => item.id === roomId);
+    if (!center?.id || !room) {
+      setToastMsg('Could not find that evacuation center or room in the database.');
+      setTimeout(() => setToastMsg(''), 4000);
+      return;
+    }
 
-    setCenterRooms((prev) => {
-      const updated = { ...prev };
-      const roomsForCenter = [...(updated[centerName] || [])];
-      updated[centerName] = roomsForCenter.map((r) => {
-        if (r.id === roomId) {
-          return { ...r, occupied: Math.min(r.capacity, r.occupied + neededSlots) };
-        }
-        return r;
-      });
-      return updated;
-    });
-
-    setToastMsg(`Assigned to Room ${roomId}!`);
-    setTimeout(() => setToastMsg(''), 3000);
+    try {
+      if (activeEvent?.status === 'Active' && activeEvent.id !== 'default-active-event') {
+        await transferHouseholdRoom({
+          householdId: hhId,
+          eventId: activeEvent.id,
+          centerId: center.id,
+          roomId: room.dbId || null,
+          roomName: room.name || roomId,
+        });
+      } else {
+        const household = households.find((item) => item.id === hhId);
+        await updateHousehold(hhId, {
+          head: household.name,
+          age: household.age,
+          sex: household.sex,
+          headOccupation: household.headOccupation,
+          barangay: household.barangay,
+          purok: household.purok,
+          vulnerabilities: household.vulnerabilities,
+          members: household.members,
+          monthlyIncome: household.monthlyIncome,
+          hasWorkedDole: household.hasWorkedDole,
+          doleEmploymentYear: household.doleEmploymentYear,
+          hasReceivedGovernmentAssistance: household.hasReceivedGovernmentAssistance,
+          govAssistanceAvailed: household.govAssistanceAvailed,
+          governmentAssistanceYear: household.governmentAssistanceYear,
+          hasReceivedReliefAssistance: household.hasReceivedReliefAssistance,
+          otherIncomeSource: household.otherIncomeSource,
+          floodDepthLevel: household.floodDepthLevel,
+          characteristicsRemarks: household.characteristicsRemarks,
+          center: center.displayName || center.name,
+          centerId: center.id,
+          room: room.name || roomId,
+        }, centers);
+      }
+      await Promise.all([refreshHouseholds(), refreshPlacements()]);
+      setToastMsg(`Assigned to ${room.name || roomId}.`);
+    } catch (error) {
+      console.error('Could not save household room assignment:', error);
+      setToastMsg(`Could not assign room: ${error.message || 'Please try again.'}`);
+    }
+    setTimeout(() => setToastMsg(''), 4000);
   };
-
-  /* Sync selected panel after issuing */
-  useEffect(() => {
-    if (selectedHousehold) {
-      const fresh = households.find((h) => h.id === selectedHousehold.id);
-      if (fresh) setSelectedHousehold(fresh);
-    }
-  }, [households]); // eslint-disable-line
-
-  /* Sync assigning modal household after changes */
-  useEffect(() => {
-    if (assigningHousehold) {
-      const fresh = households.find((h) => h.id === assigningHousehold.id);
-      if (fresh) setAssigningHousehold(fresh);
-    }
-  }, [households]); // eslint-disable-line
 
   /* ── Register / Edit ── */
   const openRegister = () => {
     setShowHouseholdReview(false);
-    const defaultCenter = centers[0]?.displayName || centers[0]?.name || OFFICIAL_EVAC_CENTERS[0].name;
+    const defaultCenterObj = centers[0];
+    const defaultCenter = defaultCenterObj?.displayName || defaultCenterObj?.name || '';
     const emptyForm = {
       head: '', headFirstName: '', headMiddleName: '', headLastName: '',
       age: '', sex: 'Male', barangay: '', purok: '', headOccupation: '',
-      center: defaultCenter, room: 'Room 1',
+      center: defaultCenter, room: defaultCenterObj?.rooms?.[0]?.name || 'Unassigned',
       vulnerabilities: [], members: [], monthlyIncome: '',
       hasWorkedDole: null, doleEmploymentYear: '',
       hasReceivedGovernmentAssistance: null, govAssistanceAvailed: [],
@@ -1214,7 +1030,10 @@ export default function MobileHouseholds() {
             stubCode: generatedCode,
             stubIssued: false,
           },
-          centers
+          centers,
+          activeEvent?.status === 'Active' && activeEvent.id !== 'default-active-event'
+            ? activeEvent.id
+            : null
         );
         try {
           window.sessionStorage.removeItem(MOBILE_HOUSEHOLD_DRAFT_KEY);
@@ -1375,7 +1194,10 @@ export default function MobileHouseholds() {
             type="text"
             placeholder="Search household head or members"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="vin-mob-search-input"
           />
         </div>
@@ -1401,7 +1223,10 @@ export default function MobileHouseholds() {
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterCenter('All Centers')}
+            onClick={() => {
+              setFilterCenter('All Centers');
+              setCurrentPage(1);
+            }}
             title="Remove center filter"
           >
             <span>{filterCenter.replace('Elementary School', '').replace('National High School', '').trim()}</span>
@@ -1413,7 +1238,10 @@ export default function MobileHouseholds() {
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterRoom('All Rooms')}
+            onClick={() => {
+              setFilterRoom('All Rooms');
+              setCurrentPage(1);
+            }}
             title="Remove room filter"
           >
             <span>{filterRoom.toLowerCase().startsWith('room') ? filterRoom : `Room ${filterRoom}`}</span>
@@ -1425,7 +1253,10 @@ export default function MobileHouseholds() {
           <button
             type="button"
             className="vin-hh-active-chip"
-            onClick={() => setFilterStatus('All')}
+            onClick={() => {
+              setFilterStatus('All');
+              setCurrentPage(1);
+            }}
             title="Remove status filter"
           >
             <span>{filterStatus}</span>
@@ -1566,7 +1397,7 @@ export default function MobileHouseholds() {
       {/* ── HOUSEHOLD DETAILS & QR PANEL ── */}
       {selectedHousehold && (
         <StubIssuancePanel
-          household={selectedHousehold}
+          household={displayedSelectedHousehold}
           households={households}
           onClose={() => setSelectedHousehold(null)}
         />
@@ -1585,6 +1416,7 @@ export default function MobileHouseholds() {
             setFilterStatus(newStatus);
             setFilterCenter(newCenter);
             setFilterRoom(newRoom);
+            setCurrentPage(1);
           }}
           onClose={() => setShowFilterSheet(false)}
         />
@@ -1593,7 +1425,7 @@ export default function MobileHouseholds() {
       {/* ── ROOM ASSIGNMENT SHEET ── */}
       {assigningHousehold && (
         <RoomAssignSheet
-          household={assigningHousehold}
+          household={displayedAssigningHousehold}
           centersList={centers}
           centerRooms={centerRooms}
           onAssign={handleAssignRoom}
@@ -2109,7 +1941,14 @@ export default function MobileHouseholds() {
           showAllOption={false}
           allCentersSub="Select the evacuation center for this household"
           onSelect={(c) => {
-            setActiveForm((prev) => ({ ...prev, center: c, room: 'Room 1' }));
+            const selectedCenter = centers.find(
+              (item) => item.displayName === c || item.name === c
+            );
+            setActiveForm((prev) => ({
+              ...prev,
+              center: c,
+              room: selectedCenter?.rooms?.[0]?.name || 'Unassigned',
+            }));
             setShowFormCenterPicker(false);
           }}
           onClose={() => setShowFormCenterPicker(false)}
@@ -2164,6 +2003,7 @@ export default function MobileHouseholds() {
           selected={activeForm[showFormProfilePicker]}
           options={HOUSEHOLD_PROFILE_OPTIONS[showFormProfilePicker]}
           multiple={showFormProfilePicker === 'govAssistanceAvailed'}
+          selectImmediately={showFormProfilePicker === 'floodDepthLevel'}
           title={{
             govAssistanceAvailed: 'Select Government Assistance',
             floodDepthLevel: 'Select Flood Depth',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Search, Building, MapPin, Plus, X, ChevronRight,
   ChevronLeft,
@@ -6,196 +6,11 @@ import {
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileCenters.css';
-import { useEvacuationCenters } from '../../lib/evacuationCenters';
-import { supabase } from '../../lib/supabase';
-
-/* ──────────────────────────────────────────────
-   13 Official Vinzons Evacuation Centers
-   ────────────────────────────────────────────── */
-const CENTERS_DATA = [
-  {
-    id: 1,
-    name: 'LGU EC (Mangcaway)',
-    fullName: 'LGU EC',
-    location: 'Mangcaway Brgy. Cal. Sur, Vinzons, CN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 12 },
-      { id: 'Room 2', capacity: 25, occupied: 8 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 15 },
-      { id: 'Room 5', capacity: 20, occupied: 5 },
-    ],
-  },
-  {
-    id: 2,
-    name: 'LGU EC (Bliss)',
-    fullName: 'LGU EC',
-    location: 'Bliss Brgy. Cal Sur, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 30 },
-      { id: 'Room 2', capacity: 25, occupied: 25 },
-      { id: 'Room 3', capacity: 25, occupied: 25 },
-      { id: 'Room 4', capacity: 20, occupied: 20 },
-      { id: 'Room 5', capacity: 20, occupied: 20 },
-    ],
-  },
-  {
-    id: 3,
-    name: 'PLGU EC (Mat-I)',
-    fullName: 'PLGU EC',
-    location: 'Mat – I Brgy. Sto. Domingo, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 0 },
-      { id: 'Room 2', capacity: 25, occupied: 0 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 0 },
-      { id: 'Room 5', capacity: 20, occupied: 0 },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Pinagtigasan EC',
-    fullName: 'Pinagtigasan EC',
-    location: 'P – 1 Brgy. Pinagtigasan, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 18 },
-      { id: 'Room 2', capacity: 25, occupied: 5 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 10 },
-      { id: 'Room 5', capacity: 20, occupied: 0 },
-    ],
-  },
-  {
-    id: 5,
-    name: 'St. Peter Parish AVR',
-    fullName: 'St. Peter Parish AVR',
-    location: 'Brgy Poblacion III',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 40, occupied: 40 },
-      { id: 'Room 2', capacity: 40, occupied: 40 },
-      { id: 'Room 3', capacity: 40, occupied: 40 },
-      { id: 'Room 4', capacity: 30, occupied: 30 },
-      { id: 'Room 5', capacity: 30, occupied: 30 },
-    ],
-  },
-  {
-    id: 6,
-    name: 'Biday EC',
-    fullName: 'Biday EC',
-    location: 'Brgy. Banocboc, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 7 },
-      { id: 'Room 2', capacity: 25, occupied: 0 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 0 },
-      { id: 'Room 5', capacity: 20, occupied: 0 },
-    ],
-  },
-  {
-    id: 7,
-    name: 'Sugod EC',
-    fullName: 'Sugod EC',
-    location: 'Brgy. Banocboc, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 14 },
-      { id: 'Room 2', capacity: 25, occupied: 9 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 0 },
-      { id: 'Room 5', capacity: 20, occupied: 0 },
-    ],
-  },
-  {
-    id: 8,
-    name: 'Mormons',
-    fullName: 'Mormons',
-    location: 'Brgy. Calangcawan Sur, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 50, occupied: 0 },
-      { id: 'Room 2', capacity: 50, occupied: 0 },
-      { id: 'Room 3', capacity: 50, occupied: 0 },
-      { id: 'Room 4', capacity: 40, occupied: 0 },
-      { id: 'Room 5', capacity: 40, occupied: 0 },
-    ],
-  },
-  {
-    id: 9,
-    name: 'Marabe Church',
-    fullName: 'Marabe Church',
-    location: 'Brgy. Calangcawan Sur, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 30, occupied: 22 },
-      { id: 'Room 2', capacity: 25, occupied: 11 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 0 },
-      { id: 'Room 5', capacity: 20, occupied: 0 },
-    ],
-  },
-  {
-    id: 10,
-    name: 'Adorno Fathers',
-    fullName: 'Adorno Fathers',
-    location: 'Sto. Domingo, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 35, occupied: 35 },
-      { id: 'Room 2', capacity: 35, occupied: 35 },
-      { id: 'Room 3', capacity: 35, occupied: 35 },
-      { id: 'Room 4', capacity: 30, occupied: 30 },
-      { id: 'Room 5', capacity: 30, occupied: 30 },
-    ],
-  },
-  {
-    id: 11,
-    name: 'Mangcawayan EC',
-    fullName: 'Mangcawayan EC',
-    location: 'Mangcawayan Is., VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 25, occupied: 0 },
-      { id: 'Room 2', capacity: 25, occupied: 0 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 0 },
-      { id: 'Room 5', capacity: 20, occupied: 0 },
-    ],
-  },
-  {
-    id: 12,
-    name: 'Our Lady of Fatima Shrine',
-    fullName: 'Our Lady of Fatima Shrine',
-    location: 'Mangcawayan Brgy. Calangawan Sur, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 40, occupied: 16 },
-      { id: 'Room 2', capacity: 35, occupied: 8 },
-      { id: 'Room 3', capacity: 35, occupied: 0 },
-      { id: 'Room 4', capacity: 25, occupied: 0 },
-      { id: 'Room 5', capacity: 25, occupied: 0 },
-    ],
-  },
-  {
-    id: 13,
-    name: 'Brgy. Hall (Aguit-it)',
-    fullName: 'Brgy. Hall',
-    location: 'Brgy. Aguit – it, VCN',
-    status: 'Active',
-    rooms: [
-      { id: 'Room 1', capacity: 25, occupied: 0 },
-      { id: 'Room 2', capacity: 25, occupied: 0 },
-      { id: 'Room 3', capacity: 25, occupied: 0 },
-      { id: 'Room 4', capacity: 20, occupied: 0 },
-      { id: 'Room 5', capacity: 20, occupied: 0 },
-    ],
-  },
-];
+import {
+  createEvacuationCenter,
+  useEvacuationCenters,
+} from '../../lib/evacuationCenters';
+import { useHouseholds } from '../../lib/householdService.js';
 
 /* ──────────────────────────────────────────────
    Helpers
@@ -295,30 +110,29 @@ function RoomsSheet({ center, onClose }) {
    ────────────────────────────────────────────── */
 export default function MobileCenters() {
   const { centers: dbCenters, refetch } = useEvacuationCenters();
-  const [centers, setCenters] = useState(dbCenters || []);
+  const { households } = useHouseholds(dbCenters);
+  const centers = useMemo(() => dbCenters.map((center) => ({
+    id: center.id,
+    name: center.displayName || center.name,
+    fullName: center.name,
+    location: center.location,
+    status: 'Active',
+    rooms: (center.rooms || []).map((room) => ({
+      ...room,
+      occupied: households
+        .filter((household) => household.evacueeStatus === 'Active' && household.centerId === center.id)
+        .filter((household) =>
+          (room.dbId && household.roomId === room.dbId) || household.room === room.name
+        )
+        .reduce((sum, household) => sum + (household.familyCount || 1), 0),
+    })),
+  })), [dbCenters, households]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Available' | 'Occupied' | 'Empty'
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [centerCreateError, setCenterCreateError] = useState('');
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [newCenter, setNewCenter] = useState({ name: '', location: '', rooms: '5', capacity: '100' });
-
-  useEffect(() => {
-    if (dbCenters && dbCenters.length > 0) {
-      setCenters(
-        dbCenters.map((c) => ({
-          id: c.id,
-          name: c.displayName || c.name,
-          fullName: c.name,
-          location: c.location,
-          status: 'Active',
-          rooms:
-            c.rooms && c.rooms.length > 0
-              ? c.rooms
-              : [{ id: 'Room 1', capacity: 30, occupied: 0 }],
-        }))
-      );
-    }
-  }, [dbCenters]);
 
   /* ── Filter & Search with Dynamic Alphabetical Ordering ── */
   const filtered = centers
@@ -342,10 +156,6 @@ export default function MobileCenters() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, filterStatus]);
-
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedCenters = filtered.slice(startIndex, startIndex + pageSize);
@@ -353,29 +163,22 @@ export default function MobileCenters() {
   const handleAddCenter = async (e) => {
     e.preventDefault();
     if (!newCenter.name.trim()) return;
-    const roomCount = Math.max(1, Number(newCenter.rooms) || 1);
-    const capacityVal = Number(newCenter.capacity) || (roomCount * 25);
 
+    setCenterCreateError('');
     try {
-      const { data, error } = await supabase.from('evacuation_centers').insert({
-        name: newCenter.name.trim(),
-        location: (newCenter.location || 'Vinzons, Camarines Norte').trim(),
-        total_rooms: roomCount,
-        capacity: capacityVal,
-      }).select();
-
-      if (error) {
-        console.error('Supabase error inserting center:', error.message);
-      } else {
-        console.log('Center added to Supabase:', data);
-      }
-      if (refetch) await refetch();
+      await createEvacuationCenter({
+        name: newCenter.name,
+        location: newCenter.location,
+        total_rooms: newCenter.rooms,
+        capacity: newCenter.capacity,
+      });
+      await refetch();
+      setNewCenter({ name: '', location: '', rooms: '5', capacity: '100' });
+      setIsAddOpen(false);
     } catch (err) {
-      console.warn('Network error inserting center:', err);
+      console.error('Could not create evacuation center and rooms:', err);
+      setCenterCreateError(err.message || 'Could not save this evacuation center. Please try again.');
     }
-
-    setNewCenter({ name: '', location: '', rooms: '5', capacity: '100' });
-    setIsAddOpen(false);
   };
 
   /* Status filter pill options (no numbers inside pills to prevent cutting off) */
@@ -406,7 +209,10 @@ export default function MobileCenters() {
           type="text"
           placeholder="Search evacuation centers…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
           className="vin-mob-search-input"
         />
       </div>
@@ -418,7 +224,10 @@ export default function MobileCenters() {
             key={pill.id}
             type="button"
             className={`vin-ctr-status-pill ${filterStatus === pill.id ? 'active' : ''}`}
-            onClick={() => setFilterStatus(pill.id)}
+            onClick={() => {
+              setFilterStatus(pill.id);
+              setCurrentPage(1);
+            }}
           >
             {pill.dotClass && (
               <span className={`vin-ctr-pill-dot ${pill.dotClass}`} />
@@ -571,6 +380,11 @@ export default function MobileCenters() {
                   value={newCenter.capacity || ''}
                   onChange={(e) => setNewCenter({ ...newCenter, capacity: e.target.value })} />
               </div>
+              {centerCreateError && (
+                <p role="alert" style={{ color: '#b91c1c', fontSize: '.85rem' }}>
+                  {centerCreateError}
+                </p>
+              )}
               <button type="submit" className="vin-mob-sheet-blue-btn" style={{ marginTop: 8 }}>
                 Create Evacuation Center
               </button>

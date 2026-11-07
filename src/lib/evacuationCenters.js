@@ -1,24 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
 
-/**
- * Fallback static centers in case device is completely offline on initial first-time load
- */
-export const FALLBACK_CENTERS = [
-  { id: '1', name: 'LGU EC', location: 'Mangcaway, Brgy. Calangcawan Sur, Vinzons, Camarines Norte', total_rooms: 20, capacity: 300 },
-  { id: '2', name: 'LGU EC', location: 'Bliss, Brgy. Calangcawan Sur', total_rooms: 5, capacity: 40 },
-  { id: '3', name: 'PLGU EC', location: 'Mat-I, Brgy. Sto. Domingo', total_rooms: 1, capacity: 200 },
-  { id: '4', name: 'Pinagtigasan EC', location: 'Purok 1, Brgy. Pinagtigasan', total_rooms: 1, capacity: 100 },
-  { id: '5', name: 'St. Peter Parish AVR', location: 'Brgy. Poblacion III', total_rooms: 1, capacity: 50 },
-  { id: '6', name: 'Biday EC', location: 'Brgy. Banocboc', total_rooms: 1, capacity: 50 },
-  { id: '7', name: 'Sugod EC', location: 'Brgy. Banocboc', total_rooms: 1, capacity: 50 },
-  { id: '8', name: 'Mormons', location: 'Brgy. Calangcawan Sur', total_rooms: 4, capacity: 65 },
-  { id: '9', name: 'Marabe Church', location: 'Brgy. Calangcawan Sur', total_rooms: 1, capacity: 150 },
-  { id: '10', name: 'Adorno Fathers', location: 'Sto. Domingo', total_rooms: 3, capacity: 215 },
-  { id: '11', name: 'Mangcawayan EC', location: 'Mangcawayan Island', total_rooms: 1, capacity: 50 },
-  { id: '12', name: 'Our Lady of Fatima Shrine', location: 'Mangcawayan, Brgy. Calangcawan Sur', total_rooms: 2, capacity: 25 },
-  { id: '13', name: 'Brgy. Hall', location: 'Brgy. Aguit-it', total_rooms: 1, capacity: 50 },
-];
 
 const STORAGE_KEY = 'vinzons_cached_evac_centers';
 const ROOM_NAMES_KEY = 'vinzons_center_room_names';
@@ -54,22 +36,6 @@ export function saveCustomRoomNamesMap(centerKey, roomMap) {
 }
 
 /**
- * Sample known occupancies for initial centers so filter statuses
- * (Available, Occupied, Empty) reflect realistic status levels
- */
-const KNOWN_OCCUPANCIES = {
-  'lgu ec (mangcaway)': [12, 8, 0, 15, 5],
-  'lgu ec (bliss)': [30, 25, 25, 20, 20],
-  'pinagtigasan ec': [18, 5, 0, 10, 0],
-  'st. peter parish avr': [40, 40, 40, 30, 30],
-  'biday ec': [7, 0, 0, 0, 0],
-  'sugod ec': [14, 9, 0, 0, 0],
-  'marabe church': [22, 11, 0, 0, 0],
-  'adorno fathers': [35, 35, 35, 30, 30],
-  'our lady of fatima shrine': [16, 8, 0, 0, 0],
-};
-
-/**
  * Normalizes raw Supabase database rows into a structured object with rooms & display names,
  * and dynamically sorts them in alphabetical order A-Z by center name.
  */
@@ -98,13 +64,11 @@ export function normalizeCenters(rows = []) {
       displayName = `${r.name} (${snippet || r.location.slice(0, 16)})`;
     }
 
-    const roomCount = Math.max(1, Number(r.total_rooms) || 1);
+    const hasDatabaseRooms = Array.isArray(r.rooms);
+    const roomCount = hasDatabaseRooms
+      ? r.rooms.length
+      : Math.max(1, Number(r.total_rooms) || 1);
     const avgCap = r.capacity && roomCount > 0 ? Math.round(r.capacity / roomCount) : 25;
-
-    const occList =
-      KNOWN_OCCUPANCIES[displayName.toLowerCase()] ||
-      KNOWN_OCCUPANCIES[r.name.toLowerCase()] ||
-      [];
 
     const savedRoomMap = getCustomRoomNamesMap();
     const centerCustomRooms =
@@ -113,26 +77,30 @@ export function normalizeCenters(rows = []) {
       savedRoomMap[r.name] ||
       {};
 
-    const rooms = [];
-    for (let i = 1; i <= roomCount; i++) {
-      const occ = occList[i - 1] !== undefined ? occList[i - 1] : 0;
-      const defaultId = `Room ${i}`;
-      const customName = centerCustomRooms[defaultId] || (r.room_names && r.room_names[defaultId]) || defaultId;
-      rooms.push({
-        id: defaultId,
-        name: customName,
-        capacity: avgCap,
-        occupied: Math.min(occ, avgCap),
-        description: customName !== defaultId ? `${customName} (Cap. ${avgCap})` : `Capacity: ${avgCap} persons`,
-      });
-    }
+    const rooms = hasDatabaseRooms
+      ? r.rooms.map((room) => {
+          const defaultName = room.room_name || 'Room';
+          const customName = centerCustomRooms[defaultName] || defaultName;
+          const capacity = Number(room.capacity_individuals) || avgCap || 25;
+          return {
+            id: defaultName,
+            dbId: room.id,
+            name: customName,
+            capacity,
+            occupied: 0,
+            description: customName !== defaultName
+              ? `${customName} (Cap. ${capacity})`
+              : `Capacity: ${capacity} persons`,
+          };
+        })
+      : [];
 
     return {
       id: r.id || `center-${index + 1}`,
       name: r.name,
       displayName,
       location: r.location || 'Vinzons, Camarines Norte',
-      total_rooms: roomCount,
+      total_rooms: hasDatabaseRooms ? roomCount : Number(r.total_rooms) || roomCount,
       capacity: r.capacity || null,
       rooms,
     };
@@ -155,29 +123,60 @@ export async function fetchEvacuationCenters() {
   try {
     const { data, error } = await supabase
       .from('evacuation_centers')
-      .select('*')
+      .select('*, rooms(id, room_name, capacity_individuals)')
       .order('name', { ascending: true });
 
-    if (error) {
-      console.warn('Could not fetch evacuation_centers from Supabase:', error.message);
-      return getCachedOrFallbackCenters();
-    }
+    if (error) throw error;
 
-    if (data && data.length > 0) {
-      const normalized = normalizeCenters(data);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-      } catch {
-        // ignore localStorage quota errors
-      }
-      return normalized;
+    const normalized = normalizeCenters(data || []);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    } catch {
+      // ignore localStorage quota errors
     }
-
-    return getCachedOrFallbackCenters();
+    return normalized;
   } catch (err) {
-    console.warn('Network error fetching evacuation centers:', err);
-    return getCachedOrFallbackCenters();
+    console.warn('Could not fetch evacuation centers from Supabase; using cached centers:', err?.message || err);
+    return getCachedCenters();
   }
+}
+
+export async function createEvacuationCenter({ name, location, total_rooms, capacity }) {
+  const roomCount = Math.max(1, Number(total_rooms) || 1);
+  const centerCapacity = Number(capacity) || roomCount * 25;
+  const { data: center, error: centerError } = await supabase
+    .from('evacuation_centers')
+    .insert({
+      name: name.trim(),
+      location: (location || 'Vinzons, Camarines Norte').trim(),
+      total_rooms: roomCount,
+      capacity: centerCapacity,
+    })
+    .select('id')
+    .single();
+
+  if (centerError) throw centerError;
+
+  const roomCapacity = Math.max(1, Math.floor(centerCapacity / roomCount));
+  const roomRows = Array.from({ length: roomCount }, (_, index) => ({
+    center_id: center.id,
+    room_name: `Room ${index + 1}`,
+    capacity_individuals: roomCapacity,
+  }));
+  const { error: roomsError } = await supabase.from('rooms').insert(roomRows);
+
+  if (roomsError) {
+    const { error: rollbackError } = await supabase
+      .from('evacuation_centers')
+      .delete()
+      .eq('id', center.id);
+    if (rollbackError) {
+      console.error('Could not roll back evacuation center after room creation failed:', rollbackError);
+    }
+    throw roomsError;
+  }
+
+  return center;
 }
 
 /**
@@ -258,23 +257,23 @@ export async function updateEvacuationCenter(centerId, {
 
 }
 
-function getCachedOrFallbackCenters() {
+function getCachedCenters() {
   try {
     const cached = localStorage.getItem(STORAGE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
   } catch {
     // ignore
   }
-  return normalizeCenters(FALLBACK_CENTERS);
+  return [];
 }
 
 /**
- * Helper to get rooms for a center (or default 1-5 rooms)
+ * Helper to get database rooms for a center
  */
 export function getRoomsForCenter(centerName, centersList = []) {
   if (!centerName || centerName === 'All Centers') {
@@ -288,11 +287,11 @@ export function getRoomsForCenter(centerName, centersList = []) {
       (c.id && c.id === centerName)
   );
 
-  if (found && Array.isArray(found.rooms) && found.rooms.length > 0) {
+  if (found && Array.isArray(found.rooms)) {
     return ['All Rooms', ...found.rooms.map((r) => r.name || r.id)];
   }
 
-  return ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
+  return ['All Rooms'];
 }
 
 /**
@@ -305,10 +304,6 @@ export function getAllUniqueRooms(centersList = []) {
       roomSet.add(r.id);
     });
   });
-
-  if (roomSet.size === 0) {
-    return ['All Rooms', 'Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5'];
-  }
 
   // Sort rooms naturally (Room 1, Room 2, Room 10, etc.)
   const sorted = Array.from(roomSet).sort((a, b) => {
@@ -360,31 +355,60 @@ export function isCenterMatch(recordCenter, filterCenter, centersList = []) {
  * React hook for dynamic evacuation centers
  */
 export function useEvacuationCenters() {
-  const [centers, setCenters] = useState(() => getCachedOrFallbackCenters());
+  const [centers, setCenters] = useState(() => getCachedCenters());
   const [loading, setLoading] = useState(true);
+  const requestId = useRef(0);
 
   const loadData = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     const data = await fetchEvacuationCenters();
+    if (currentRequest !== requestId.current) return;
     setCenters(data);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    loadData();
+    const initialFetch = window.setTimeout(loadData, 0);
+    let refreshTimeout;
+    const scheduleRefresh = () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      refreshTimeout = window.setTimeout(loadData, 250);
+    };
 
-    // Setup Supabase Realtime subscription so any change in database updates UI live
     const channel = supabase
       .channel('evac_centers_live_updates')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'evacuation_centers' },
-        () => {
-          loadData();
-        }
+        scheduleRefresh
       )
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, scheduleRefresh)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') scheduleRefresh();
+      });
+
+    const refreshWhenOnline = () => scheduleRefresh();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
+    }, 30000);
+
+    window.addEventListener('online', refreshWhenOnline);
+    window.addEventListener('focus', refreshWhenOnline);
+    window.addEventListener('pageshow', refreshWhenOnline);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('online', refreshWhenOnline);
+      window.removeEventListener('focus', refreshWhenOnline);
+      window.removeEventListener('pageshow', refreshWhenOnline);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
       supabase.removeChannel(channel);
     };
   }, [loadData]);

@@ -5,8 +5,11 @@ import {
 } from 'lucide-react';
 import './EvacuationCenter.css';
 import './AdminFeatures.css';
-import { useEvacuationCenters, updateEvacuationCenter } from '../../lib/evacuationCenters.js';
-import { supabase } from '../../lib/supabase.js';
+import {
+  useEvacuationCenters,
+  createEvacuationCenter,
+  updateEvacuationCenter,
+} from '../../lib/evacuationCenters.js';
 import { AdminFilterModal, AdminFilterBar } from '../../components/AdminFilterModal.jsx';
 import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
 import { createRoom, updateRoomCapacity, useRooms } from '../../lib/roomService.js';
@@ -27,6 +30,7 @@ export default function EvacuationCenter() {
 
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [centerCreateError, setCenterCreateError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -128,28 +132,21 @@ export default function EvacuationCenter() {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    const roomCount = Math.max(1, Number(formData.total_rooms) || 1);
-    const capacityNum = Number(formData.capacity) || roomCount * 25;
-
+    setCenterCreateError('');
     try {
-      const { error } = await supabase.from('evacuation_centers').insert({
-        name: formData.name.trim(),
-        location: (formData.location || 'Vinzons, Camarines Norte').trim(),
-        total_rooms: roomCount,
-        capacity: capacityNum,
+      await createEvacuationCenter({
+        ...formData,
+        total_rooms: formData.total_rooms,
+        capacity: formData.capacity,
       });
-
-      if (error) {
-        console.error('Error inserting center into Supabase:', error.message);
-      }
-      if (refetch) await refetch();
+      await refetch();
+      setFormData({ name: '', location: '', total_rooms: '2', capacity: '50' });
+      setIsModalOpen(false);
+      setCurrentPage(1);
     } catch (err) {
-      console.warn('Network error adding center:', err);
+      console.error('Could not create evacuation center and rooms:', err);
+      setCenterCreateError(err.message || 'Could not save this evacuation center. Please try again.');
     }
-
-    setFormData({ name: '', location: '', total_rooms: '2', capacity: '50' });
-    setIsModalOpen(false);
-    setCurrentPage(1);
   };
 
   return (
@@ -380,6 +377,12 @@ export default function EvacuationCenter() {
                   />
                 </div>
               </div>
+
+              {centerCreateError && (
+                <p role="alert" style={{ color: '#b91c1c', fontSize: '.85rem' }}>
+                  {centerCreateError}
+                </p>
+              )}
 
               <div className="vin-modal-actions">
                 <button
