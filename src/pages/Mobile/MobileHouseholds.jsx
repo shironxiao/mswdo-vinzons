@@ -1226,7 +1226,8 @@ export default function MobileHouseholds() {
         setDraftRestored(false);
         setToastMsg(`✓ Registered ${activeForm.head} with QR code ${generatedCode}!`);
         setTimeout(() => setToastMsg(''), 4000);
-        refreshHouseholds();
+        await refreshHouseholds();
+        setCurrentPage(1);
       } catch (err) {
         console.error('Could not save household to Supabase:', err);
         setHouseholds((prev) => prev.filter((household) => household.id !== tempId));

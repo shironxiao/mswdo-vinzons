@@ -11,7 +11,7 @@ createRoot(document.getElementById('root')).render(
 
 const splash = document.getElementById('pwa-splash-screen');
 
-if (splash) {
+if (splash && !document.documentElement.classList.contains('skip-app-splash')) {
   const revealSplashLogo = () => {
     splash.classList.add('pwa-splash-revealed');
   };
@@ -23,4 +23,6 @@ if (splash) {
 
   window.setTimeout(revealSplashLogo, 350);
   window.setTimeout(dismissSplash, 1900);
+} else {
+  splash?.remove();
 }

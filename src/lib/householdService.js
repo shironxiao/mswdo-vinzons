@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
 
 /**
@@ -67,6 +67,21 @@ export const FALLBACK_HOUSEHOLDS = [
 ];
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_households';
+const HOUSEHOLDS_CHANGED_EVENT = 'vinzons-households-changed';
+const householdSyncChannel = typeof BroadcastChannel === 'undefined'
+  ? null
+  : new BroadcastChannel('vinzons-households');
+
+function notifyHouseholdChanges() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(HOUSEHOLDS_CHANGED_EVENT));
+  }
+  try {
+    householdSyncChannel?.postMessage({ type: 'updated' });
+  } catch (error) {
+    console.warn('Could not notify other tabs that households changed:', error);
+  }
+}
 
 /**
  * Normalizes raw Supabase joined records into the shape used across Mobile and Admin components
@@ -175,10 +190,11 @@ export function useHouseholds(centersList = []) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetchSequence = useRef(0);
 
   const fetchHouseholds = useCallback(async () => {
+    const requestId = ++fetchSequence.current;
     try {
-      setLoading(true);
       const { data, error: err } = await supabase
         .from('households')
         .select(`
@@ -206,6 +222,7 @@ export function useHouseholds(centersList = []) {
         .order('created_at', { ascending: false });
 
       if (err) throw err;
+      if (requestId !== fetchSequence.current) return;
 
       if (data) {
         const normalized = data.map((row) => normalizeHousehold(row, centersList));
@@ -218,31 +235,63 @@ export function useHouseholds(centersList = []) {
       }
       setError(null);
     } catch (err) {
+      if (requestId !== fetchSequence.current) return;
       console.warn('Could not fetch households from Supabase, using cache/fallback:', err?.message || err);
       setError(err?.message || 'Failed to fetch households');
     } finally {
-      setLoading(false);
+      if (requestId === fetchSequence.current) setLoading(false);
     }
   }, [centersList]);
 
-  // Initial fetch and Realtime subscription
   useEffect(() => {
-    fetchHouseholds();
+    let refreshTimeout;
+    const initialFetch = window.setTimeout(fetchHouseholds, 0);
+    const scheduleRefresh = () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      refreshTimeout = window.setTimeout(() => fetchHouseholds(), 250);
+    };
 
     const channel = supabase
       .channel('households-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, () => {
-        fetchHouseholds();
+        scheduleRefresh();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'household_members' }, () => {
-        fetchHouseholds();
+        scheduleRefresh();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'household_profiles' }, () => {
-        fetchHouseholds();
+        scheduleRefresh();
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') scheduleRefresh();
+      });
+    householdSyncChannel?.addEventListener('message', scheduleRefresh);
+
+    const refreshWhenOnline = () => scheduleRefresh();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
+    }, 30000);
+
+    window.addEventListener('online', refreshWhenOnline);
+    window.addEventListener('focus', refreshWhenOnline);
+    window.addEventListener('pageshow', refreshWhenOnline);
+    window.addEventListener(HOUSEHOLDS_CHANGED_EVENT, scheduleRefresh);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeout);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('online', refreshWhenOnline);
+      window.removeEventListener('focus', refreshWhenOnline);
+      window.removeEventListener('pageshow', refreshWhenOnline);
+      window.removeEventListener(HOUSEHOLDS_CHANGED_EVENT, scheduleRefresh);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      householdSyncChannel?.removeEventListener('message', scheduleRefresh);
       supabase.removeChannel(channel);
     };
   }, [fetchHouseholds]);
@@ -258,6 +307,7 @@ export function useHouseholds(centersList = []) {
 
 export function useEventRoomPlacements(eventId) {
   const [placements, setPlacements] = useState([]);
+  const refreshTimeoutRef = useRef(null);
 
   const fetchPlacements = useCallback(async () => {
     if (!eventId || eventId === 'default-active-event') return;
@@ -278,14 +328,41 @@ export function useEventRoomPlacements(eventId) {
 
   useEffect(() => {
     if (!eventId || eventId === 'default-active-event') return undefined;
-    fetchPlacements();
+    const initialFetch = window.setTimeout(fetchPlacements, 0);
+    const scheduleRefresh = () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = window.setTimeout(fetchPlacements, 250);
+    };
 
     const channel = supabase
       .channel(`room-placements-${eventId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_placements' }, fetchPlacements)
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_placements' }, scheduleRefresh)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') scheduleRefresh();
+      });
+
+    const refreshWhenOnline = () => scheduleRefresh();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
+    }, 30000);
+
+    window.addEventListener('online', refreshWhenOnline);
+    window.addEventListener('focus', refreshWhenOnline);
+    window.addEventListener('pageshow', refreshWhenOnline);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
+      window.clearTimeout(initialFetch);
+      window.clearTimeout(refreshTimeoutRef.current);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('online', refreshWhenOnline);
+      window.removeEventListener('focus', refreshWhenOnline);
+      window.removeEventListener('pageshow', refreshWhenOnline);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
       supabase.removeChannel(channel);
     };
   }, [eventId, fetchPlacements]);
@@ -422,6 +499,7 @@ export async function createHousehold(formData, centersList = []) {
     }
   }
 
+  notifyHouseholdChanges();
   return insertedH;
 }
 

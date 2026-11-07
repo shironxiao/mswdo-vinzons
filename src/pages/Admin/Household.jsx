@@ -1397,7 +1397,9 @@ export default function Household() {
           setDraftStorageError(true);
         }
         setDraftRestored(false);
-        refreshHouseholds();
+        await refreshHouseholds();
+        setActiveTab('masterlist');
+        setCurrentPage(1);
       } catch (err) {
         console.error('Could not save household to Supabase:', err);
         setHouseholds((prev) => prev.filter((household) => household.id !== tempId));

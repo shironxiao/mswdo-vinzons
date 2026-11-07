@@ -11,7 +11,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MSWDO Vinzons" />
     <title>MSWDO Vinzons</title>
+    <script>
+      try {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        if (navigation?.type === 'reload') {
+          document.documentElement.classList.add('skip-app-splash');
+        }
+      } catch {
+        // Keep the splash enabled when navigation timing is unavailable.
+      }
+    </script>
     <style>
+      .skip-app-splash #pwa-splash-screen {
+        display: none !important;
+      }
+
       /* Unified Single Splash Screen on PWA Launch */
       #pwa-splash-screen {
         position: fixed;
