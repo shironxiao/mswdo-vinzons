@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Search, Building, MapPin, Plus, X, ChevronRight,
-  ChevronLeft, SlidersHorizontal,
+  ChevronLeft, SlidersHorizontal, ChevronDown,
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
@@ -11,6 +11,7 @@ import {
   useEvacuationCenters,
 } from '../../lib/evacuationCenters';
 import { useHouseholds } from '../../lib/householdService.js';
+import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 
 /* ──────────────────────────────────────────────
    Helpers
@@ -105,15 +106,41 @@ function RoomsSheet({ center, onClose }) {
   );
 }
 
-function CenterFilterSheet({ status, centers, search, onApply, onClose }) {
+function CenterFilterSheet({
+  status,
+  center,
+  room,
+  centers,
+  centersList,
+  search,
+  onApply,
+  onClose,
+}) {
   const [draftStatus, setDraftStatus] = useState(status);
+  const [draftCenter, setDraftCenter] = useState(center);
+  const [draftRoom, setDraftRoom] = useState(room);
+  const [showCenterPicker, setShowCenterPicker] = useState(false);
+  const [showRoomPicker, setShowRoomPicker] = useState(false);
   const options = ['All', 'Available', 'Occupied', 'Empty'];
   const resultCount = centers.filter((center) => {
     const query = search.trim().toLowerCase();
     const matchesSearch = !query || [center.name, center.fullName, center.location]
       .some((value) => (value || '').toLowerCase().includes(query));
-    return matchesSearch && (draftStatus === 'All' || centerStatusLabel(center) === draftStatus);
+    const matchesStatus = draftStatus === 'All' || centerStatusLabel(center) === draftStatus;
+    const matchesCenter = draftCenter === 'All Centers' ||
+      center.name === draftCenter ||
+      center.fullName === draftCenter ||
+      center.id === draftCenter;
+    const matchesRoom = draftRoom === 'All Rooms' ||
+      center.rooms.some((item) => item.name === draftRoom || item.id === draftRoom);
+    return matchesSearch && matchesStatus && matchesCenter && matchesRoom;
   }).length;
+
+  const handleReset = () => {
+    setDraftStatus('All');
+    setDraftCenter('All Centers');
+    setDraftRoom('All Rooms');
+  };
 
   return (
     <div className="vin-mob-sheet-overlay" onClick={onClose}>
@@ -121,7 +148,7 @@ function CenterFilterSheet({ status, centers, search, onApply, onClose }) {
         <div className="vin-ctr-filter-handle" />
         <div className="vin-ctr-filter-header">
           <span className="vin-ctr-filter-title">Filters</span>
-          <button type="button" className="vin-ctr-filter-reset" onClick={() => setDraftStatus('All')}>
+          <button type="button" className="vin-ctr-filter-reset" onClick={handleReset}>
             Reset
           </button>
         </div>
@@ -140,17 +167,62 @@ function CenterFilterSheet({ status, centers, search, onApply, onClose }) {
             ))}
           </div>
         </div>
+        <div className="vin-ctr-filter-section">
+          <div className="vin-ctr-filter-label">Evacuation Center</div>
+          <button
+            type="button"
+            className="vin-ctr-filter-select"
+            onClick={() => setShowCenterPicker(true)}
+          >
+            <span>{draftCenter}</span>
+            <ChevronDown size={16} />
+          </button>
+        </div>
+        <div className="vin-ctr-filter-section">
+          <div className="vin-ctr-filter-label">Room</div>
+          <button
+            type="button"
+            className="vin-ctr-filter-select"
+            onClick={() => setShowRoomPicker(true)}
+          >
+            <span>{draftRoom}</span>
+            <ChevronDown size={16} />
+          </button>
+        </div>
         <button
           type="button"
           className="vin-ctr-filter-apply"
           onClick={() => {
-            onApply(draftStatus);
+            onApply(draftStatus, draftCenter, draftRoom);
             onClose();
           }}
         >
           Show {resultCount} result{resultCount === 1 ? '' : 's'}
         </button>
       </div>
+      {showCenterPicker && (
+        <CenterSelectSheet
+          selected={draftCenter}
+          centersList={centersList}
+          allCentersSub="Show all evacuation centers"
+          allCentersLabel="All evacuation centers"
+          onSelect={(value) => {
+            setDraftCenter(value);
+            setDraftRoom('All Rooms');
+          }}
+          onClose={() => setShowCenterPicker(false)}
+        />
+      )}
+      {showRoomPicker && (
+        <RoomSelectSheet
+          selected={draftRoom}
+          centerName={draftCenter}
+          centersList={centersList}
+          allRoomsSub="Show all evacuation rooms"
+          onSelect={(value) => setDraftRoom(value)}
+          onClose={() => setShowRoomPicker(false)}
+        />
+      )}
     </div>
   );
 }
@@ -179,6 +251,8 @@ export default function MobileCenters() {
   })), [dbCenters, households]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // 'All' | 'Available' | 'Occupied' | 'Empty'
+  const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [centerCreateError, setCenterCreateError] = useState('');
@@ -194,7 +268,13 @@ export default function MobileCenters() {
         (c.location || '').toLowerCase().includes(search.toLowerCase());
       const status = centerStatusLabel(c);
       const matchStatus = filterStatus === 'All' || status === filterStatus;
-      return matchSearch && matchStatus;
+      const matchCenter = filterCenter === 'All Centers' ||
+        c.name === filterCenter ||
+        c.fullName === filterCenter ||
+        c.id === filterCenter;
+      const matchRoom = filterRoom === 'All Rooms' ||
+        c.rooms.some((room) => room.name === filterRoom || room.id === filterRoom);
+      return matchSearch && matchStatus && matchCenter && matchRoom;
     })
     .sort((a, b) =>
       (a.name || '').localeCompare(b.name || '', undefined, {
@@ -210,6 +290,10 @@ export default function MobileCenters() {
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedCenters = filtered.slice(startIndex, startIndex + pageSize);
+  const activeFilters =
+    (filterStatus !== 'All' ? 1 : 0) +
+    (filterCenter !== 'All Centers' ? 1 : 0) +
+    (filterRoom !== 'All Rooms' ? 1 : 0);
 
   const handleAddCenter = async (e) => {
     e.preventDefault();
@@ -263,13 +347,39 @@ export default function MobileCenters() {
       <div className="vin-ctr-filter-bar">
         <button
           type="button"
-          className={`vin-ctr-filter-trigger${filterStatus !== 'All' ? ' active' : ''}`}
+          className={`vin-ctr-filter-trigger${activeFilters > 0 ? ' active' : ''}`}
           onClick={() => setShowFilterSheet(true)}
         >
           <SlidersHorizontal size={14} />
           <span>Filters</span>
-          {filterStatus !== 'All' && <span className="vin-ctr-filter-count">1</span>}
+          {activeFilters > 0 && <span className="vin-ctr-filter-count">{activeFilters}</span>}
         </button>
+        {filterCenter !== 'All Centers' && (
+          <button
+            type="button"
+            className="vin-ctr-filter-chip"
+            onClick={() => {
+              setFilterCenter('All Centers');
+              setCurrentPage(1);
+            }}
+          >
+            {filterCenter}
+            <X size={13} />
+          </button>
+        )}
+        {filterRoom !== 'All Rooms' && (
+          <button
+            type="button"
+            className="vin-ctr-filter-chip"
+            onClick={() => {
+              setFilterRoom('All Rooms');
+              setCurrentPage(1);
+            }}
+          >
+            {filterRoom}
+            <X size={13} />
+          </button>
+        )}
         {filterStatus !== 'All' && (
           <button
             type="button"
@@ -398,10 +508,15 @@ export default function MobileCenters() {
       {showFilterSheet && (
         <CenterFilterSheet
           status={filterStatus}
+          center={filterCenter}
+          room={filterRoom}
           centers={centers}
+          centersList={dbCenters}
           search={search}
-          onApply={(status) => {
+          onApply={(status, center, room) => {
             setFilterStatus(status);
+            setFilterCenter(center);
+            setFilterRoom(room);
             setCurrentPage(1);
           }}
           onClose={() => setShowFilterSheet(false)}
