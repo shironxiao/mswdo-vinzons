@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
-  Menu,
-  X,
   Wifi,
   WifiOff,
   User,
-  RefreshCw,
-  Settings,
-  LogOut,
 } from 'lucide-react';
 import { MOBILE_NAV_ITEMS } from './mobileNavConfig';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
@@ -16,7 +11,6 @@ import './MobileLayout.css';
 
 export default function MobileLayout({ children }) {
   const navigate = useNavigate();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Dynamic Online/Offline detector
@@ -39,16 +33,6 @@ export default function MobileLayout({ children }) {
     };
   }, []);
 
-  const handleLogout = () => {
-    setDrawerOpen(false);
-    setShowLogoutModal(true);
-  };
-
-  const handleNavigateMenu = (path) => {
-    setDrawerOpen(false);
-    navigate(path);
-  };
-
   return (
     <div className="vin-mobile-root">
       <div className="vin-mobile-shell">
@@ -64,80 +48,14 @@ export default function MobileLayout({ children }) {
 
             <button
               type="button"
-              className="vin-mobile-hamburger-btn"
-              onClick={() => setDrawerOpen(true)}
-              aria-label="Open mobile menu"
+              className="vin-mobile-profile-btn"
+              onClick={() => navigate('/mobile/profile')}
+              aria-label="Go to profile"
             >
-              <Menu size={24} />
+              <User size={20} />
             </button>
           </div>
         </header>
-
-        {/* Slide-out Menu Drawer matching Screenshot 1 */}
-        {drawerOpen && (
-          <div
-            className="vin-mobile-drawer-overlay"
-            onClick={() => setDrawerOpen(false)}
-          >
-            <div
-              className="vin-mobile-drawer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Drawer Header */}
-              <div className="vin-drawer-header">
-                <h2 className="vin-drawer-title">Menu</h2>
-                <button
-                  type="button"
-                  className="vin-drawer-close-btn"
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="Close menu"
-                >
-                  <X size={22} />
-                </button>
-              </div>
-
-              {/* Drawer Links */}
-              <nav className="vin-drawer-nav">
-                <button
-                  type="button"
-                  className="vin-drawer-link"
-                  onClick={() => handleNavigateMenu('/mobile/profile')}
-                >
-                  <User size={22} color="#7c3aed" />
-                  <span>Profile</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="vin-drawer-link"
-                  onClick={() => handleNavigateMenu('/mobile/sync-status')}
-                >
-                  <RefreshCw size={22} color="#7c3aed" />
-                  <span>Sync status</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="vin-drawer-link"
-                  onClick={() => handleNavigateMenu('/mobile/settings')}
-                >
-                  <Settings size={22} color="#7c3aed" />
-                  <span>Settings</span>
-                </button>
-              </nav>
-
-              {/* Red-Bordered White Logout Pill Button matching Screenshot 1 */}
-              <button
-                type="button"
-                className="vin-drawer-logout-btn"
-                onClick={handleLogout}
-              >
-                <LogOut size={18} />
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Dynamic Page Viewport */}
         <main className="vin-mobile-content">

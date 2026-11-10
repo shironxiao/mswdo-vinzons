@@ -109,6 +109,15 @@
   font-size: 0.95rem;
   cursor: pointer;
   margin-top: 4px;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.vin-mob-logout-outline-btn:hover {
+  background-color: #fef2f2;
+}
+
+.vin-mob-logout-outline-btn:active {
+  transform: scale(0.98);
 }
 
 /* Settings & Sync Status Card */

@@ -99,154 +99,28 @@
   background-color: #faf5ff;
 }
 
-/* Hamburger button */
-.vin-mobile-hamburger-btn {
-  min-width: 44px;
-  min-height: 44px;
-  background: transparent;
-  border: none;
+/* Profile button in header */
+.vin-mobile-profile-btn {
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   color: #ffffff;
-  padding: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  transition: background-color 0.15s ease;
-}
-
-.vin-mobile-hamburger-btn:hover {
-  background-color: rgba(255, 255, 255, 0.12);
-}
-
-/* ---------------------------------------------------------
-   Mobile Drawer Menu (Slide out on hamburger click matching screenshot 1)
-   --------------------------------------------------------- */
-.vin-mobile-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
-  z-index: 60;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.vin-mobile-drawer {
-  width: 290px;
-  max-width: 82%;
-  height: 100%;
-  background-color: #ffffff;
-  color: #0f172a;
-  padding: 26px 20px 24px 20px;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  animation: slideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
-}
-
-@keyframes slideLeft {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-.vin-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 18px;
-}
-
-.vin-drawer-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0;
-}
-
-.vin-drawer-close-btn {
-  background: #f8fafc;
-  border: none;
-  color: #64748b;
-  cursor: pointer;
-  padding: 6px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.vin-drawer-close-btn:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+.vin-mobile-profile-btn:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
-.vin-drawer-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-
-.vin-drawer-link {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 12px;
-  border-radius: 10px;
-  color: #0f172a;
-  text-decoration: none;
-  font-size: 1.05rem;
-  font-weight: 600;
-  background: transparent;
-  border: none;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.vin-drawer-link:hover {
-  background-color: #f8fafc;
-}
-
-.vin-drawer-link:active {
-  transform: scale(0.98);
-}
-
-/* Red-Bordered Pill Logout button matching Screenshot 1 */
-.vin-drawer-logout-btn {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 18px;
-  border-radius: 12px;
-  background-color: #ffffff;
-  color: #dc2626;
-  border: 1.8px solid #dc2626;
-  font-weight: 700;
-  font-size: 0.98rem;
-  cursor: pointer;
-  width: 100%;
-  box-sizing: border-box;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-}
-
-.vin-drawer-logout-btn:hover {
-  background-color: #fef2f2;
-}
-
-.vin-drawer-logout-btn:active {
-  transform: scale(0.98);
+.vin-mobile-profile-btn:active {
+  transform: scale(0.95);
 }
 
 /* ---------------------------------------------------------

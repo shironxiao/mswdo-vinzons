@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, ChevronRight, Activity } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Settings, LogOut } from 'lucide-react';
+import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 
 export default function MobileProfile() {
   const navigate = useNavigate();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   return (
     <div className="vin-mob-page">
@@ -41,19 +44,46 @@ export default function MobileProfile() {
           <span className="vin-mob-field-label">ROLE</span>
           <span className="vin-mob-field-val">MSWDO Personnel</span>
         </div>
-
-        {/* Link to Evacuee Monitoring */}
-        <div
-          className="vin-mob-link-row"
-          onClick={() => navigate('/mobile/monitor')}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed' }}>
-            <Activity size={18} />
-            Evacuee Monitoring
-          </span>
-          <ChevronRight size={18} color="#64748b" />
-        </div>
       </div>
+
+      {/* Settings Link */}
+      <div
+        className="vin-mob-link-row"
+        onClick={() => navigate('/mobile/settings')}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed' }}>
+          <Settings size={18} />
+          Settings
+        </span>
+        <ChevronRight size={18} color="#64748b" />
+      </div>
+
+      {/* Logout Button */}
+      <button
+        type="button"
+        className="vin-mob-logout-outline-btn"
+        onClick={() => setShowLogoutModal(true)}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <LogOut size={18} />
+          Logout
+        </span>
+      </button>
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showLogoutModal}
+        title="Log Out"
+        message="Are you sure you want to log out of your MSWDO Personnel account?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          navigate('/login');
+        }}
+        onCancel={() => setShowLogoutModal(false)}
+      />
     </div>
   );
 }
