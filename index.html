@@ -32,7 +32,6 @@
         inset: 0;
         z-index: 999999;
         background-color: #581c87;
-        background: linear-gradient(160deg, #4c1d95 0%, #581c87 50%, #3b0764 100%);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -60,7 +59,7 @@
         box-sizing: border-box;
       }
 
-      /* Clean logo matching native OS launch icon exactly */
+      /* Clean logo anchored at full scale matching native OS splash position */
       .pwa-splash-logo-container {
         width: 135px;
         height: 135px;
@@ -68,14 +67,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 22px;
+        margin-bottom: 20px;
         box-sizing: border-box;
-        opacity: 0;
-        transform: scale(0.55);
-      }
-
-      #pwa-splash-screen.pwa-splash-revealed .pwa-splash-logo-container {
-        animation: pwaLogoReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 1;
+        transform: scale(1);
       }
 
       .pwa-splash-logo {
@@ -92,11 +87,8 @@
         align-items: center;
         gap: 6px;
         opacity: 0;
-        transform: translateY(8px);
-      }
-
-      #pwa-splash-screen.pwa-splash-revealed .pwa-splash-brand {
-        animation: pwaBrandReveal 0.55s 0.18s ease-out forwards;
+        transform: translateY(6px);
+        animation: pwaBrandFadeIn 0.45s 0.1s ease-out forwards;
       }
 
       .pwa-splash-title {
@@ -121,7 +113,7 @@
       }
 
       .pwa-splash-loader {
-        margin-top: 26px;
+        margin-top: 24px;
         width: 52px;
         height: 4px;
         background: rgba(255, 255, 255, 0.2);
@@ -129,10 +121,7 @@
         overflow: hidden;
         position: relative;
         opacity: 0;
-      }
-
-      #pwa-splash-screen.pwa-splash-revealed .pwa-splash-loader {
-        animation: pwaFadeIn 0.35s 0.25s ease-out forwards;
+        animation: pwaFadeIn 0.35s 0.18s ease-out forwards;
       }
 
       .pwa-splash-pulse {
@@ -144,14 +133,7 @@
         animation: pwaPulseBar 1.2s infinite ease-in-out;
       }
 
-      @keyframes pwaLogoReveal {
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-
-      @keyframes pwaBrandReveal {
+      @keyframes pwaBrandFadeIn {
         to {
           opacity: 1;
           transform: translateY(0);
@@ -174,9 +156,8 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        #pwa-splash-screen.pwa-splash-revealed .pwa-splash-logo-container,
-        #pwa-splash-screen.pwa-splash-revealed .pwa-splash-brand,
-        #pwa-splash-screen.pwa-splash-revealed .pwa-splash-loader {
+        .pwa-splash-brand,
+        .pwa-splash-loader {
           animation-duration: 0.01ms;
           animation-delay: 0ms;
         }

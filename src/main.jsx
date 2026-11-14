@@ -12,17 +12,13 @@ createRoot(document.getElementById('root')).render(
 const splash = document.getElementById('pwa-splash-screen');
 
 if (splash && !document.documentElement.classList.contains('skip-app-splash')) {
-  const revealSplashLogo = () => {
-    splash.classList.add('pwa-splash-revealed');
-  };
-
   const dismissSplash = () => {
     splash.classList.add('pwa-splash-fade-out');
     window.setTimeout(() => splash.remove(), 400);
   };
 
-  window.setTimeout(revealSplashLogo, 350);
-  window.setTimeout(dismissSplash, 1900);
+  // Allow the loading animation to smoothly cycle before revealing login
+  window.setTimeout(dismissSplash, 1300);
 } else {
   splash?.remove();
 }

@@ -12,6 +12,9 @@ export default defineConfig({
         'favicon.svg',
         'icons.svg',
         'mswdo-logo.png',
+        'mswdo-icon-180.png',
+        'mswdo-icon-192.png',
+        'mswdo-icon-512.png',
         'mswdo-pwa-180.png',
         'mswdo-pwa-192.png',
         'mswdo-pwa-512.png'
@@ -34,10 +37,22 @@ export default defineConfig({
             purpose: 'any'
           },
           {
+            src: '/mswdo-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
             src: '/mswdo-pwa-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
+          },
+          {
+            src: '/mswdo-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
