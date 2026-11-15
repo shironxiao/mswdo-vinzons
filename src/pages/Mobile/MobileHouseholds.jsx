@@ -1,4 +1,4 @@
-import { createElement, useState, useEffect, useMemo } from 'react';
+import { createElement, useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2,
   AlertTriangle, ChevronDown, Building,
@@ -35,6 +35,7 @@ import {
   updateHousehold,
   useEventRoomPlacements,
   transferHouseholdRoom,
+  searchHouseholdsFromDatabase,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 
@@ -669,6 +670,8 @@ export default function MobileHouseholds() {
     setHouseholds,
     refresh: refreshHouseholds,
     error: householdFetchError,
+    totalCount: dbTotalCount,
+    isLoadingMore,
   } = useHouseholds(centers);
   const { activeEvent } = useActiveEvent();
   const { refresh: refreshPlacements } = useEventRoomPlacements(activeEvent?.id);
@@ -681,6 +684,39 @@ export default function MobileHouseholds() {
   const [openFilter, setOpenFilter] = useState(null);
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [assigningHousehold, setAssigningHousehold] = useState(null);
+
+  // Dynamic server search state for Mobile
+  const [serverSearchResults, setServerSearchResults] = useState(null);
+  const [isSearchingServer, setIsSearchingServer] = useState(false);
+  const searchTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    const trimmed = search.trim();
+    if (trimmed.length < 2) {
+      setServerSearchResults(null);
+      setIsSearchingServer(false);
+      return;
+    }
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    setIsSearchingServer(true);
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchHouseholdsFromDatabase(trimmed, centers, 100);
+        setServerSearchResults(results);
+      } catch (err) {
+        console.warn('Mobile dynamic household search error:', err);
+      } finally {
+        setIsSearchingServer(false);
+      }
+    }, 350);
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [search, centers]);
   const displayedSelectedHousehold = selectedHousehold
     ? households.find((item) => item.id === selectedHousehold.id) || selectedHousehold
     : null;
@@ -774,11 +810,23 @@ export default function MobileHouseholds() {
   }, [activeForm, modalMode]);
 
   /* ── Filter + search ── */
-  const filtered = households.filter((h) => {
+  const baseHouseholds = useMemo(() => {
+    if (serverSearchResults !== null) {
+      return serverSearchResults;
+    }
+    return households;
+  }, [serverSearchResults, households]);
+
+  const filtered = baseHouseholds.filter((h) => {
     const searchTerm = search.trim().toLowerCase();
     const matchSearch = !searchTerm || [
       h.name,
+      h.householdCode,
+      h.code,
+      h.barangay,
+      h.purok,
       h.room,
+      h.center,
       h.stubCode,
       ...(h.members || []).map((member) => member.name),
     ].some((value) => String(value || '').toLowerCase().includes(searchTerm));
@@ -1184,7 +1232,10 @@ export default function MobileHouseholds() {
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Households</h1>
-          <p className="vin-mob-subtitle">{households.length} registered households</p>
+          <p className="vin-mob-subtitle">
+            {(dbTotalCount || households.length).toLocaleString()} registered households
+            {isLoadingMore && !search && ` (loading ${households.length.toLocaleString()}...)`}
+          </p>
         </div>
         <button type="button" className="vin-mob-register-btn" onClick={openRegister}>
           <Plus size={16} /><span>Register</span>
@@ -1206,7 +1257,7 @@ export default function MobileHouseholds() {
           <Search size={18} className="vin-mob-search-icon" />
           <input
             type="text"
-            placeholder="Search household head or members"
+            placeholder="Search name, code, barangay..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -1214,8 +1265,23 @@ export default function MobileHouseholds() {
             }}
             className="vin-mob-search-input"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setCurrentPage(1); }}
+              style={{ background: 'none', border: 'none', padding: '4px 8px', cursor: 'pointer', color: '#94a3b8' }}
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
+      {isSearchingServer && (
+        <div style={{ fontSize: '0.78rem', color: '#7c3aed', padding: '0 4px 6px', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed', display: 'inline-block' }} /> Searching all {(dbTotalCount || households.length).toLocaleString()} records...
+        </div>
+      )}
 
       {/* Filter bar with left-aligned Filters button and active chips matching user design */}
       <div className="vin-hh-filter-bar">
@@ -1284,7 +1350,8 @@ export default function MobileHouseholds() {
         <span className="vin-hh-legend-dot issued" /> Active
         <span className="vin-hh-legend-dot notissued" /> Not Active
         <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
-          {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+          {filtered.length.toLocaleString()} result{filtered.length !== 1 ? 's' : ''}
+          {serverSearchResults !== null && ' (database match)'}
         </span>
       </div>
 

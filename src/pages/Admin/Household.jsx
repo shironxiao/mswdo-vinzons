@@ -1,4 +1,4 @@
-import { createElement, useState, useEffect, useMemo, useContext } from 'react';
+import { createElement, useState, useEffect, useMemo, useContext, useRef } from 'react';
 import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
@@ -36,6 +36,7 @@ import {
   issueHouseholdStub,
   decampHousehold,
   checkInHousehold,
+  searchHouseholdsFromDatabase,
 } from '../../lib/householdService.js';
 import { useRooms } from '../../lib/roomService.js';
 import { EventContext } from '../../context/eventContext.js';
@@ -613,6 +614,8 @@ export default function Household() {
     setHouseholds,
     refresh: refreshHouseholds,
     error: householdFetchError,
+    totalCount: dbTotalCount,
+    isLoadingMore,
   } = useHouseholds(centers);
   const { rooms: databaseRooms } = useRooms(centers);
   const { selectedEvent, isReadOnly } = useContext(EventContext);
@@ -627,6 +630,39 @@ export default function Household() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
+
+  // Dynamic server search state
+  const [serverSearchResults, setServerSearchResults] = useState(null);
+  const [isSearchingServer, setIsSearchingServer] = useState(false);
+  const searchTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    const trimmed = search.trim();
+    if (trimmed.length < 2) {
+      setServerSearchResults(null);
+      setIsSearchingServer(false);
+      return;
+    }
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    setIsSearchingServer(true);
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchHouseholdsFromDatabase(trimmed, centers, 200);
+        setServerSearchResults(results);
+      } catch (err) {
+        console.warn('Dynamic household search error:', err);
+      } finally {
+        setIsSearchingServer(false);
+      }
+    }, 350);
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [search, centers]);
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const displayedSelectedHousehold = selectedHousehold
@@ -856,9 +892,16 @@ export default function Household() {
   }, [selectedCenterObj, databaseRooms, currentEventPlacements, households]);
 
   /* ── Filter logic ── */
-  const sourceHouseholds = activeTab === 'active'
-    ? (isReadOnly ? eventHouseholds : activeEventHouseholds)
-    : households;
+  const sourceHouseholds = useMemo(() => {
+    if (activeTab === 'active') {
+      return isReadOnly ? eventHouseholds : activeEventHouseholds;
+    }
+    if (serverSearchResults !== null) {
+      return serverSearchResults;
+    }
+    return households;
+  }, [activeTab, isReadOnly, eventHouseholds, activeEventHouseholds, serverSearchResults, households]);
+
   const filtered = sourceHouseholds.filter((h) => {
     const query = search.trim().toLowerCase();
     const matchSearch = !query || [
@@ -870,6 +913,7 @@ export default function Household() {
       h.purok,
       h.center,
       h.room,
+      h.stubCode,
       ...(h.members || []).map((member) => member.name),
     ].some((value) => String(value || '').toLowerCase().includes(query));
     const matchStub =
@@ -888,7 +932,7 @@ export default function Household() {
     return matchSearch && matchStub && matchCenter && matchRoom;
   });
 
-  const totalCount = households.length;
+  const totalCount = dbTotalCount || households.length;
   const activeEvacueesCount = activeEventHouseholds.length;
   const issuedCount = activeEventHouseholds.filter((h) => h.stubIssued).length;
   const pendingCount = Math.max(0, activeEvacueesCount - issuedCount);
@@ -1450,8 +1494,8 @@ export default function Household() {
         <ChoiceSelectSheet
           selected=""
           options={[
-            `Active evacuees (${activeEventHouseholds.length})`,
-            `Masterlist (${households.length})`,
+            `Active evacuees (${activeEventHouseholds.length.toLocaleString()})`,
+            `Masterlist (${(dbTotalCount || households.length).toLocaleString()})`,
           ]}
           title="Choose a list to export"
           onSelect={(choice) => exportHouseholdList(
@@ -1515,7 +1559,7 @@ export default function Household() {
               transition: 'all 0.15s ease',
             }}
           >
-            Masterlist Registry ({totalCount})
+            Masterlist Registry ({totalCount.toLocaleString()})
           </button>
         </div>
       </div>
@@ -1525,7 +1569,7 @@ export default function Household() {
         <div className="vin-admin-hh-stat-card">
           <div className="vin-admin-hh-stat-info">
             <span className="vin-admin-hh-stat-label">Total Households</span>
-            <span className="vin-admin-hh-stat-value">{totalCount}</span>
+            <span className="vin-admin-hh-stat-value">{totalCount.toLocaleString()}</span>
           </div>
           <div className="vin-admin-hh-stat-icon total">
             <Users size={22} />
@@ -1535,7 +1579,7 @@ export default function Household() {
         <div className="vin-admin-hh-stat-card">
           <div className="vin-admin-hh-stat-info">
             <span className="vin-admin-hh-stat-label">Stubs Issued</span>
-            <span className="vin-admin-hh-stat-value" style={{ color: '#6b21a8' }}>{issuedCount}</span>
+            <span className="vin-admin-hh-stat-value" style={{ color: '#6b21a8' }}>{issuedCount.toLocaleString()}</span>
           </div>
           <div className="vin-admin-hh-stat-icon issued">
             <CheckCircle2 size={22} />
@@ -1545,7 +1589,7 @@ export default function Household() {
         <div className="vin-admin-hh-stat-card">
           <div className="vin-admin-hh-stat-info">
             <span className="vin-admin-hh-stat-label">Pending Stubs</span>
-            <span className="vin-admin-hh-stat-value" style={{ color: '#dc2626' }}>{pendingCount}</span>
+            <span className="vin-admin-hh-stat-value" style={{ color: '#dc2626' }}>{pendingCount.toLocaleString()}</span>
           </div>
           <div className="vin-admin-hh-stat-icon pending">
             <Clock size={22} />
@@ -1564,6 +1608,16 @@ export default function Household() {
               setCurrentPage(1);
             }}
           />
+          {isSearchingServer && (
+            <span style={{ fontSize: '0.8rem', color: '#7c3aed', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#f5f3ff', borderRadius: 6, border: '1px solid #ddd6fe' }}>
+              <Clock size={13} className="animate-spin" /> Searching full database...
+            </span>
+          )}
+          {isLoadingMore && !search && (
+            <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: '#f8fafc', borderRadius: 6 }}>
+              Streaming database: {households.length.toLocaleString()} / {totalCount.toLocaleString()} loaded...
+            </span>
+          )}
           <AdminFilterBar
             hasActiveFilters={filterStub !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms'}
             onOpenFilters={() => setShowFilterModal(true)}
@@ -1622,7 +1676,8 @@ export default function Household() {
           </div>
 
           <span>
-            Showing <strong>{filtered.length}</strong> of <strong>{totalCount}</strong> households
+            Showing <strong>{filtered.length.toLocaleString()}</strong> of <strong>{totalCount.toLocaleString()}</strong> households
+            {serverSearchResults !== null && ' (Dynamic database search results)'}
           </span>
         </div>
       </div>

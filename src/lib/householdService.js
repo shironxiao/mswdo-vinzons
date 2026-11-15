@@ -107,57 +107,187 @@ export function normalizeHousehold(row, centersList = []) {
   };
 }
 
+export const HOUSEHOLD_JOIN_SELECT = `
+  id,
+  household_code,
+  head_name,
+  head_age,
+  head_sex,
+  head_occupation,
+  barangay,
+  purok,
+  evacuee_status,
+  vulnerabilities,
+  center_id,
+  room_id,
+  stub_code,
+  stub_issued,
+  stub_issued_at,
+  created_at,
+  center:evacuation_centers!households_center_id_fkey ( id, name, location ),
+  room:rooms ( id, room_name ),
+  profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
+  members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
+`;
+
+/**
+ * Dynamically queries Supabase across all households (head name, code, barangay, purok, stub code, member name)
+ * Used for dynamic search that finds any record across the entire database in real-time.
+ */
+export async function searchHouseholdsFromDatabase(query, centersList = [], limit = 150) {
+  const rawTerm = query?.trim();
+  if (!rawTerm) return [];
+
+  // Clean characters that interfere with PostgREST URL syntax
+  const clean = rawTerm.replace(/[,()]/g, ' ').trim();
+  if (!clean) return [];
+
+  try {
+    // 1. Search households by head_name, household_code, barangay, purok, stub_code
+    const orFilter = `head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%,purok.ilike.%${clean}%,stub_code.ilike.%${clean}%`;
+
+    const { data: hhData, error: hhErr } = await supabase
+      .from('households')
+      .select(HOUSEHOLD_JOIN_SELECT)
+      .or(orFilter)
+      .limit(limit);
+
+    if (hhErr) {
+      console.warn('Supabase household search warning:', hhErr.message);
+    }
+
+    // 2. Also search members by name so matching family members show their household
+    let memberHouseholds = [];
+    try {
+      const { data: memberRows } = await supabase
+        .from('household_members')
+        .select('household_id')
+        .ilike('full_name', `%${clean}%`)
+        .limit(limit);
+
+      if (memberRows && memberRows.length > 0) {
+        const existingIds = new Set((hhData || []).map((h) => h.id));
+        const neededIds = [...new Set(memberRows.map((m) => m.household_id))].filter(
+          (id) => Boolean(id) && !existingIds.has(id)
+        );
+
+        if (neededIds.length > 0) {
+          const { data: moreHh } = await supabase
+            .from('households')
+            .select(HOUSEHOLD_JOIN_SELECT)
+            .in('id', neededIds.slice(0, 50));
+          memberHouseholds = moreHh || [];
+        }
+      }
+    } catch (mErr) {
+      console.warn('Member search error:', mErr);
+    }
+
+    const combined = [...(hhData || []), ...memberHouseholds];
+    // Deduplicate by ID
+    const seen = new Set();
+    const unique = [];
+    for (const row of combined) {
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        unique.push(row);
+      }
+    }
+
+    return unique.map((row) => normalizeHousehold(row, centersList)).filter(Boolean);
+  } catch (error) {
+    console.error('Error executing dynamic household search:', error);
+    return [];
+  }
+}
+
 /**
  * Hook to consume households returned by Supabase with realtime updates.
+ * Progressively streams all households in batches and accurately tracks the total count.
  */
 export function useHouseholds(centersList = []) {
   const [households, setHouseholds] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const fetchSequence = useRef(0);
 
   const fetchHouseholds = useCallback(async () => {
     const requestId = ++fetchSequence.current;
     try {
-      const { data, error: err } = await supabase
+      // 1. Fetch exact total count first (super fast HEAD count query)
+      const { count, error: countErr } = await supabase
         .from('households')
-        .select(`
-          id,
-          household_code,
-          head_name,
-          head_age,
-          head_sex,
-          head_occupation,
-          barangay,
-          purok,
-          evacuee_status,
-          vulnerabilities,
-          center_id,
-          room_id,
-          stub_code,
-          stub_issued,
-          stub_issued_at,
-          created_at,
-          center:evacuation_centers!households_center_id_fkey ( id, name, location ),
-          room:rooms ( id, room_name ),
-          profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
-          members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
-        `)
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact', head: true });
+
+      if (!countErr && typeof count === 'number') {
+        if (requestId === fetchSequence.current) {
+          setTotalCount(count);
+        }
+      }
+
+      // 2. Fetch first chunk (up to 1000) for instant render
+      const CHUNK_SIZE = 1000;
+      const { data: firstChunk, error: err } = await supabase
+        .from('households')
+        .select(HOUSEHOLD_JOIN_SELECT)
+        .order('created_at', { ascending: false })
+        .range(0, CHUNK_SIZE - 1);
 
       if (err) throw err;
       if (requestId !== fetchSequence.current) return;
 
-      const normalized = (data || [])
+      const firstNormalized = (firstChunk || [])
         .map((row) => normalizeHousehold(row, centersList))
         .filter(Boolean);
-      setHouseholds(normalized);
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
-      } catch {
-        // ignore
-      }
+
+      setHouseholds(firstNormalized);
+      setLoading(false);
       setError(null);
+
+      try {
+        if (firstNormalized.length <= 1000) {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(firstNormalized));
+        }
+      } catch {
+        // ignore storage quota limits
+      }
+
+      // 3. If there are more than CHUNK_SIZE records, progressively load subsequent chunks in background
+      const targetTotal = typeof count === 'number' ? count : (firstChunk?.length === CHUNK_SIZE ? 100000 : 0);
+      if (targetTotal > CHUNK_SIZE) {
+        setIsLoadingMore(true);
+        let offset = CHUNK_SIZE;
+        let accumulated = [...firstNormalized];
+
+        while (offset < targetTotal) {
+          if (requestId !== fetchSequence.current) return;
+
+          const { data: nextChunk, error: nextErr } = await supabase
+            .from('households')
+            .select(HOUSEHOLD_JOIN_SELECT)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + CHUNK_SIZE - 1);
+
+          if (nextErr || !nextChunk || nextChunk.length === 0) break;
+          if (requestId !== fetchSequence.current) return;
+
+          const nextNormalized = nextChunk
+            .map((row) => normalizeHousehold(row, centersList))
+            .filter(Boolean);
+
+          accumulated = accumulated.concat(nextNormalized);
+          setHouseholds(accumulated);
+
+          if (nextChunk.length < CHUNK_SIZE) break;
+          offset += CHUNK_SIZE;
+        }
+
+        if (requestId === fetchSequence.current) {
+          setIsLoadingMore(false);
+        }
+      }
     } catch (err) {
       if (requestId !== fetchSequence.current) return;
       console.error('Could not fetch households from Supabase:', err?.message || err);
@@ -169,7 +299,10 @@ export function useHouseholds(centersList = []) {
       }
       setError(err?.message || 'Failed to fetch households');
     } finally {
-      if (requestId === fetchSequence.current) setLoading(false);
+      if (requestId === fetchSequence.current) {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
     }
   }, [centersList]);
 
@@ -228,7 +361,9 @@ export function useHouseholds(centersList = []) {
 
   return {
     households,
+    totalCount,
     loading,
+    isLoadingMore,
     error,
     refresh: fetchHouseholds,
     setHouseholds,
