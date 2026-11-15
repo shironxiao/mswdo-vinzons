@@ -3,6 +3,7 @@ import {
   Plus, User, Edit, X, Trash2,
   AlertTriangle, Ticket, Printer, Building,
   CheckCircle2, Clock, Users, ChevronLeft, ChevronRight,
+  ChevronsLeft, ChevronsRight,
   ChevronDown, LogOut, FileSpreadsheet, Download,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -50,6 +51,19 @@ const REGISTRATION_YES_NO_FIELDS = [
   ['hasReceivedGovernmentAssistance', 'Government assistance received?'],
   ['hasReceivedReliefAssistance', 'Received any relief assistance?'],
 ];
+
+function getPaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, '...', totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+}
 
 function validateHouseholdRegistration(form) {
   const errors = {};
@@ -629,7 +643,7 @@ export default function Household() {
   const [search, setSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(25);
 
   // Dynamic server search state
   const [serverSearchResults, setServerSearchResults] = useState(null);
@@ -1821,45 +1835,99 @@ export default function Household() {
 
       {/* ── Pagination Controls ── */}
       {filtered.length > 0 && (
-        <div className="vin-admin-pagination">
-          <span className="vin-pagination-info">
-            Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> households
-          </span>
+        <div className="vin-admin-pagination" style={{ flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <span className="vin-pagination-info">
+              Showing <strong>{(startIndex + 1).toLocaleString()}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length).toLocaleString()}</strong> of <strong>{filtered.length.toLocaleString()}</strong> households
+            </span>
 
-          <div className="vin-pagination-btns">
+            <div className="vin-page-size-selector">
+              <span>Rows:</span>
+              <select
+                className="vin-page-size-select"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={150}>150</option>
+                <option value={200}>200</option>
+                <option value={250}>250</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="vin-pagination-btns" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <button
               type="button"
-              className="vin-page-nav-btn"
+              className="vin-page-nav-icon-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(1)}
+              title="First Page"
+              aria-label="First page"
+            >
+              <ChevronsLeft size={16} />
+            </button>
+
+            <button
+              type="button"
+              className="vin-page-nav-icon-btn"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              title="Previous Page"
               aria-label="Previous page"
             >
               <ChevronLeft size={16} />
-              <span>Previous</span>
             </button>
 
             <div className="vin-page-numbers">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  type="button"
-                  className={`vin-page-num-btn ${pageNum === currentPage ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(pageNum)}
-                >
-                  {pageNum}
-                </button>
-              ))}
+              {getPaginationItems(currentPage, totalPages).map((item, idx) => {
+                if (item === '...') {
+                  return (
+                    <span key={`dots-${idx}`} className="vin-page-ellipsis">
+                      …
+                    </span>
+                  );
+                }
+                const pageNum = Number(item);
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    className={`vin-page-num-btn ${pageNum === currentPage ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
             </div>
 
             <button
               type="button"
-              className="vin-page-nav-btn"
+              className="vin-page-nav-icon-btn"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              title="Next Page"
               aria-label="Next page"
             >
-              <span>Next</span>
               <ChevronRight size={16} />
+            </button>
+
+            <button
+              type="button"
+              className="vin-page-nav-icon-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(totalPages)}
+              title="Last Page"
+              aria-label="Last page"
+            >
+              <ChevronsRight size={16} />
             </button>
           </div>
         </div>

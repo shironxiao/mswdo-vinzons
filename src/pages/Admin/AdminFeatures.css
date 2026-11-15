@@ -1283,6 +1283,33 @@
   border-color: #e2e8f0;
 }
 
+.vin-page-nav-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1.5px solid #d2ddd6;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-page-nav-icon-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #7c3aed;
+  color: #6b21a8;
+}
+
+.vin-page-nav-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
 .vin-page-numbers {
   display: flex;
   align-items: center;
@@ -1316,6 +1343,47 @@
   color: #ffffff;
   border-color: #6b21a8;
   box-shadow: 0 2px 6px rgba(107, 33, 168, 0.25);
+}
+
+.vin-page-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 36px;
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  user-select: none;
+}
+
+.vin-page-size-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.vin-page-size-select {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1.5px solid #d2ddd6;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.vin-page-size-select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
 }
 
 
