@@ -60,17 +60,18 @@
 .vin-admin-btn-register {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: #dfb235;
   color: #581c87;
   border: none;
-  border-radius: 12px;
-  padding: 10px 20px;
-  font-size: 0.9rem;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
   box-shadow: 0 2px 6px rgba(223, 178, 53, 0.25);
+  white-space: nowrap;
 }
 
 .vin-admin-btn-register:hover {
@@ -82,15 +83,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: 6px;
+  padding: 7px 14px;
   color: #6b21a8;
   background: #f5f3ff;
   border: 1px solid #ddd6fe;
-  border-radius: 12px;
-  font-size: 0.9rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
   transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 

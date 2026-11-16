@@ -1470,26 +1470,15 @@ export default function Household() {
             }}
             disabled={households.length === 0 && activeEventHouseholds.length === 0}
           >
-            <Download size={18} />
+            <Download size={16} />
             <span>Export List</span>
           </button>
-          <label className="vin-admin-btn-register" style={{ cursor: isImporting ? 'wait' : 'pointer' }}>
-            <FileSpreadsheet size={18} />
-            <span>{isImporting ? 'Importing…' : 'Import Excel Masterlist'}</span>
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleImportFile}
-              disabled={isImporting}
-              style={{ display: 'none' }}
-            />
-          </label>
           <button
             type="button"
             className="vin-admin-btn-register"
             onClick={openRegister}
           >
-            <Plus size={18} />
+            <Plus size={16} />
             <span>Register Household</span>
           </button>
         </div>
