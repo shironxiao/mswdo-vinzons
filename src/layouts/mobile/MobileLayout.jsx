@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { MOBILE_NAV_ITEMS } from './mobileNavConfig';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
+import mswoLogo from '../../assets/mswdo logo.png';
 import './MobileLayout.css';
 
 export default function MobileLayout({ children }) {
@@ -38,7 +39,10 @@ export default function MobileLayout({ children }) {
       <div className="vin-mobile-shell">
         {/* Sticky Mobile Topbar */}
         <header className="vin-mobile-topbar">
-          <h1 className="vin-mobile-brand-title">MSWDO - Vinzons</h1>
+          <div className="vin-mobile-brand">
+            <img src={mswoLogo} alt="MSWDO Logo" className="vin-mobile-brand-logo" />
+            <h1 className="vin-mobile-brand-title">MSWDO - Vinzons</h1>
+          </div>
 
           <div className="vin-mobile-topbar-actions">
             <div className={`vin-mobile-status-pill ${isOnline ? 'online' : 'offline'}`}>
