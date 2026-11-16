@@ -138,43 +138,6 @@ function ValidatedField({ as: Control = 'input', field, errors, className = '', 
         'aria-describedby': error ? errorId : undefined,
       }, children)}
       {error && <span id={errorId} className="vin-admin-field-error" role="alert">{error}</span>}
-      </div>
-
-      {/* ── Delete Confirmation Modal ── */}
-      {deleteTarget && (
-        <div className="vin-admin-modal-overlay" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>
-          <div className="vin-delete-confirm-card" onClick={(e) => e.stopPropagation()}>
-            <div className="vin-delete-confirm-icon">
-              <Trash2 size={28} color="#dc2626" />
-            </div>
-            <h2 className="vin-delete-confirm-title">Delete this household?</h2>
-            <p className="vin-delete-confirm-msg">
-              <strong>{deleteTarget.name}</strong> and all their records will be permanently removed. This cannot be undone.
-            </p>
-            {deleteError && (
-              <p style={{ color: '#dc2626', fontSize: '0.84rem', fontWeight: 600, margin: '0 0 8px' }}>{deleteError}</p>
-            )}
-            <div className="vin-delete-confirm-actions">
-              <button
-                type="button"
-                className="vin-delete-btn-cancel"
-                disabled={isDeletingHousehold}
-                onClick={() => { setDeleteTarget(null); setDeleteError(''); }}
-              >
-                No, Keep It
-              </button>
-              <button
-                type="button"
-                className="vin-delete-btn-confirm"
-                disabled={isDeletingHousehold}
-                onClick={confirmDelete}
-              >
-                {isDeletingHousehold ? 'Deleting…' : 'Yes, Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -652,43 +615,6 @@ function StubIssuanceModal({ household, households, onIssue, onDecamp, readOnly 
           )}
         </div>
       </div>
-      </div>
-
-      {/* ── Delete Confirmation Modal ── */}
-      {deleteTarget && (
-        <div className="vin-admin-modal-overlay" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>
-          <div className="vin-delete-confirm-card" onClick={(e) => e.stopPropagation()}>
-            <div className="vin-delete-confirm-icon">
-              <Trash2 size={28} color="#dc2626" />
-            </div>
-            <h2 className="vin-delete-confirm-title">Delete this household?</h2>
-            <p className="vin-delete-confirm-msg">
-              <strong>{deleteTarget.name}</strong> and all their records will be permanently removed. This cannot be undone.
-            </p>
-            {deleteError && (
-              <p style={{ color: '#dc2626', fontSize: '0.84rem', fontWeight: 600, margin: '0 0 8px' }}>{deleteError}</p>
-            )}
-            <div className="vin-delete-confirm-actions">
-              <button
-                type="button"
-                className="vin-delete-btn-cancel"
-                disabled={isDeletingHousehold}
-                onClick={() => { setDeleteTarget(null); setDeleteError(''); }}
-              >
-                No, Keep It
-              </button>
-              <button
-                type="button"
-                className="vin-delete-btn-confirm"
-                disabled={isDeletingHousehold}
-                onClick={confirmDelete}
-              >
-                {isDeletingHousehold ? 'Deleting…' : 'Yes, Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1798,7 +1724,7 @@ export default function Household() {
                   <th>VULNERABILITIES</th>
                 </>
               )}
-              <th style={{ textAlign: 'right' }}>ACTION</th>
+              <th style={{ textAlign: 'right', minWidth: '360px' }}>ACTION</th>
             </tr>
           </thead>
           <tbody>
@@ -1865,7 +1791,7 @@ export default function Household() {
                             className="vin-hh-btn vin-hh-btn--checkout"
                             onClick={(e) => { e.stopPropagation(); handleDecamp(item.id); }}
                           >
-                            <LogOut size={15} /> Check-Out
+                            <LogOut size={18} /> Check-Out
                           </button>
                         ) : (
                           /* Not checked in → Check-In */
@@ -1874,7 +1800,7 @@ export default function Household() {
                             className="vin-hh-btn vin-hh-btn--checkin"
                             onClick={(e) => openCheckIn(item, e)}
                           >
-                            <CheckCircle2 size={15} /> Check-In
+                            <CheckCircle2 size={18} /> Check-In
                           </button>
                         )
                       )}
@@ -1885,7 +1811,7 @@ export default function Household() {
                           className="vin-hh-btn vin-hh-btn--checkout"
                           onClick={(e) => { e.stopPropagation(); handleDecamp(item.id); }}
                         >
-                          <LogOut size={15} /> Check-Out
+                          <LogOut size={18} /> Check-Out
                         </button>
                       )}
 
@@ -1895,7 +1821,7 @@ export default function Household() {
                         className="vin-hh-btn vin-hh-btn--view"
                         onClick={(e) => { e.stopPropagation(); openEdit(item, e); }}
                       >
-                        <Edit size={15} /> View
+                        <Edit size={18} /> View
                       </button>
 
                       {/* ── DANGER: Delete — hidden while actively checked-in ── */}
@@ -1905,7 +1831,7 @@ export default function Household() {
                           className="vin-hh-btn vin-hh-btn--delete"
                           onClick={(e) => { e.stopPropagation(); setDeleteTarget(item); setDeleteError(''); }}
                         >
-                          <Trash2 size={15} /> Delete
+                          <Trash2 size={18} /> Delete
                         </button>
                       )}
                     </div>
@@ -3100,7 +3026,6 @@ export default function Household() {
               fgColor="#000000"
             />
           ))}
-      </div>
       </div>
 
       {/* ── Delete Confirmation Modal ── */}

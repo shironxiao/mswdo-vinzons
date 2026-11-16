@@ -1321,7 +1321,8 @@
    ══════════════════════════════════════════════ */
 .vin-hh-action-cell {
   white-space: nowrap;
-  padding: 10px 14px !important;
+  padding: 12px 16px !important;
+  min-width: 360px;
 }
 
 .vin-hh-action-group {
@@ -1331,80 +1332,98 @@
   justify-content: flex-end;
 }
 
-/* Base button */
+/* Base button: at least 44px tall, with 16px or larger text */
 .vin-hh-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
-  font-size: 0.82rem;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
   line-height: 1;
+  box-sizing: border-box;
 }
 
-/* Check-In — solid green */
+/* Check-In — solid green, white text (the main action) */
 .vin-hh-btn--checkin {
   background: #16a34a;
   color: #ffffff;
-  border: none;
+  border: 1px solid #16a34a;
   box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
 }
-.vin-hh-btn--checkin:hover {
+.vin-hh-btn--checkin:hover:not(:disabled) {
   background: #15803d;
+  border-color: #15803d;
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
 }
 
-/* Check-Out — solid blue */
+/* Check-Out — solid blue, white text */
 .vin-hh-btn--checkout {
   background: #2563eb;
   color: #ffffff;
-  border: none;
+  border: 1px solid #2563eb;
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
 }
-.vin-hh-btn--checkout:hover {
+.vin-hh-btn--checkout:hover:not(:disabled) {
   background: #1d4ed8;
+  border-color: #1d4ed8;
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
 }
 
-/* View — white with gray outline */
+/* View — white background with gray outline (secondary) */
 .vin-hh-btn--view {
   background: #ffffff;
-  color: #334155;
-  border: 1.5px solid #cbd5e1;
+  color: #1e293b;
+  border: 1.5px solid #94a3b8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-.vin-hh-btn--view:hover {
+.vin-hh-btn--view:hover:not(:disabled) {
   background: #f8fafc;
-  border-color: #94a3b8;
+  border-color: #64748b;
   color: #0f172a;
+  transform: translateY(-1px);
 }
 
-/* Delete — light red bg, red text, never solid red */
+/* Delete — red text with red outline / light red bg, never solid red */
 .vin-hh-btn--delete {
   background: #fff1f2;
   color: #dc2626;
-  border: 1.5px solid #fca5a5;
+  border: 1.5px solid #f87171;
 }
-.vin-hh-btn--delete:hover {
+.vin-hh-btn--delete:hover:not(:disabled) {
   background: #ffe4e6;
-  border-color: #f87171;
+  border-color: #ef4444;
+  color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.vin-hh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* Stack on narrow screens */
 @media (max-width: 900px) {
+  .vin-hh-action-cell {
+    min-width: 160px;
+  }
   .vin-hh-action-group {
     flex-direction: column;
     align-items: stretch;
-    gap: 6px;
+    gap: 8px;
   }
   .vin-hh-btn {
-    justify-content: center;
+    width: 100%;
   }
 }
 
@@ -1415,14 +1434,14 @@
   background: #ffffff;
   border-radius: 20px;
   padding: 36px 32px 28px;
-  max-width: 420px;
+  max-width: 440px;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
 
 .vin-delete-confirm-icon {
@@ -1438,41 +1457,41 @@
 }
 
 .vin-delete-confirm-title {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 800;
   color: #0f172a;
   margin: 0;
 }
 
 .vin-delete-confirm-msg {
-  font-size: 0.92rem;
+  font-size: 1rem;
   color: #475569;
   margin: 0;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .vin-delete-confirm-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 14px;
+  margin-top: 10px;
   width: 100%;
 }
 
 .vin-delete-btn-cancel {
   flex: 1;
-  min-height: 44px;
-  border: 1.5px solid #cbd5e1;
+  min-height: 48px;
+  border: 1.5px solid #94a3b8;
   background: #ffffff;
-  color: #334155;
-  border-radius: 10px;
-  font-size: 0.95rem;
+  color: #1e293b;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 .vin-delete-btn-cancel:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: #f1f5f9;
+  border-color: #64748b;
 }
 .vin-delete-btn-cancel:disabled {
   opacity: 0.55;
@@ -1481,12 +1500,12 @@
 
 .vin-delete-btn-confirm {
   flex: 1;
-  min-height: 44px;
+  min-height: 48px;
   border: none;
   background: #dc2626;
   color: #ffffff;
-  border-radius: 10px;
-  font-size: 0.95rem;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1499,4 +1518,148 @@
 .vin-delete-btn-confirm:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════
+   HOUSEHOLD DETAILS VIEW PANEL
+   ══════════════════════════════════════════════ */
+.vin-view-details-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vin-view-section-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 20px;
+}
+
+.vin-view-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.vin-view-section-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.vin-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px 18px;
+}
+
+.vin-view-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vin-view-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.vin-view-value {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vin-view-members-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-size: 0.88rem;
+}
+
+.vin-view-members-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+  padding: 8px 10px;
+  border-bottom: 1.5px solid #cbd5e1;
+}
+
+.vin-view-members-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.vin-view-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.vin-view-edit-btn:hover {
+  background: #6b21a8;
+  transform: translateY(-1px);
+}
+
+.vin-view-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+}
+.vin-view-save-btn:hover:not(:disabled) {
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+.vin-view-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  color: #475569;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.vin-view-cancel-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
 }
