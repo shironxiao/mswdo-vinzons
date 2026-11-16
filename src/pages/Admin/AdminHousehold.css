@@ -1314,3 +1314,189 @@
   border-color: #e2e8f0;
   cursor: not-allowed;
 }
+
+
+/* ══════════════════════════════════════════════
+   TABLE ROW ACTION BUTTONS  (Check-In / View / Delete)
+   ══════════════════════════════════════════════ */
+.vin-hh-action-cell {
+  white-space: nowrap;
+  padding: 10px 14px !important;
+}
+
+.vin-hh-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Base button */
+.vin-hh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+/* Check-In — solid green */
+.vin-hh-btn--checkin {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+}
+.vin-hh-btn--checkin:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+}
+
+/* Check-Out — solid blue */
+.vin-hh-btn--checkout {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+.vin-hh-btn--checkout:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+}
+
+/* View — white with gray outline */
+.vin-hh-btn--view {
+  background: #ffffff;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+}
+.vin-hh-btn--view:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* Delete — light red bg, red text, never solid red */
+.vin-hh-btn--delete {
+  background: #fff1f2;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+}
+.vin-hh-btn--delete:hover {
+  background: #ffe4e6;
+  border-color: #f87171;
+}
+
+/* Stack on narrow screens */
+@media (max-width: 900px) {
+  .vin-hh-action-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .vin-hh-btn {
+    justify-content: center;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   DELETE CONFIRMATION MODAL
+   ══════════════════════════════════════════════ */
+.vin-delete-confirm-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.vin-delete-confirm-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fff1f2;
+  border: 2px solid #fca5a5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.vin-delete-confirm-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vin-delete-confirm-msg {
+  font-size: 0.92rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.vin-delete-confirm-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.vin-delete-btn-cancel {
+  flex: 1;
+  min-height: 44px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.vin-delete-btn-cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+.vin-delete-btn-cancel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vin-delete-btn-confirm {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  background: #dc2626;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+.vin-delete-btn-confirm:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+.vin-delete-btn-confirm:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

@@ -38,6 +38,7 @@ import {
   decampHousehold,
   checkInHousehold,
   searchHouseholdsFromDatabase,
+  deleteHousehold,
 } from '../../lib/householdService.js';
 import { useRooms } from '../../lib/roomService.js';
 import { EventContext } from '../../context/eventContext.js';
@@ -137,6 +138,43 @@ function ValidatedField({ as: Control = 'input', field, errors, className = '', 
         'aria-describedby': error ? errorId : undefined,
       }, children)}
       {error && <span id={errorId} className="vin-admin-field-error" role="alert">{error}</span>}
+      </div>
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && (
+        <div className="vin-admin-modal-overlay" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>
+          <div className="vin-delete-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-delete-confirm-icon">
+              <Trash2 size={28} color="#dc2626" />
+            </div>
+            <h2 className="vin-delete-confirm-title">Delete this household?</h2>
+            <p className="vin-delete-confirm-msg">
+              <strong>{deleteTarget.name}</strong> and all their records will be permanently removed. This cannot be undone.
+            </p>
+            {deleteError && (
+              <p style={{ color: '#dc2626', fontSize: '0.84rem', fontWeight: 600, margin: '0 0 8px' }}>{deleteError}</p>
+            )}
+            <div className="vin-delete-confirm-actions">
+              <button
+                type="button"
+                className="vin-delete-btn-cancel"
+                disabled={isDeletingHousehold}
+                onClick={() => { setDeleteTarget(null); setDeleteError(''); }}
+              >
+                No, Keep It
+              </button>
+              <button
+                type="button"
+                className="vin-delete-btn-confirm"
+                disabled={isDeletingHousehold}
+                onClick={confirmDelete}
+              >
+                {isDeletingHousehold ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -614,6 +652,43 @@ function StubIssuanceModal({ household, households, onIssue, onDecamp, readOnly 
           )}
         </div>
       </div>
+      </div>
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && (
+        <div className="vin-admin-modal-overlay" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>
+          <div className="vin-delete-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-delete-confirm-icon">
+              <Trash2 size={28} color="#dc2626" />
+            </div>
+            <h2 className="vin-delete-confirm-title">Delete this household?</h2>
+            <p className="vin-delete-confirm-msg">
+              <strong>{deleteTarget.name}</strong> and all their records will be permanently removed. This cannot be undone.
+            </p>
+            {deleteError && (
+              <p style={{ color: '#dc2626', fontSize: '0.84rem', fontWeight: 600, margin: '0 0 8px' }}>{deleteError}</p>
+            )}
+            <div className="vin-delete-confirm-actions">
+              <button
+                type="button"
+                className="vin-delete-btn-cancel"
+                disabled={isDeletingHousehold}
+                onClick={() => { setDeleteTarget(null); setDeleteError(''); }}
+              >
+                No, Keep It
+              </button>
+              <button
+                type="button"
+                className="vin-delete-btn-confirm"
+                disabled={isDeletingHousehold}
+                onClick={confirmDelete}
+              >
+                {isDeletingHousehold ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -698,6 +773,11 @@ export default function Household() {
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftStorageError, setDraftStorageError] = useState(false);
   const [isSavingHousehold, setIsSavingHousehold] = useState(false);
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState(null);   // household object to delete
+  const [isDeletingHousehold, setIsDeletingHousehold] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   /* ── Form picker for vulnerabilities ── */
   const [showFormCategoryPicker, setShowFormCategoryPicker] = useState(null); // null | { target: 'head' } | { target: 'member', index: number }
@@ -980,6 +1060,23 @@ export default function Household() {
       await Promise.all([refreshHouseholds(), refreshPlacements()]);
     } catch (err) {
       setActionError(`Could not decamp household: ${err.message || 'Unknown error'}`);
+    }
+  };
+
+  /* ── Delete household (with confirmation modal) ── */
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeletingHousehold(true);
+    setDeleteError('');
+    try {
+      await deleteHousehold(deleteTarget.id);
+      setDeleteTarget(null);
+      setSelectedHousehold(null);
+      await Promise.all([refreshHouseholds(), refreshPlacements()]);
+    } catch (err) {
+      setDeleteError(err.message || 'Could not delete household.');
+    } finally {
+      setIsDeletingHousehold(false);
     }
   };
 
@@ -1757,56 +1854,60 @@ export default function Household() {
                       <td>{item.vulnerabilities?.length ? item.vulnerabilities.join(', ') : 'None recorded'}</td>
                     </>
                   )}
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                      {activeTab === 'active' ? (
-                        <>
+                  <td className="vin-hh-action-cell">
+                    <div className="vin-hh-action-group">
+                      {/* ── PRIMARY: Check-In / Check-Out ── */}
+                      {activeTab === 'masterlist' && !isReadOnly && (
+                        householdAlreadyPlaced.has(item.id) ? (
+                          /* Checked-In → show Check-Out (decamp) */
                           <button
                             type="button"
-                            className={`vin-admin-tile-action-btn ${
-                              item.stubIssued ? 'vin-admin-tile-action-btn--view' : 'vin-admin-tile-action-btn--issue'
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedHousehold(item);
-                            }}
+                            className="vin-hh-btn vin-hh-btn--checkout"
+                            onClick={(e) => { e.stopPropagation(); handleDecamp(item.id); }}
                           >
-                            {item.stubIssued ? 'View QR' : 'Issue Stub'} →
+                            <LogOut size={15} /> Check-Out
                           </button>
-                          {!isReadOnly && item.evacueeStatus !== 'Decamped' && (
-                            <button
-                              type="button"
-                              className="vin-btn-cancel"
-                              style={{ padding: '7px 10px', fontSize: '.76rem' }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDecamp(item.id);
-                              }}
-                            >
-                              Decamp
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        !isReadOnly && (
+                        ) : (
+                          /* Not checked in → Check-In */
                           <button
                             type="button"
-                            className="vin-admin-tile-action-btn vin-admin-tile-action-btn--issue"
-                            disabled={householdAlreadyPlaced.has(item.id)}
+                            className="vin-hh-btn vin-hh-btn--checkin"
                             onClick={(e) => openCheckIn(item, e)}
                           >
-                            {householdAlreadyPlaced.has(item.id) ? 'Checked In' : 'Check-In / Assign Room'} →
+                            <CheckCircle2 size={15} /> Check-In
                           </button>
                         )
                       )}
+
+                      {activeTab === 'active' && !isReadOnly && item.evacueeStatus !== 'Decamped' && (
+                        <button
+                          type="button"
+                          className="vin-hh-btn vin-hh-btn--checkout"
+                          onClick={(e) => { e.stopPropagation(); handleDecamp(item.id); }}
+                        >
+                          <LogOut size={15} /> Check-Out
+                        </button>
+                      )}
+
+                      {/* ── SECONDARY: View ── */}
                       <button
                         type="button"
-                        className="vin-admin-tile-edit-btn"
-                        onClick={(e) => openEdit(item, e)}
-                        title={`Edit ${item.name}`}
+                        className="vin-hh-btn vin-hh-btn--view"
+                        onClick={(e) => { e.stopPropagation(); openEdit(item, e); }}
                       >
-                        <Edit size={14} />
+                        <Edit size={15} /> View
                       </button>
+
+                      {/* ── DANGER: Delete — hidden while actively checked-in ── */}
+                      {!(activeTab === 'active' && item.evacueeStatus === 'Active') && (
+                        <button
+                          type="button"
+                          className="vin-hh-btn vin-hh-btn--delete"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(item); setDeleteError(''); }}
+                        >
+                          <Trash2 size={15} /> Delete
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -3000,6 +3101,43 @@ export default function Household() {
             />
           ))}
       </div>
+      </div>
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && (
+        <div className="vin-admin-modal-overlay" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>
+          <div className="vin-delete-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <div className="vin-delete-confirm-icon">
+              <Trash2 size={28} color="#dc2626" />
+            </div>
+            <h2 className="vin-delete-confirm-title">Delete this household?</h2>
+            <p className="vin-delete-confirm-msg">
+              <strong>{deleteTarget.name}</strong> and all their records will be permanently removed. This cannot be undone.
+            </p>
+            {deleteError && (
+              <p style={{ color: '#dc2626', fontSize: '0.84rem', fontWeight: 600, margin: '0 0 8px' }}>{deleteError}</p>
+            )}
+            <div className="vin-delete-confirm-actions">
+              <button
+                type="button"
+                className="vin-delete-btn-cancel"
+                disabled={isDeletingHousehold}
+                onClick={() => { setDeleteTarget(null); setDeleteError(''); }}
+              >
+                No, Keep It
+              </button>
+              <button
+                type="button"
+                className="vin-delete-btn-confirm"
+                disabled={isDeletingHousehold}
+                onClick={confirmDelete}
+              >
+                {isDeletingHousehold ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

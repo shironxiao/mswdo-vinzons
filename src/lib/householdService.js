@@ -1129,3 +1129,43 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
     return [];
   }
 }
+
+
+/**
+ * Permanently delete a household and all its related records.
+ * Cascades: household_members → household_member_profiles, household_profiles,
+ * event_room_placements, relief_stubs (if any).
+ */
+export async function deleteHousehold(householdId) {
+  if (!householdId) throw new Error('No household ID provided.');
+
+  // Delete members (cascade handles member_profiles via FK if set, otherwise manual)
+  const { error: membersError } = await supabase
+    .from('household_members')
+    .delete()
+    .eq('household_id', householdId);
+  if (membersError) throw membersError;
+
+  // Delete household profile
+  const { error: profileError } = await supabase
+    .from('household_profiles')
+    .delete()
+    .eq('household_id', householdId);
+  if (profileError) throw profileError;
+
+  // Delete event placements
+  const { error: placementError } = await supabase
+    .from('event_room_placements')
+    .delete()
+    .eq('household_id', householdId);
+  if (placementError) throw placementError;
+
+  // Delete the household itself
+  const { error: householdError } = await supabase
+    .from('households')
+    .delete()
+    .eq('id', householdId);
+  if (householdError) throw householdError;
+
+  dispatchHouseholdsChanged();
+}
