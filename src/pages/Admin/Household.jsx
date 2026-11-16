@@ -1724,7 +1724,7 @@ export default function Household() {
                   <th>VULNERABILITIES</th>
                 </>
               )}
-              <th style={{ textAlign: 'right', minWidth: '360px' }}>ACTION</th>
+              <th style={{ textAlign: 'center', minWidth: '360px' }}>ACTION</th>
             </tr>
           </thead>
           <tbody>
