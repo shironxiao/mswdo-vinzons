@@ -1520,24 +1520,18 @@ export default function Household() {
         />
       )}
 
-      {/* ── Active Operation & View Tabs ── */}
+      {/* ── View Tabs ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#f5f3ff', border: '1px solid #ddd6fe', padding: '6px 14px', borderRadius: 20 }}>
-          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: isReadOnly ? '#94a3b8' : '#16a34a' }} />
-          <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#6b21a8' }}>
-            {isReadOnly ? 'Historical Operation: ' : 'Active Operation: '}
-            {selectedEvent?.event_name || 'No operation selected'}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {isReadOnly && (
+            <span role="status" style={{ color: '#92400e', fontSize: '.82rem', fontWeight: 700 }}>
+              Event data is read-only. Masterlist profiles remain editable.
+            </span>
+          )}
+          {importMessage && <span role="status" style={{ color: '#15803d', fontSize: '.82rem', fontWeight: 700 }}>{importMessage}</span>}
+          {importError && <span role="alert" style={{ color: '#b91c1c', fontSize: '.82rem', fontWeight: 700 }}>{importError}</span>}
+          {actionError && <span role="alert" style={{ color: '#b91c1c', fontSize: '.82rem', fontWeight: 700 }}>{actionError}</span>}
         </div>
-        {isReadOnly && (
-          <span role="status" style={{ color: '#92400e', fontSize: '.82rem', fontWeight: 700 }}>
-            Event data is read-only. Masterlist profiles remain editable.
-          </span>
-        )}
-        {importMessage && <span role="status" style={{ color: '#15803d', fontSize: '.82rem', fontWeight: 700 }}>{importMessage}</span>}
-        {importError && <span role="alert" style={{ color: '#b91c1c', fontSize: '.82rem', fontWeight: 700 }}>{importError}</span>}
-        {actionError && <span role="alert" style={{ color: '#b91c1c', fontSize: '.82rem', fontWeight: 700 }}>{actionError}</span>}
-
         <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: 4, borderRadius: 10, gap: 4 }}>
           <button
             type="button"

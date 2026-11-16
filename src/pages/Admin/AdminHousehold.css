@@ -5,10 +5,20 @@
 /* Page header */
 .vin-admin-hh-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 768px) {
+  .vin-admin-hh-header {
+    flex-wrap: wrap;
+  }
+  .vin-admin-hh-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .vin-admin-hh-title-group {
