@@ -265,10 +265,13 @@ export default function MobileDashboard() {
   }, [fetchRecentActivities]);
 
   const metrics = {
-    householdsCount: households.length,
+    // Distinct households that have actually been monitored (assigned & tracked),
+    // NOT the full masterlist which can be hundreds of pre-registered families.
+    householdsCount: new Set(logs.map((log) => log.householdId)).size,
     centersCount: centers.length,
     stubsCount: households.filter((household) => household.stubIssued).length,
-    monitoringCount: new Set(logs.map((log) => log.householdId)).size,
+    // Total number of attendance check-in entries recorded across all rounds
+    monitoringCount: logs.length,
   };
 
   const handleLoadMore = () => {
