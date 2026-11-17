@@ -83,8 +83,11 @@ export default function MobileMonitor() {
     });
 
     return assignedHouseholds.map((h, idx) => {
-      const allNames = [h.name, ...(h.members || []).map((m) => m.name || m)];
-      const total = allNames.length;
+      const headName = (h.name || '').trim();
+      const rawMemberList = (h.members || []).map((m) => (typeof m === 'string' ? m : m.name || '')).filter(Boolean);
+      const membersHasHead = rawMemberList.some((m) => m.toLowerCase() === headName.toLowerCase());
+      const allNames = membersHasHead ? rawMemberList : (headName ? [headName, ...rawMemberList] : rawMemberList);
+      const total = allNames.length || 1;
 
       // Check if room/center can be resolved or augmented from active placement
       const activePlacement = placements?.find(

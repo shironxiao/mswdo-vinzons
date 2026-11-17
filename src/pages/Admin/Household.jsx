@@ -843,10 +843,15 @@ export default function Household() {
 
   const neededSlots = useMemo(() => {
     if (!checkInTarget) return 1;
-    return (
-      checkInTarget.familyCount ||
-      (checkInTarget.members?.length ? checkInTarget.members.length + 1 : 1)
+    if (checkInTarget.familyCount) return checkInTarget.familyCount;
+    const members = Array.isArray(checkInTarget.members) ? checkInTarget.members : [];
+    const headName = (checkInTarget.name || '').trim().toLowerCase();
+    const hasHead = members.some((m) =>
+      m.isHead ||
+      (m.relationship && String(m.relationship).trim().toLowerCase() === 'head') ||
+      (m.name && m.name.trim().toLowerCase() === headName)
     );
+    return hasHead ? Math.max(1, members.length) : (members.length > 0 ? 1 + members.length : 1);
   }, [checkInTarget]);
 
   const availableRoomsForCheckIn = useMemo(() => {
@@ -1736,7 +1741,7 @@ export default function Household() {
                   <th>VULNERABILITIES</th>
                 </>
               )}
-              <th style={{ textAlign: 'center', minWidth: '360px' }}>ACTION</th>
+              <th style={{ textAlign: 'center', minWidth: '180px' }}>ACTION</th>
             </tr>
           </thead>
           <tbody>

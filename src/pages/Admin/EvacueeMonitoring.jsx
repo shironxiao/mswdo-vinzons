@@ -109,7 +109,10 @@ export default function EvacueeMonitoring() {
         ? centerObj.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase()
         : 'EVAC';
 
-      const allMembers = [h.name, ...(h.members || []).map((m) => m.name || m)];
+      const headName = (h.name || '').trim();
+      const rawMemberList = (h.members || []).map((m) => (typeof m === 'string' ? m : m.name || '')).filter(Boolean);
+      const membersHasHead = rawMemberList.some((m) => m.toLowerCase() === headName.toLowerCase());
+      const allMembers = membersHasHead ? rawMemberList : (headName ? [headName, ...rawMemberList] : rawMemberList);
       const totalCount = allMembers.length || 1;
 
       if (latestLog) {

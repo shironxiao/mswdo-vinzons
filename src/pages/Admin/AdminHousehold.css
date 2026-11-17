@@ -1321,15 +1321,15 @@
    ══════════════════════════════════════════════ */
 .vin-hh-action-cell {
   white-space: nowrap;
-  padding: 10px 16px !important;
-  min-width: 360px;
+  padding: 8px 10px !important;
+  min-width: 180px;
   text-align: center;
 }
 
 .vin-hh-action-group {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
 }
 

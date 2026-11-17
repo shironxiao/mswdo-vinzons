@@ -71,6 +71,17 @@ export function normalizeHousehold(row, centersList = []) {
       })
     : [];
 
+  const headNameClean = (row.head_name || '').trim().toLowerCase();
+  const headIncludedInMembers = members.some((m) =>
+    m.isHead ||
+    (m.relationship && String(m.relationship).trim().toLowerCase() === 'head') ||
+    (m.name && headNameClean && m.name.trim().toLowerCase() === headNameClean)
+  );
+
+  const familyCount = headIncludedInMembers
+    ? Math.max(1, members.length)
+    : (members.length > 0 ? 1 + members.length : 1);
+
   return {
     id: row.id,
     householdCode: row.household_code || `HH-${String(row.id).slice(-4)}`,
@@ -86,7 +97,7 @@ export function normalizeHousehold(row, centersList = []) {
     centerId: row.center_id || row.center?.id || null,
     room: roomName,
     roomId: row.room_id || row.room?.id || null,
-    familyCount: 1 + members.length,
+    familyCount,
     members,
     monthlyIncome: profile?.monthly_income ?? 0,
     hasWorkedDole: profile?.has_worked_dole ?? null,
@@ -149,7 +160,7 @@ export const HOUSEHOLD_SUMMARY_SELECT = `
   created_at,
   center:evacuation_centers!households_center_id_fkey ( id, name, location ),
   room:rooms ( id, room_name ),
-  members:household_members ( id, full_name, age, sex, relationship_to_head, vulnerabilities )
+  members:household_members ( id, full_name, age, sex, relationship_to_head, is_household_head, vulnerabilities )
 `;
 
 export const HOUSEHOLD_JOIN_SELECT = HOUSEHOLD_SUMMARY_SELECT;

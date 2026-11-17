@@ -93,7 +93,14 @@ export default function MobileDashboard() {
     (householdsResult.data || []).forEach((household) => {
       const { center, room } = getCenterAndRoom(household, centers);
       const title = household.head_name || 'Household';
-      const familyCount = (household.members?.length || 0) + 1;
+      const members = household.members || [];
+      const headName = (household.head_name || '').trim().toLowerCase();
+      const hasHead = members.some((m) =>
+        m.is_household_head ||
+        (m.relationship_to_head && String(m.relationship_to_head).toLowerCase() === 'head') ||
+        (m.full_name && m.full_name.trim().toLowerCase() === headName)
+      );
+      const familyCount = hasHead ? Math.max(1, members.length) : (members.length > 0 ? 1 + members.length : 1);
 
       if (household.created_at) {
         activities.push({

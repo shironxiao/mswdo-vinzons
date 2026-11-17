@@ -53,7 +53,15 @@ export default function RoomPlacement() {
 
   const transferFamilySize = useMemo(() => {
     if (!transferTarget) return 1;
-    return transferTarget.familyCount || (transferTarget.members?.length ? transferTarget.members.length + 1 : 1);
+    if (transferTarget.familyCount) return transferTarget.familyCount;
+    const members = Array.isArray(transferTarget.members) ? transferTarget.members : [];
+    const headName = (transferTarget.name || '').trim().toLowerCase();
+    const hasHead = members.some((m) =>
+      m.isHead ||
+      (m.relationship && String(m.relationship).trim().toLowerCase() === 'head') ||
+      (m.name && m.name.trim().toLowerCase() === headName)
+    );
+    return hasHead ? Math.max(1, members.length) : (members.length > 0 ? 1 + members.length : 1);
   }, [transferTarget]);
 
   const availableRoomsForTransfer = useMemo(() => {
@@ -545,7 +553,16 @@ export default function RoomPlacement() {
               ) : (
                 <div className="vin-room-households-list">
                   {selectedRoom.households.map((hh, idx) => {
-                    const memberCount = hh.familyCount || (hh.members?.length ? hh.members.length + 1 : 1);
+                    const memberCount = hh.familyCount || (() => {
+                      const members = Array.isArray(hh.members) ? hh.members : [];
+                      const headName = (hh.name || '').trim().toLowerCase();
+                      const hasHead = members.some((m) =>
+                        m.isHead ||
+                        (m.relationship && String(m.relationship).trim().toLowerCase() === 'head') ||
+                        (m.name && m.name.trim().toLowerCase() === headName)
+                      );
+                      return hasHead ? Math.max(1, members.length) : (members.length > 0 ? 1 + members.length : 1);
+                    })();
                     return (
                       <div key={hh.id || idx} className="vin-room-household-card">
                         <div className="vin-room-hh-top">
