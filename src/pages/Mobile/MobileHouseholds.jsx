@@ -31,11 +31,13 @@ import {
 } from '../../lib/evacuationCenters';
 import {
   useHouseholds,
+  usePaginatedMasterlist,
   createHousehold,
   updateHousehold,
   useEventRoomPlacements,
   transferHouseholdRoom,
   searchHouseholdsFromDatabase,
+  fetchHouseholdDetails,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 
@@ -142,7 +144,8 @@ function findDuplicateHolder(households, targetHHId, memberName) {
    Household Details & QR Panel
    ────────────────────────────────────────────── */
 function StubIssuancePanel({ household, households, onClose }) {
-  const duplicates = household.members
+  const members = Array.isArray(household?.members) ? household.members : [];
+  const duplicates = members
     .map((m) => ({ member: m.name, holder: findDuplicateHolder(households, household.id, m.name) }))
     .filter((d) => d.holder);
   const alreadyIssued = !!household.stubIssued;
@@ -193,17 +196,23 @@ function StubIssuancePanel({ household, households, onClose }) {
         {/* Members */}
         <div className="vin-hh-members-section">
           <span className="vin-mob-input-label">FAMILY MEMBERS</span>
-          {household.members.map((m, i) => (
-            <div key={i} className="vin-hh-member-row">
-              <User size={14} className="vin-hh-member-icon" />
-              <span>{m.name}</span>
-              <span className="vin-hh-member-meta">{m.age} • {m.sex} •{' '}
-                {Array.isArray(m.vulnerabilities) && m.vulnerabilities.length > 0
-                  ? m.vulnerabilities.join(', ')
-                  : 'None'}
-              </span>
+          {members.length === 0 ? (
+            <div style={{ fontSize: '.8rem', color: '#94a3b8', fontStyle: 'italic', padding: '6px 0' }}>
+              {(household?.familyCount || 1) > 1 ? 'Loading family members...' : 'No additional members registered'}
             </div>
-          ))}
+          ) : (
+            members.map((m, i) => (
+              <div key={i} className="vin-hh-member-row">
+                <User size={14} className="vin-hh-member-icon" />
+                <span>{m.name}</span>
+                <span className="vin-hh-member-meta">{m.age} • {m.sex} •{' '}
+                  {Array.isArray(m.vulnerabilities) && m.vulnerabilities.length > 0
+                    ? m.vulnerabilities.join(', ')
+                    : 'None'}
+                </span>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Duplicate warning */}
@@ -390,7 +399,7 @@ function HHFilterSheet({ filterStatus, filterCenter, filterRoom, households, sea
 
         {/* Show Results Button */}
         <button type="button" className="vin-hh-filter-sheet-apply" onClick={handleApply}>
-          Show {draftCount} result{draftCount !== 1 ? 's' : ''}
+          Apply Filters
         </button>
       </div>
 
@@ -674,9 +683,10 @@ export default function MobileHouseholds() {
     isLoadingMore,
   } = useHouseholds(centers);
   const { activeEvent } = useActiveEvent();
-  const { refresh: refreshPlacements } = useEventRoomPlacements(activeEvent?.id);
+  const { placements = [], refresh: refreshPlacements } = useEventRoomPlacements(activeEvent?.id);
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Active' | 'Not Active'
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -684,58 +694,61 @@ export default function MobileHouseholds() {
   const [openFilter, setOpenFilter] = useState(null);
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [assigningHousehold, setAssigningHousehold] = useState(null);
-
-  // Dynamic server search state for Mobile
-  const [serverSearchResults, setServerSearchResults] = useState(null);
-  const [isSearchingServer, setIsSearchingServer] = useState(false);
-  const searchTimeoutRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
-    setCurrentPage(1);
-    const trimmed = search.trim();
-    if (trimmed.length < 2) {
-      setServerSearchResults(null);
-      setIsSearchingServer(false);
-      return;
-    }
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    setIsSearchingServer(true);
+  const targetCenterObj = useMemo(() => {
+    if (!filterCenter || filterCenter === 'All Centers') return null;
+    return centers.find((c) => c.displayName === filterCenter || c.name === filterCenter);
+  }, [centers, filterCenter]);
 
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const results = await searchHouseholdsFromDatabase(trimmed, centers, 100);
-        setServerSearchResults(results);
-      } catch (err) {
-        console.warn('Mobile dynamic household search error:', err);
-      } finally {
-        setIsSearchingServer(false);
-      }
-    }, 350);
+  const {
+    households: masterlistHouseholds,
+    totalCount: masterlistTotalCount,
+    totalPages: masterlistTotalPages,
+    isLoading: masterlistLoading,
+    refresh: refreshMasterlist,
+  } = usePaginatedMasterlist({
+    page: currentPage,
+    pageSize,
+    search: debouncedSearch,
+    centerId: targetCenterObj?.id || '',
+    roomId: filterRoom === 'All Rooms' ? '' : filterRoom,
+    evacueeStatus: filterStatus === 'All' ? '' : filterStatus,
+    centersList: centers,
+  });
 
-    return () => {
-      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    };
-  }, [search, centers]);
-  const displayedSelectedHousehold = selectedHousehold
-    ? households.find((item) => item.id === selectedHousehold.id) || selectedHousehold
-    : null;
-  const displayedAssigningHousehold = assigningHousehold
-    ? households.find((item) => item.id === assigningHousehold.id) || assigningHousehold
-    : null;
+  const displayedSelectedHousehold = selectedHousehold;
+  const displayedAssigningHousehold = assigningHousehold;
+
   const centerRooms = useMemo(() => Object.fromEntries(centers.map((center) => {
     const centerName = center.displayName || center.name;
-    const rooms = (center.rooms || []).map((room) => ({
-      ...room,
-      occupied: households
-        .filter((household) => household.evacueeStatus === 'Active' && household.centerId === center.id)
-        .filter((household) =>
-          (room.dbId && household.roomId === room.dbId) || household.room === room.name
-        )
-        .reduce((sum, household) => sum + (household.familyCount || 1), 0),
-    }));
+    const rooms = (center.rooms || []).map((room) => {
+      const activePlacements = (placements || []).filter(
+        (p) =>
+          p.status === 'Evacuated' &&
+          p.center_id === center.id &&
+          ((room.dbId && p.room_id === room.dbId) || p.room_id === room.id || p.room_name === room.name)
+      );
+      const occupied = activePlacements.reduce(
+        (sum, p) => sum + (p.household?.familyCount || 1),
+        0
+      );
+      return {
+        ...room,
+        occupied,
+      };
+    });
     return [centerName, rooms];
-  })), [centers, households]);
+  })), [centers, placements]);
   const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
   const [showHouseholdReview, setShowHouseholdReview] = useState(false);
@@ -809,52 +822,26 @@ export default function MobileHouseholds() {
     }
   }, [activeForm, modalMode]);
 
-  /* ── Filter + search ── */
-  const baseHouseholds = useMemo(() => {
-    if (serverSearchResults !== null) {
-      return serverSearchResults;
-    }
-    return households;
-  }, [serverSearchResults, households]);
-
-  const filtered = baseHouseholds.filter((h) => {
-    const searchTerm = search.trim().toLowerCase();
-    const matchSearch = !searchTerm || [
-      h.name,
-      h.householdCode,
-      h.code,
-      h.barangay,
-      h.purok,
-      h.room,
-      h.center,
-      h.stubCode,
-      ...(h.members || []).map((member) => member.name),
-    ].some((value) => String(value || '').toLowerCase().includes(searchTerm));
-    const isActive = h.evacueeStatus === 'Active' || (!h.evacueeStatus && h.room && h.room !== 'Unassigned');
-    const matchStatus =
-      filterStatus === 'All' ||
-      (filterStatus === 'Active' && isActive) ||
-      (filterStatus === 'Not Active' && !isActive);
-    const matchCenter = isCenterMatch(h.center, filterCenter, centers);
-    const matchRoom =
-      filterRoom === 'All Rooms' ||
-      h.room === filterRoom ||
-      `Room ${h.room}` === filterRoom;
-    return matchSearch && matchStatus && matchCenter && matchRoom;
-  });
+  /* ── Server-side Paginated Households ── */
+  const paginatedHouseholds = masterlistHouseholds;
+  const totalPages = masterlistTotalPages;
 
   const activeFilters =
     (filterStatus !== 'All' ? 1 : 0) +
     (filterCenter !== 'All Centers' ? 1 : 0) +
     (filterRoom !== 'All Rooms' ? 1 : 0);
 
-  /* ── Pagination ── */
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
-
-  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
+  const handleSelectHousehold = async (item) => {
+    setSelectedHousehold(item);
+    try {
+      const full = await fetchHouseholdDetails(item.id, centers);
+      if (full) {
+        setSelectedHousehold(full);
+      }
+    } catch (err) {
+      console.warn('Failed to load full household details for mobile panel:', err);
+    }
+  };
 
   /* ── Room assignment ── */
   const handleAssignRoom = async (hhId, roomId, centerName) => {
@@ -903,7 +890,7 @@ export default function MobileHouseholds() {
           room: room.name || roomId,
         }, centers);
       }
-      await Promise.all([refreshHouseholds(), refreshPlacements()]);
+      await Promise.all([refreshHouseholds(), refreshPlacements(), refreshMasterlist?.()]);
       setToastMsg(`Assigned to ${room.name || roomId}.`);
     } catch (error) {
       console.error('Could not save household room assignment:', error);
@@ -954,12 +941,7 @@ export default function MobileHouseholds() {
     });
     setModalMode('register');
   };
-  const openEdit = (item, e) => {
-    e.stopPropagation();
-    setShowHouseholdReview(false);
-    setDraftRestored(false);
-    setValidationErrors({});
-    setRegistrationSaveError('');
+  const populateEditForm = (item) => {
     const headNameParts = splitFullName(item.name || '');
     setActiveForm({
       id: item.id, head: item.name,
@@ -985,7 +967,24 @@ export default function MobileHouseholds() {
       floodDepthLevel: item.floodDepthLevel || '',
       characteristicsRemarks: item.characteristicsRemarks || '',
     });
+  };
+
+  const openEdit = async (item, e) => {
+    if (e?.stopPropagation) e.stopPropagation();
+    setShowHouseholdReview(false);
+    setDraftRestored(false);
+    setValidationErrors({});
+    setRegistrationSaveError('');
+    populateEditForm(item);
     setModalMode('edit');
+    try {
+      const full = await fetchHouseholdDetails(item.id, centers);
+      if (full) {
+        populateEditForm(full);
+      }
+    } catch (err) {
+      console.warn('Failed to load full household details for mobile edit:', err);
+    }
   };
   const setHeadNamePart = (field, value) => {
     clearValidationError(field);
@@ -1098,7 +1097,7 @@ export default function MobileHouseholds() {
         setDraftRestored(false);
         setToastMsg(`✓ Registered ${activeForm.head} with QR code ${generatedCode}!`);
         setTimeout(() => setToastMsg(''), 4000);
-        await refreshHouseholds();
+        await Promise.all([refreshHouseholds(), refreshMasterlist?.()]);
         setCurrentPage(1);
       } catch (err) {
         console.error('Could not save household to Supabase:', err);
@@ -1151,6 +1150,7 @@ export default function MobileHouseholds() {
       try {
         await updateHousehold(activeForm.id, activeForm, centers);
         refreshHouseholds();
+        refreshMasterlist?.();
       } catch (err) {
         console.warn('Could not update household in Supabase:', err);
       }
@@ -1350,8 +1350,7 @@ export default function MobileHouseholds() {
         <span className="vin-hh-legend-dot issued" /> Active
         <span className="vin-hh-legend-dot notissued" /> Not Active
         <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
-          {filtered.length.toLocaleString()} result{filtered.length !== 1 ? 's' : ''}
-          {serverSearchResults !== null && ' (database match)'}
+          {masterlistTotalCount.toLocaleString()} result{masterlistTotalCount !== 1 ? 's' : ''}
         </span>
       </div>
 
@@ -1366,7 +1365,13 @@ export default function MobileHouseholds() {
               </tr>
             </thead>
             <tbody>
-              {paginatedHouseholds.length === 0 ? (
+              {masterlistLoading ? (
+                <tr>
+                  <td colSpan={2} className="vin-mob-table-empty">
+                    Loading households...
+                  </td>
+                </tr>
+              ) : paginatedHouseholds.length === 0 ? (
                 <tr>
                   <td colSpan={2} className="vin-mob-table-empty">
                     No households match the current filter.
@@ -1376,7 +1381,7 @@ export default function MobileHouseholds() {
                 paginatedHouseholds.map((item) => (
                   <tr
                     key={item.id}
-                    onClick={() => setSelectedHousehold(item)}
+                    onClick={() => handleSelectHousehold(item)}
                     className="vin-mob-table-row"
                   >
                     <td>
@@ -1446,16 +1451,16 @@ export default function MobileHouseholds() {
         </div>
 
         {/* ── STICKY PAGINATION CONTROLS ── */}
-        {filtered.length > 0 && (
+        {masterlistTotalCount > 0 && (
           <div className="vin-mob-pagination">
             <span className="vin-mob-pagination-info">
-              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong> ({masterlistTotalCount.toLocaleString()} total)
             </span>
             <div className="vin-mob-pagination-btns">
               <button
                 type="button"
                 className="vin-mob-page-btn vin-mob-page-nav"
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || masterlistLoading}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
               >
@@ -1464,7 +1469,7 @@ export default function MobileHouseholds() {
               <button
                 type="button"
                 className="vin-mob-page-btn vin-mob-page-nav"
-                disabled={currentPage === totalPages}
+                disabled={currentPage >= totalPages || masterlistLoading}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 aria-label="Next page"
               >

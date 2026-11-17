@@ -31,7 +31,9 @@ import {
 import { joinFullName, splitFullName } from '../../lib/householdNames.js';
 import {
   useHouseholds,
+  usePaginatedMasterlist,
   useEventRoomPlacements,
+  fetchHouseholdDetails,
   createHousehold,
   updateHousehold,
   issueHouseholdStub,
@@ -39,6 +41,7 @@ import {
   checkInHousehold,
   searchHouseholdsFromDatabase,
   deleteHousehold,
+  normalizeHousehold,
 } from '../../lib/householdService.js';
 import { useRooms } from '../../lib/roomService.js';
 import { EventContext } from '../../context/eventContext.js';
@@ -646,38 +649,23 @@ export default function Household() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  // Dynamic server search state
-  const [serverSearchResults, setServerSearchResults] = useState(null);
-  const [isSearchingServer, setIsSearchingServer] = useState(false);
-  const searchTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    setCurrentPage(1);
-    const trimmed = search.trim();
-    if (trimmed.length < 2) {
-      setServerSearchResults(null);
-      setIsSearchingServer(false);
-      return;
-    }
-
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    setIsSearchingServer(true);
-
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const results = await searchHouseholdsFromDatabase(trimmed, centers, 200);
-        setServerSearchResults(results);
-      } catch (err) {
-        console.warn('Dynamic household search error:', err);
-      } finally {
-        setIsSearchingServer(false);
-      }
-    }, 350);
-
-    return () => {
-      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    };
-  }, [search, centers]);
+  // Fast server-paginated masterlist hook (fetches only 25 items on-demand)
+  const {
+    data: masterlistPageData,
+    totalCount: masterlistTotalCount,
+    loading: masterlistLoading,
+    error: masterlistFetchError,
+    refresh: refreshMasterlist,
+  } = usePaginatedMasterlist({
+    page: currentPage,
+    pageSize,
+    search,
+    centerId: filterCenter === 'All Centers' ? '' : filterCenter,
+    roomId: filterRoom === 'All Rooms' ? '' : filterRoom,
+    stubStatus: filterStub,
+    centersList: centers,
+    enabled: activeTab === 'masterlist',
+  });
 
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const displayedSelectedHousehold = selectedHousehold
@@ -791,7 +779,9 @@ export default function Household() {
   const eventHouseholds = useMemo(() => {
     const placedHouseholds = currentEventPlacements
       .map((placement) => {
-        const household = households.find((item) => item.id === placement.household_id);
+        const household = placement.household
+          ? normalizeHousehold(placement.household, centers)
+          : households.find((item) => item.id === placement.household_id);
         if (!household) return null;
         const center = centers.find((item) => item.id === placement.center_id);
         const room = databaseRooms.find((item) => item.id === placement.room_id);
@@ -912,55 +902,62 @@ export default function Household() {
   }, [selectedCenterObj, databaseRooms, currentEventPlacements, households]);
 
   /* ── Filter logic ── */
-  const sourceHouseholds = useMemo(() => {
-    if (activeTab === 'active') {
-      return isReadOnly ? eventHouseholds : activeEventHouseholds;
-    }
-    if (serverSearchResults !== null) {
-      return serverSearchResults;
-    }
-    return households;
-  }, [activeTab, isReadOnly, eventHouseholds, activeEventHouseholds, serverSearchResults, households]);
-
-  const filtered = sourceHouseholds.filter((h) => {
-    const query = search.trim().toLowerCase();
-    const matchSearch = !query || [
-      h.name,
-      h.householdCode,
-      h.code,
-      h.id,
-      h.barangay,
-      h.purok,
-      h.center,
-      h.room,
-      h.stubCode,
-      ...(h.members || []).map((member) => member.name),
-    ].some((value) => String(value || '').toLowerCase().includes(query));
-    const matchStub =
-      filterStub === 'All' ||
-      (filterStub === 'Issued' && h.stubIssued) ||
-      (filterStub === 'Not Issued' && !h.stubIssued);
-    const matchCenter =
-      filterCenter === 'All Centers' ||
-      h.center === filterCenter ||
-      isCenterMatch(h.center, filterCenter, centers);
-    const matchRoom =
-      filterRoom === 'All Rooms' ||
-      h.room === filterRoom ||
-      (h.room && h.room.toLowerCase().includes(filterRoom.toLowerCase())) ||
-      (filterRoom.startsWith('Room') && h.room && h.room.includes(filterRoom.replace('Room', '').trim()));
-    return matchSearch && matchStub && matchCenter && matchRoom;
-  });
-
-  const totalCount = dbTotalCount || households.length;
   const activeEvacueesCount = activeEventHouseholds.length;
   const issuedCount = activeEventHouseholds.filter((h) => h.stubIssued).length;
   const pendingCount = Math.max(0, activeEvacueesCount - issuedCount);
-  const filteredIssued = filtered.filter((h) => h.stubIssued && h.evacueeStatus !== 'Decamped');
 
-  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  // Active tab filtering (runs in-memory over ~0-200 records, instant < 1ms)
+  const filteredActive = useMemo(() => {
+    const list = isReadOnly ? eventHouseholds : activeEventHouseholds;
+    const query = search.trim().toLowerCase();
+    return list.filter((h) => {
+      const matchSearch = !query || [
+        h.name,
+        h.householdCode,
+        h.code,
+        h.id,
+        h.barangay,
+        h.purok,
+        h.center,
+        h.room,
+        h.stubCode,
+        ...(h.members || []).map((member) => member.name),
+      ].some((value) => String(value || '').toLowerCase().includes(query));
+      const matchStub =
+        filterStub === 'All' ||
+        (filterStub === 'Issued' && h.stubIssued) ||
+        (filterStub === 'Not Issued' && !h.stubIssued);
+      const matchCenter =
+        filterCenter === 'All Centers' ||
+        h.center === filterCenter ||
+        isCenterMatch(h.center, filterCenter, centers);
+      const matchRoom =
+        filterRoom === 'All Rooms' ||
+        h.room === filterRoom ||
+        (h.room && h.room.toLowerCase().includes(filterRoom.toLowerCase())) ||
+        (filterRoom.startsWith('Room') && h.room && h.room.includes(filterRoom.replace('Room', '').trim()));
+      return matchSearch && matchStub && matchCenter && matchRoom;
+    });
+  }, [isReadOnly, eventHouseholds, activeEventHouseholds, search, filterStub, filterCenter, filterRoom, centers]);
+
+  // Masterlist uses server-side pagination; Active tab uses client-side slicing of placed records
+  const totalCount = activeTab === 'active'
+    ? filteredActive.length
+    : (masterlistTotalCount || dbTotalCount || households.length);
+
+  const totalPages = activeTab === 'active'
+    ? (Math.ceil(filteredActive.length / pageSize) || 1)
+    : (Math.ceil(totalCount / pageSize) || 1);
+
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedHouseholds = filtered.slice(startIndex, startIndex + pageSize);
+
+  const paginatedHouseholds = activeTab === 'active'
+    ? filteredActive.slice(startIndex, startIndex + pageSize)
+    : masterlistPageData;
+
+  const filteredIssued = activeTab === 'active'
+    ? filteredActive.filter((h) => h.stubIssued && h.evacueeStatus !== 'Decamped')
+    : [];
 
   /* ── Issue stub ── */
   const issueStub = async (hhId) => {
@@ -1242,8 +1239,7 @@ export default function Household() {
     setModalMode('register');
   };
 
-  const openEdit = (item, e) => {
-    e.stopPropagation();
+  const populateFormWithHousehold = (item) => {
     setShowHouseholdReview(false);
     setDraftRestored(false);
     setValidationErrors({});
@@ -1260,8 +1256,8 @@ export default function Household() {
       barangay: item.barangay === 'Unassigned' ? '' : item.barangay,
       purok: item.purok === 'Unassigned' ? '' : item.purok,
       headOccupation: item.headOccupation || '',
-      center: 'Unassigned Center',
-      room: 'Unassigned',
+      center: item.center || 'Unassigned Center',
+      room: item.room || 'Unassigned',
       vulnerabilities: Array.isArray(item.vulnerabilities) ? item.vulnerabilities : [],
       members: (item.members || []).map((member) => ({
         ...member,
@@ -1278,7 +1274,20 @@ export default function Household() {
       floodDepthLevel: item.floodDepthLevel || '',
       characteristicsRemarks: item.characteristicsRemarks || '',
     });
+  };
+
+  const openEdit = async (item, e) => {
+    if (e?.stopPropagation) e.stopPropagation();
+    populateFormWithHousehold(item);
     setModalMode('edit');
+    try {
+      const full = await fetchHouseholdDetails(item.id, centers);
+      if (full) {
+        populateFormWithHousehold(full);
+      }
+    } catch (err) {
+      console.warn('Could not load extra household details:', err);
+    }
   };
 
   const setHeadNamePart = (field, value) => {
@@ -1728,7 +1737,13 @@ export default function Household() {
             </tr>
           </thead>
           <tbody>
-            {paginatedHouseholds.length === 0 ? (
+            {activeTab === 'masterlist' && masterlistLoading ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#6b21a8', fontWeight: 600 }}>
+                  Loading households from registry...
+                </td>
+              </tr>
+            ) : paginatedHouseholds.length === 0 ? (
               <tr>
                 <td colSpan={activeTab === 'active' ? 7 : 6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   {activeTab === 'active' && !isReadOnly && eventHouseholds.length === 0

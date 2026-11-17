@@ -107,7 +107,7 @@ export function normalizeHousehold(row, centersList = []) {
   };
 }
 
-export const HOUSEHOLD_JOIN_SELECT = `
+export const HOUSEHOLD_DETAIL_SELECT = `
   id,
   household_code,
   head_name,
@@ -129,6 +129,189 @@ export const HOUSEHOLD_JOIN_SELECT = `
   profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
   members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, is_household_head, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
 `;
+
+export const HOUSEHOLD_SUMMARY_SELECT = `
+  id,
+  household_code,
+  head_name,
+  head_age,
+  head_sex,
+  head_occupation,
+  barangay,
+  purok,
+  evacuee_status,
+  vulnerabilities,
+  center_id,
+  room_id,
+  stub_code,
+  stub_issued,
+  stub_issued_at,
+  created_at,
+  center:evacuation_centers!households_center_id_fkey ( id, name, location ),
+  room:rooms ( id, room_name ),
+  members:household_members ( id, full_name, age, sex, relationship_to_head, vulnerabilities )
+`;
+
+export const HOUSEHOLD_JOIN_SELECT = HOUSEHOLD_SUMMARY_SELECT;
+
+/**
+ * Fetches the complete profile and member tree for a single household on demand
+ */
+export async function fetchHouseholdDetails(id, centersList = []) {
+  if (!id) return null;
+  const { data, error } = await supabase
+    .from('households')
+    .select(HOUSEHOLD_DETAIL_SELECT)
+    .eq('id', id)
+    .single();
+
+  if (error || !data) throw error || new Error('Household details not found');
+  return normalizeHousehold(data, centersList);
+}
+
+/**
+ * Server-side paginated & filtered households query
+ */
+export async function fetchPaginatedHouseholds({
+  page = 1,
+  pageSize = 25,
+  search = '',
+  barangay = '',
+  centerId = '',
+  roomId = '',
+  evacueeStatus = '',
+  stubStatus = 'All',
+  centersList = [],
+}) {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('households')
+    .select(HOUSEHOLD_SUMMARY_SELECT, { count: 'exact' });
+
+  const trimmed = search?.trim();
+  if (trimmed) {
+    const clean = trimmed.replace(/[,()]/g, ' ').trim();
+    query = query.or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%,purok.ilike.%${clean}%,stub_code.ilike.%${clean}%`);
+  }
+
+  if (barangay && barangay !== 'All' && barangay !== 'All Barangays') {
+    query = query.eq('barangay', barangay);
+  }
+  if (centerId && centerId !== 'All Centers' && centerId !== 'All') {
+    query = query.eq('center_id', centerId);
+  }
+  if (roomId && roomId !== 'All Rooms' && roomId !== 'All') {
+    query = query.eq('room_id', roomId);
+  }
+  if (evacueeStatus === 'Active') {
+    query = query.eq('evacuee_status', 'Active');
+  } else if (evacueeStatus === 'Not Active') {
+    query = query.neq('evacuee_status', 'Active');
+  }
+  if (stubStatus === 'Issued') {
+    query = query.eq('stub_issued', true);
+  } else if (stubStatus === 'Not Issued') {
+    query = query.eq('stub_issued', false);
+  }
+
+  query = query.order('created_at', { ascending: false }).range(from, to);
+
+  const { data, count, error } = await query;
+  if (error) throw error;
+
+  const normalized = (data || [])
+    .map((row) => normalizeHousehold(row, centersList))
+    .filter(Boolean);
+
+  return {
+    data: normalized,
+    totalCount: count ?? 0,
+    page,
+    pageSize,
+    totalPages: Math.ceil((count ?? 0) / pageSize) || 1,
+  };
+}
+
+/**
+ * Fast paginated hook for the Masterlist
+ */
+export function usePaginatedMasterlist({
+  page = 1,
+  pageSize = 25,
+  search = '',
+  barangay = '',
+  centerId = '',
+  roomId = '',
+  stubStatus = 'All',
+  centersList = [],
+  enabled = true,
+}) {
+  const [data, setData] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const reqSequence = useRef(0);
+
+  const loadPage = useCallback(async () => {
+    if (!enabled) return;
+    const reqId = ++reqSequence.current;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetchPaginatedHouseholds({
+        page,
+        pageSize,
+        search,
+        barangay,
+        centerId,
+        roomId,
+        stubStatus,
+        centersList,
+      });
+
+      if (reqId === reqSequence.current) {
+        setData(res.data);
+        setTotalCount(res.totalCount);
+        setLoading(false);
+      }
+    } catch (err) {
+      if (reqId === reqSequence.current) {
+        console.error('Failed to load paginated households:', err);
+        setError(err.message || 'Error loading page');
+        setLoading(false);
+      }
+    }
+  }, [page, pageSize, search, barangay, centerId, roomId, evacueeStatus, stubStatus, centersList, enabled]);
+
+  useEffect(() => {
+    loadPage();
+  }, [loadPage]);
+
+  // Realtime subscription for updates
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const schedule = () => {
+      loadPage();
+    };
+
+    const channel = supabase
+      .channel('masterlist-page-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, schedule)
+      .subscribe();
+
+    window.addEventListener(HOUSEHOLDS_CHANGED_EVENT, schedule);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener(HOUSEHOLDS_CHANGED_EVENT, schedule);
+    };
+  }, [enabled, loadPage]);
+
+  return { data, totalCount, loading, error, refresh: loadPage };
+}
 
 /**
  * Dynamically queries Supabase across all households (head name, code, barangay, purok, stub code, member name)
@@ -227,13 +410,13 @@ export function useHouseholds(centersList = []) {
         }
       }
 
-      // 2. Fetch first chunk (up to 1000) for instant render
-      const CHUNK_SIZE = 1000;
+      // 2. Fetch first chunk (up to 300) for instant render without UI freezing
+      const BATCH_SIZE = 300;
       const { data: firstChunk, error: err } = await supabase
         .from('households')
-        .select(HOUSEHOLD_JOIN_SELECT)
+        .select(HOUSEHOLD_SUMMARY_SELECT)
         .order('created_at', { ascending: false })
-        .range(0, CHUNK_SIZE - 1);
+        .range(0, BATCH_SIZE - 1);
 
       if (err) throw err;
       if (requestId !== fetchSequence.current) return;
@@ -244,59 +427,12 @@ export function useHouseholds(centersList = []) {
 
       setHouseholds(firstNormalized);
       setLoading(false);
+      setIsLoadingMore(false);
       setError(null);
-
-      try {
-        if (firstNormalized.length <= 1000) {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(firstNormalized));
-        }
-      } catch {
-        // ignore storage quota limits
-      }
-
-      // 3. If there are more than CHUNK_SIZE records, progressively load subsequent chunks in background
-      const targetTotal = typeof count === 'number' ? count : (firstChunk?.length === CHUNK_SIZE ? 100000 : 0);
-      if (targetTotal > CHUNK_SIZE) {
-        setIsLoadingMore(true);
-        let offset = CHUNK_SIZE;
-        let accumulated = [...firstNormalized];
-
-        while (offset < targetTotal) {
-          if (requestId !== fetchSequence.current) return;
-
-          const { data: nextChunk, error: nextErr } = await supabase
-            .from('households')
-            .select(HOUSEHOLD_JOIN_SELECT)
-            .order('created_at', { ascending: false })
-            .range(offset, offset + CHUNK_SIZE - 1);
-
-          if (nextErr || !nextChunk || nextChunk.length === 0) break;
-          if (requestId !== fetchSequence.current) return;
-
-          const nextNormalized = nextChunk
-            .map((row) => normalizeHousehold(row, centersList))
-            .filter(Boolean);
-
-          accumulated = accumulated.concat(nextNormalized);
-          setHouseholds(accumulated);
-
-          if (nextChunk.length < CHUNK_SIZE) break;
-          offset += CHUNK_SIZE;
-        }
-
-        if (requestId === fetchSequence.current) {
-          setIsLoadingMore(false);
-        }
-      }
     } catch (err) {
       if (requestId !== fetchSequence.current) return;
       console.error('Could not fetch households from Supabase:', err?.message || err);
       setHouseholds([]);
-      try {
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      } catch (storageError) {
-        console.warn('Could not clear stale cached households:', storageError);
-      }
       setError(err?.message || 'Failed to fetch households');
     } finally {
       if (requestId === fetchSequence.current) {
@@ -380,7 +516,12 @@ export function useEventRoomPlacements(eventId) {
     try {
       const { data, error: placementError } = await supabase
         .from('room_placements')
-        .select('id, household_id, center_id, room_id, event_id, status, check_in_at, check_out_at')
+        .select(`
+          id, household_id, center_id, room_id, event_id, status, check_in_at, check_out_at,
+          household:households (
+            ${HOUSEHOLD_SUMMARY_SELECT}
+          )
+        `)
         .eq('event_id', eventId)
         .order('check_in_at', { ascending: false });
 
@@ -1097,28 +1238,7 @@ export async function searchMasterHouseholds(query = '', centersList = []) {
   try {
     const { data, error } = await supabase
       .from('households')
-      .select(`
-        id,
-        household_code,
-        head_name,
-        head_age,
-        head_sex,
-        head_occupation,
-        barangay,
-        purok,
-        evacuee_status,
-        vulnerabilities,
-        center_id,
-        room_id,
-        stub_code,
-        stub_issued,
-        stub_issued_at,
-        created_at,
-        center:evacuation_centers!households_center_id_fkey ( id, name, location ),
-        room:rooms ( id, room_name ),
-        profile:household_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ),
-        members:household_members ( id, full_name, age, age_value, age_unit, sex, relationship_to_head, occupation, vulnerabilities, profile:household_member_profiles ( monthly_income, has_worked_dole, dole_employment_year, has_received_government_assistance, gov_assistance_availed, government_assistance_year, has_received_relief_assistance, other_income_source, flood_depth_level, characteristics_remarks ) )
-      `)
+      .select(HOUSEHOLD_SUMMARY_SELECT)
       .or(`head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%`)
       .limit(20);
 
