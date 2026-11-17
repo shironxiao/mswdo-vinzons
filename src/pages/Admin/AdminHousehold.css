@@ -1664,3 +1664,72 @@
   background: #f1f5f9;
   color: #0f172a;
 }
+
+
+/* ══════════════════════════════════════════════
+   EVACUEE MONITORING — Details Button & Modal Buttons
+   ══════════════════════════════════════════════ */
+
+/* "Details" button in the monitoring table — purple filled */
+.vin-btn-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  font-size: .78rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: #7c3aed;
+  border: 1px solid #7c3aed;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+}
+.vin-btn-details:hover {
+  background: #6d28d9;
+  border-color: #6d28d9;
+  box-shadow: 0 4px 10px rgba(124, 58, 237, 0.35);
+  transform: translateY(-1px);
+}
+
+/* "Close" / secondary action button inside modals */
+.vin-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  font-size: .88rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.vin-btn-secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* Make the modal close (X) button use the right class */
+.vin-admin-modal-close {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.15s ease;
+}
+.vin-admin-modal-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}

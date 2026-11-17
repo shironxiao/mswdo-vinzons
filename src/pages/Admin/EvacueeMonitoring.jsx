@@ -1,4 +1,4 @@
-import { useState, useMemo, useContext } from 'react';
+﻿import { useState, useMemo, useContext } from 'react';
 import {
   CheckCircle2, Clock, Building, ChevronLeft, ChevronRight,
   ChevronsLeft, ChevronsRight,
@@ -438,8 +438,7 @@ export default function EvacueeMonitoring() {
                   <td style={{ textAlign: 'center' }}>
                     <button
                       type="button"
-                      className="vin-btn-secondary"
-                      style={{ padding: '4px 10px', fontSize: '.78rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      className="vin-btn-details"
                       onClick={() => setSelectedRecord(item)}
                     >
                       <Eye size={13} />
@@ -558,7 +557,7 @@ export default function EvacueeMonitoring() {
         <div className="vin-admin-modal-overlay" onClick={() => setSelectedRecord(null)}>
           <div
             className="vin-admin-modal-card"
-            style={{ maxWidth: 540 }}
+            style={{ maxWidth: 700 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="vin-admin-modal-header">
@@ -577,8 +576,8 @@ export default function EvacueeMonitoring() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 16 }}>
-              <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20, padding: '20px 24px 0' }}>
+              <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
                   Family Head
                 </span>
@@ -586,14 +585,14 @@ export default function EvacueeMonitoring() {
                 <div style={{ fontSize: '.78rem', color: '#64748b' }}>{selectedRecord.householdCode}</div>
               </div>
 
-              <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
+              <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
                   Household Status
                 </span>
                 <div style={{ marginTop: 2 }}>{getStatusBadge(selectedRecord.status)}</div>
               </div>
 
-              <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
+              <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
                   Checked By
                 </span>
@@ -601,7 +600,7 @@ export default function EvacueeMonitoring() {
                 <div style={{ fontSize: '.78rem', color: '#64748b' }}>{selectedRecord.round}</div>
               </div>
 
-              <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8 }}>
+              <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
                   Inspection Time
                 </span>
@@ -612,11 +611,11 @@ export default function EvacueeMonitoring() {
               </div>
             </div>
 
-            <h4 style={{ margin: '0 0 8px', fontSize: '.9rem', fontWeight: 800, color: '#0f172a' }}>
+            <h4 style={{ margin: '0 0 10px', fontSize: '1rem', fontWeight: 800, color: '#0f172a', padding: '0 24px' }}>
               Family Members Attendance
             </h4>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', padding: '0 24px' }}>
               {selectedRecord.membersAttendance && selectedRecord.membersAttendance.length > 0 ? (
                 selectedRecord.membersAttendance.map((m, idx) => {
                   const memName = typeof m === 'string' ? m : m.name;
@@ -677,12 +676,12 @@ export default function EvacueeMonitoring() {
             </div>
 
             {selectedRecord.remarks && (
-              <div style={{ marginTop: 14, padding: 10, background: '#fef3c7', borderRadius: 8, fontSize: '.82rem', color: '#92400e' }}>
+              <div style={{ marginTop: 14, padding: '12px 16px', background: '#fef3c7', borderRadius: 10, fontSize: '.84rem', color: '#92400e', margin: '14px 24px 0' }}>
                 <strong>Remarks:</strong> {selectedRecord.remarks}
               </div>
             )}
 
-            <div style={{ marginTop: 20, textAlign: 'right' }}>
+            <div style={{ marginTop: 0, padding: '16px 24px', borderTop: '1px solid #f1f5f9', textAlign: 'right' }}>
               <button
                 type="button"
                 className="vin-btn-secondary"
