@@ -960,9 +960,24 @@ export async function getHouseholdReliefHistory(householdId) {
  */
 export async function issueHouseholdStub(id, eventId = null) {
   const issuedAt = new Date().toISOString();
+
+  // Ensure household has a unique stub code assigned upon issuance
+  const { data: currentHH, error: fetchErr } = await supabase
+    .from('households')
+    .select('id, household_code, stub_code')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr) throw fetchErr;
+
+  const stubCode = currentHH?.stub_code || (currentHH?.household_code
+    ? `STB-${currentHH.household_code.replace(/^HH-/, '')}`
+    : `STB-${String(Date.now()).slice(-6)}`);
+
   const { data, error } = await supabase
     .from('households')
     .update({
+      stub_code: stubCode,
       stub_issued: true,
       stub_issued_at: issuedAt,
       updated_at: issuedAt,

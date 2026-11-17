@@ -1,39 +1,89 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, QrCode } from 'lucide-react';
+import { X, QrCode, AlertCircle } from 'lucide-react';
 
-export default function QrScannerModal({ onScan, onClose, title = 'Scan Stub QR Code', hint = 'Point camera at printed stub QR code' }) {
+export default function QrScannerModal({
+  onScan,
+  onClose,
+  title = 'Scan Stub QR Code',
+  hint = 'Point camera at printed stub or household QR code'
+}) {
   const instanceRef = useRef(null);
+  const isStoppingRef = useRef(false);
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
+
   const [manualCode, setManualCode] = useState('');
+  const [cameraError, setCameraError] = useState(null);
 
   useEffect(() => {
-    let scanner;
-    import('html5-qrcode').then(({ Html5Qrcode }) => {
-      scanner = new Html5Qrcode('qr-reader-el');
-      instanceRef.current = scanner;
-      scanner
-        .start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          (text) => {
-            scanner.stop().catch(() => {});
-            onScan(text);
-          },
-          () => {}
-        )
-        .catch((err) => console.warn('QR camera error:', err));
-    });
-    return () => {
-      if (instanceRef.current) {
-        instanceRef.current.stop().catch(() => {});
+    let isMounted = true;
+    let scanner = null;
+
+    const stopScanner = async (inst) => {
+      if (!inst) return;
+      try {
+        // State 2 is SCANNING in Html5QrcodeScannerState
+        if (typeof inst.getState === 'function' && inst.getState() === 2) {
+          await inst.stop();
+        }
+      } catch (err) {
+        // Silently catch camera stop race errors
       }
     };
-  }, [onScan]);
+
+    import('html5-qrcode')
+      .then(({ Html5Qrcode }) => {
+        if (!isMounted) return;
+        const container = document.getElementById('qr-reader-el');
+        if (!container) return;
+
+        scanner = new Html5Qrcode('qr-reader-el');
+        instanceRef.current = scanner;
+
+        return scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          async (text) => {
+            if (isStoppingRef.current) return;
+            isStoppingRef.current = true;
+
+            // Safely stop the camera feed before triggering parent modal state changes
+            await stopScanner(scanner);
+
+            if (isMounted && onScanRef.current) {
+              onScanRef.current(text);
+            }
+          },
+          () => {} // Frame-by-frame miss (normal)
+        );
+      })
+      .catch((err) => {
+        console.warn('QR camera error:', err);
+        if (isMounted) {
+          setCameraError(err.message || 'Unable to access camera. Please allow camera permissions or enter code manually.');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      isStoppingRef.current = true;
+      if (instanceRef.current) {
+        stopScanner(instanceRef.current);
+        instanceRef.current = null;
+      }
+    };
+  }, []); // Run ONCE on mount so stream is never recreated repeatedly
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
     if (manualCode.trim()) {
+      isStoppingRef.current = true;
       if (instanceRef.current) {
-        instanceRef.current.stop().catch(() => {});
+        try {
+          if (typeof instanceRef.current.getState === 'function' && instanceRef.current.getState() === 2) {
+            instanceRef.current.stop().catch(() => {});
+          }
+        } catch (_) {}
       }
       onScan(manualCode.trim());
     }
@@ -86,7 +136,32 @@ export default function QrScannerModal({ onScan, onClose, title = 'Scan Stub QR 
             <X size={18} />
           </button>
         </div>
-        <div id="qr-reader-el" style={{ width: '100%', borderRadius: '12px', overflow: 'hidden' }} />
+
+        {cameraError ? (
+          <div style={{
+            padding: '16px',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '12px',
+            color: '#991b1b',
+            fontSize: '0.84rem',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px'
+          }}>
+            <AlertCircle size={20} color="#dc2626" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <strong>Camera Unavailable:</strong>
+              <div style={{ marginTop: 4 }}>{cameraError}</div>
+              <div style={{ marginTop: 6, fontSize: '0.78rem', color: '#b91c1c' }}>
+                You can still verify by typing or pasting the code below.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div id="qr-reader-el" style={{ width: '100%', minHeight: 220, borderRadius: '12px', overflow: 'hidden', background: '#0f172a' }} />
+        )}
+
         <p className="vin-hh-qr-hint" style={{
           fontSize: '0.8rem',
           color: '#64748b',
@@ -98,7 +173,7 @@ export default function QrScannerModal({ onScan, onClose, title = 'Scan Stub QR 
         <form onSubmit={handleManualSubmit} style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 12, display: 'flex', gap: 6 }}>
           <input
             type="text"
-            placeholder="Or enter/paste code (e.g. STB-001001)..."
+            placeholder="Or enter code (e.g. HH-CLN-0001, STB-001001)..."
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
             style={{

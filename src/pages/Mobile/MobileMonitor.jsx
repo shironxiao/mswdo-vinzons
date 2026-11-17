@@ -18,6 +18,7 @@ import {
   useHouseholds,
   useEventRoomPlacements,
   issueHouseholdStub,
+  searchHouseholdsFromDatabase,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
@@ -320,22 +321,39 @@ export default function MobileMonitor() {
   };
 
   /* ── Relief Distribution QR Scan Handler ── */
-  const handleReliefScan = useCallback((code) => {
+  const handleReliefScan = useCallback(async (code) => {
     setShowScanner(false);
     const trimmed = (code || '').trim();
     if (!trimmed) return;
 
-    const found = households.find((h) =>
+    // 1. Check loaded households in memory
+    let found = households.find((h) =>
       (h.stubCode && h.stubCode.toLowerCase() === trimmed.toLowerCase()) ||
       String(h.id) === trimmed ||
       (h.householdCode && h.householdCode.toLowerCase() === trimmed.toLowerCase())
     );
 
+    // 2. If not found in current memory chunk, search database directly across all 10k+ records
+    if (!found) {
+      try {
+        const dbMatches = await searchHouseholdsFromDatabase(trimmed, centers, 10);
+        if (dbMatches && dbMatches.length > 0) {
+          found = dbMatches.find((h) =>
+            (h.stubCode && h.stubCode.toLowerCase() === trimmed.toLowerCase()) ||
+            String(h.id) === trimmed ||
+            (h.householdCode && h.householdCode.toLowerCase() === trimmed.toLowerCase())
+          ) || dbMatches[0];
+        }
+      } catch (err) {
+        console.warn('Error querying database for scanned QR:', err);
+      }
+    }
+
     if (!found) {
       setReliefScanModal({
         status: 'not-found',
         code: trimmed,
-        errorMsg: `No registered household matches QR code: "${trimmed}"`,
+        errorMsg: `No registered household matches QR code or ID: "${trimmed}"`,
       });
       return;
     }
@@ -349,7 +367,7 @@ export default function MobileMonitor() {
         status: 'not-active',
         errorMsg: isDecamped
           ? `Cannot issue relief pack: ${found.name}'s family has officially Decamped (Checked out) from the evacuation center.`
-          : `Cannot issue relief pack: ${found.name}'s family is not currently checked in to any evacuation room.`,
+          : `Cannot issue relief pack: ${found.name}'s family (${found.householdCode || 'Code Pending'}) is currently registered in the municipal masterlist but not checked in to an active evacuation room.`,
       });
       return;
     }
@@ -366,7 +384,7 @@ export default function MobileMonitor() {
       household: found,
       status: 'eligible',
     });
-  }, [households]);
+  }, [households, centers]);
 
   /* ── Mark All Members Accounted For (Quick floor round helper) ── */
   const handleMarkAllAccounted = () => {
@@ -1031,8 +1049,10 @@ export default function MobileMonitor() {
                   <div className="vin-mob-profile-top">
                     <div className="vin-mob-avatar-circle" style={{ width: 44, height: 44 }}><User size={20} /></div>
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>{reliefScanModal.household.name}</div>
-                      <div style={{ fontSize: '.8rem', color: '#64748b' }}>Stub: {reliefScanModal.household.stubCode}</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>{reliefScanModal.household?.name || 'Household'}</div>
+                      <div style={{ fontSize: '.8rem', color: '#64748b' }}>
+                        Code: <strong>{reliefScanModal.household?.stubCode || reliefScanModal.household?.householdCode || 'Pending'}</strong>
+                      </div>
                     </div>
                   </div>
                   <div className="vin-hh-stub-meta">
@@ -1088,7 +1108,7 @@ export default function MobileMonitor() {
                   Relief Pack Issued!
                 </h3>
                 <p style={{ fontSize: '0.86rem', color: '#64748b', marginBottom: 16 }}>
-                  Stub {reliefScanModal.household.stubCode} for <strong>{reliefScanModal.household.name}</strong> has been verified and recorded.
+                  Pass <strong>{reliefScanModal.household?.stubCode || reliefScanModal.household?.householdCode || 'Recorded'}</strong> for <strong>{reliefScanModal.household?.name || 'Household'}</strong> has been verified and recorded.
                 </p>
                 <button
                   type="button"
@@ -1124,7 +1144,7 @@ export default function MobileMonitor() {
                   This family (<strong>{reliefScanModal.household.name}</strong> • {reliefScanModal.household.room}) has already claimed their relief pack for this distribution cycle.
                 </p>
                 <div style={{ padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b', marginBottom: 16 }}>
-                  Stub: <strong>{reliefScanModal.household.stubCode}</strong>
+                  Pass / Stub Code: <strong>{reliefScanModal.household?.stubCode || reliefScanModal.household?.householdCode || 'N/A'}</strong>
                 </div>
                 <button
                   type="button"

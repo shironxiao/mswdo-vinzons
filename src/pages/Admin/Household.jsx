@@ -156,11 +156,13 @@ function genStubCode() {
 }
 
 function findDuplicateHolder(households, targetHHId, memberName) {
+  if (!memberName || !Array.isArray(households)) return null;
   return households.find(
     (h) =>
+      h &&
       h.id !== targetHHId &&
-      h.stubCode &&
-      (h.name === memberName || h.members.some((m) => m.name === memberName))
+      h.stubIssued &&
+      (h.name === memberName || (Array.isArray(h.members) && h.members.some((m) => (m?.name || m) === memberName)))
   );
 }
 
@@ -364,11 +366,12 @@ function printStub(household) {
     alert('Please allow popups to print stubs.');
     return;
   }
-  const qrEl = document.getElementById(`admin-print-qr-${household.id}`);
+  const displayCode = household.stubCode || household.householdCode || `HH-${household.id}`;
+  const qrEl = document.getElementById(`admin-modal-qr-${household.id}`) || document.getElementById(`admin-print-qr-${household.id}`);
   const qrSvg = qrEl ? qrEl.outerHTML : '';
   win.document.write(`
     <!DOCTYPE html>
-    <html><head><title>Stub – ${household.stubCode}</title>
+    <html><head><title>Relief Stub – ${displayCode}</title>
     <meta charset="utf-8" />
     <style>
       body{font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;padding:32px;max-width:320px;margin:auto;text-align:center}
@@ -385,7 +388,7 @@ function printStub(household) {
     <div class="card">
       <h2>Relief Goods Stub</h2>
       <p class="sub">Vinzons Municipal Social Welfare</p>
-      <p class="code">${household.stubCode}</p>
+      <p class="code">${displayCode}</p>
       <div class="qr">${qrSvg}</div>
       <div class="head-box">
         <div class="head-label">Household Head</div>
@@ -521,10 +524,10 @@ function StubIssuanceModal({ household, households, onIssue, onDecamp, readOnly 
           <div className="vin-admin-issued-block">
             <div>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: alreadyIssued ? '#6b21a8' : '#92400e', textTransform: 'uppercase' }}>
-                {alreadyIssued ? 'ACTIVE CLAIM STUB CODE' : 'HOUSEHOLD QR CODE (NOT YET ISSUED)'}
+                {alreadyIssued ? 'ACTIVE CLAIM STUB CODE' : 'OFFICIAL HOUSEHOLD CODE (CLAIM STUB NOT YET ISSUED)'}
               </span>
               <div className="vin-admin-issued-code" style={{ color: alreadyIssued ? '#6b21a8' : '#b45309' }}>
-                {household.stubCode}
+                {household.stubCode || household.householdCode || `HH-${household.id}`}
               </div>
             </div>
 
@@ -535,7 +538,8 @@ function StubIssuanceModal({ household, households, onIssue, onDecamp, readOnly 
               border: `1px solid ${alreadyIssued ? '#ddd6fe' : '#fde68a'}`,
             }}>
               <QRCodeSVG
-                value={household.stubCode}
+                id={`admin-modal-qr-${household.id}`}
+                value={household.stubCode || household.householdCode || String(household.id)}
                 size={140}
                 level="M"
                 bgColor="#ffffff"
@@ -3028,12 +3032,12 @@ export default function Household() {
         aria-hidden="true"
       >
         {households
-          .filter((h) => h.stubCode)
+          .slice(0, 250)
           .map((h) => (
             <QRCodeSVG
               key={h.id}
               id={`admin-print-qr-${h.id}`}
-              value={h.stubCode}
+              value={h.stubCode || h.householdCode || String(h.id)}
               size={120}
               level="M"
               bgColor="#ffffff"

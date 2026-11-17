@@ -132,11 +132,13 @@ function genStubCode() {
 }
 
 function findDuplicateHolder(households, targetHHId, memberName) {
+  if (!memberName || !Array.isArray(households)) return null;
   return households.find(
     (h) =>
+      h &&
       h.id !== targetHHId &&
       h.stubIssued &&
-      (h.name === memberName || h.members.some((m) => m.name === memberName))
+      (h.name === memberName || (Array.isArray(h.members) && h.members.some((m) => (m?.name || m) === memberName)))
   );
 }
 
@@ -233,12 +235,16 @@ function StubIssuancePanel({ household, households, onClose }) {
         {/* Unique Household QR Code (Always present upon registration) */}
         <div className="vin-hh-issued-block" style={{ marginTop: 14 }}>
           <div style={{ textAlign: 'center' }}>
-            <div className="vin-mob-input-label" style={{ marginBottom: 6 }}>OFFICIAL QR CODE / STUB CODE</div>
-            <div className="vin-hh-stub-code-display">{household.stubCode}</div>
+            <div className="vin-mob-input-label" style={{ marginBottom: 6 }}>
+              {alreadyIssued ? 'OFFICIAL RELIEF STUB CODE' : 'OFFICIAL HOUSEHOLD CODE'}
+            </div>
+            <div className="vin-hh-stub-code-display">
+              {household.stubCode || household.householdCode || `HH-${household.id}`}
+            </div>
             <div style={{ marginTop: 12, display: 'inline-block', padding: 8, background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0' }}>
               <QRCodeSVG
                 id={`panel-qr-${household.id}`}
-                value={household.stubCode}
+                value={household.stubCode || household.householdCode || String(household.id)}
                 size={140}
                 level="M"
                 bgColor="#ffffff"
