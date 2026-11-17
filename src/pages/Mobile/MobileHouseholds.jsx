@@ -26,7 +26,6 @@ import {
 } from '../../lib/householdProfileOptions.js';
 import { joinFullName, splitFullName } from '../../lib/householdNames.js';
 import {
-  useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters';
 import {
@@ -680,7 +679,7 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
    MAIN PAGE
    ══════════════════════════════════════════════ */
 export default function MobileHouseholds() {
-  const { centers } = useEvacuationCenters();
+  const { centers } = useMobileCenter();
   const {
     households,
     setHouseholds,

@@ -4,6 +4,7 @@ import { supabase } from './supabase.js';
 
 const STORAGE_KEY = 'vinzons_cached_evac_centers';
 const ROOM_NAMES_KEY = 'vinzons_center_room_names';
+let evacuationCentersChannelSequence = 0;
 
 /**
  * Retrieve saved custom room designations/names from storage
@@ -377,7 +378,7 @@ export function useEvacuationCenters() {
     };
 
     const channel = supabase
-      .channel('evac_centers_live_updates')
+      .channel(`evac_centers_live_updates_${++evacuationCentersChannelSequence}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'evacuation_centers' },

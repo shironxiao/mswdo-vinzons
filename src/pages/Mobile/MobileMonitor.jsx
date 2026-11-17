@@ -11,7 +11,6 @@ import './MobileMonitor.css';
 import checkIcon from '../../assets/check.png';
 import removeIcon from '../../assets/remove.png';
 import {
-  useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters';
 import {
@@ -28,7 +27,7 @@ import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelec
 import QrScannerModal from '../../components/QrScannerModal';
 
 export default function MobileMonitor() {
-  const { centers } = useEvacuationCenters();
+  const { centers } = useMobileCenter();
   const { households, refresh: refreshHouseholds } = useHouseholds(centers);
   const { activeEvent } = useActiveEvent();
   const { placements } = useEventRoomPlacements(activeEvent?.id);

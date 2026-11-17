@@ -6,10 +6,7 @@ import {
 import './MobileCommon.css';
 import './MobileSubpages.css';
 import './MobileCenters.css';
-import {
-  createEvacuationCenter,
-  useEvacuationCenters,
-} from '../../lib/evacuationCenters';
+import { createEvacuationCenter } from '../../lib/evacuationCenters';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { useHouseholds } from '../../lib/householdService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
@@ -232,14 +229,14 @@ function CenterFilterSheet({
    MAIN PAGE
    ────────────────────────────────────────────── */
 export default function MobileCenters() {
-  const { centers: dbCenters, refetch } = useEvacuationCenters();
-  const { households } = useHouseholds(dbCenters);
   const {
+    centers: dbCenters,
+    refreshCenters,
     assignedCenter,
-    assignedCenterId,
     assignedCenterObj,
     setAssignedCenter,
   } = useMobileCenter();
+  const { households } = useHouseholds(dbCenters);
   const centers = useMemo(() => dbCenters.map((center) => ({
     id: center.id,
     name: center.displayName || center.name,
@@ -314,7 +311,7 @@ export default function MobileCenters() {
         total_rooms: newCenter.rooms,
         capacity: newCenter.capacity,
       });
-      await refetch();
+      await refreshCenters();
       setNewCenter({ name: '', location: '', rooms: '5', capacity: '100' });
       setIsAddOpen(false);
     } catch (err) {
