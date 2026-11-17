@@ -322,7 +322,6 @@ export default function UserManagement() {
               <th>USER NAME</th>
               <th>EMAIL ADDRESS</th>
               <th>ROLE</th>
-              <th>ASSIGNED CENTER</th>
               <th>STATUS</th>
               <th style={{ textAlign: 'right' }}>ACTION</th>
             </tr>
@@ -330,7 +329,7 @@ export default function UserManagement() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No users match the current filter criteria.
                 </td>
               </tr>
@@ -350,7 +349,6 @@ export default function UserManagement() {
                       {item.role}
                     </span>
                   </td>
-                  <td style={{ color: '#334155' }}>{item.assignedCenter}</td>
                   <td>
                     <span className={`vin-status-tag ${item.status.toLowerCase() === 'active' ? 'active' : 'inactive'}`}>
                       {item.status}
@@ -457,29 +455,6 @@ export default function UserManagement() {
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '22px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Assigned Center</label>
-                <button
-                  type="button"
-                  className="vin-form-select"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    backgroundColor: '#ffffff',
-                    width: '100%',
-                  }}
-                  onClick={() => setShowCenterPicker('add')}
-                >
-                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                    {form.assignedCenter}
-                  </span>
-                  <ChevronDown size={16} color="#64748b" />
-                </button>
-              </div>
-
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button
                   type="button"
@@ -568,29 +543,6 @@ export default function UserManagement() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Assigned Center</label>
-                <button
-                  type="button"
-                  className="vin-form-select"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    backgroundColor: '#ffffff',
-                    width: '100%',
-                  }}
-                  onClick={() => setShowCenterPicker('edit')}
-                >
-                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                    {editForm.assignedCenter}
-                  </span>
-                  <ChevronDown size={16} color="#64748b" />
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '22px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Account Status</label>
                 <button
                   type="button"
