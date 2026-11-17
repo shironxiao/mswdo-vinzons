@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, X, Clock, CheckCircle2, XCircle, ChevronDown,
   ChevronLeft, ChevronRight, SlidersHorizontal, AlertTriangle, Building,
-  QrCode, Ticket, PackageCheck, User,
+  QrCode, Ticket, PackageCheck, User, Package, Calendar, History,
 } from 'lucide-react';
 import './MobileCommon.css';
 import './MobileSubpages.css';
@@ -19,6 +19,7 @@ import {
   useEventRoomPlacements,
   issueHouseholdStub,
   searchHouseholdsFromDatabase,
+  getHouseholdReliefHistory,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
@@ -40,6 +41,9 @@ export default function MobileMonitor() {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeFamily, setActiveFamily] = useState(null);
   const [historyFamily, setHistoryFamily] = useState(null);
+  const [historyTab, setHistoryTab] = useState('attendance'); // 'attendance' | 'relief'
+  const [familyReliefHistory, setFamilyReliefHistory] = useState([]);
+  const [loadingReliefHistory, setLoadingReliefHistory] = useState(false);
   const [attendance, setAttendance] = useState({});
   const [checkInTimes, setCheckInTimes] = useState({});
   const [showScanner, setShowScanner] = useState(false);
@@ -50,6 +54,53 @@ export default function MobileMonitor() {
     householdStatus: 'Present',
     remarks: '',
   });
+
+  // Load relief assistance history whenever the family log modal is opened
+  useEffect(() => {
+    if (historyFamily) {
+      const famId = historyFamily.householdId || historyFamily.id;
+      setLoadingReliefHistory(true);
+      getHouseholdReliefHistory(famId)
+        .then((res) => setFamilyReliefHistory(res || []))
+        .catch((err) => {
+          console.warn('Error loading relief history for family:', err);
+          setFamilyReliefHistory([]);
+        })
+        .finally(() => setLoadingReliefHistory(false));
+    } else {
+      setFamilyReliefHistory([]);
+      setHistoryTab('attendance');
+    }
+  }, [historyFamily]);
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch (_) {
+      return String(dateStr);
+    }
+  };
+
+  const formatTimeOnly = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch (_) {
+      return '';
+    }
+  };
 
   // Dynamic monitor records derived from live Supabase households & monitoring logs
   // Only households assigned to an evacuation center room are included in the room monitor
@@ -375,10 +426,46 @@ export default function MobileMonitor() {
       return;
     }
 
-    if (found.stubIssued) {
+    // 3. Fetch comprehensive relief distribution history for this household
+    let history = [];
+    try {
+      history = await getHouseholdReliefHistory(found.id);
+    } catch (err) {
+      console.warn('Could not fetch relief history for scanned household:', err);
+    }
+
+    const hasPriorRelief = history.length > 0 || Boolean(found.stubIssued);
+
+    if (hasPriorRelief) {
+      // Oldest record represents the first pack; newest record is history[0]
+      const oldestClaim = history.length > 0 ? history[history.length - 1] : {
+        stubIssuedAt: found.stubIssuedAt || new Date().toISOString(),
+        wave: 1,
+        waveLabel: 'Relief Pack Wave 1',
+        stubCode: found.stubCode || 'N/A',
+      };
+      const latestClaim = history.length > 0 ? history[0] : oldestClaim;
+
+      const isToday = (dateStr) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        const now = new Date();
+        return d.getFullYear() === now.getFullYear() &&
+               d.getMonth() === now.getMonth() &&
+               d.getDate() === now.getDate();
+      };
+
+      const claimedToday = isToday(latestClaim.stubIssuedAt);
+
       setReliefScanModal({
         household: found,
-        status: 'already-issued',
+        status: 'history-warning',
+        history,
+        firstClaim: oldestClaim,
+        latestClaim,
+        claimedToday,
+        totalPacks: Math.max(1, history.length),
+        nextWave: Math.max(1, history.length) + 1,
       });
       return;
     }
@@ -386,6 +473,8 @@ export default function MobileMonitor() {
     setReliefScanModal({
       household: found,
       status: 'eligible',
+      history: [],
+      nextWave: 1,
     });
   }, [households, centers]);
 
@@ -405,15 +494,18 @@ export default function MobileMonitor() {
     setMonitorForm((prev) => ({ ...prev, householdStatus: 'Present' }));
   };
 
-  /* ── Confirm Relief Pack Distribution ── */
-  const handleConfirmIssueRelief = async (hhId) => {
+  /* ── Confirm Relief Pack Distribution (Supports Multi-Wave Rounds) ── */
+  const handleConfirmIssueRelief = async (hhId, waveNumber = 1) => {
     try {
-      await issueHouseholdStub(
-        hhId,
-        activeEvent?.status === 'Active' && activeEvent.id !== 'default-active-event'
-          ? activeEvent.id
-          : null
-      );
+      const activeEventId = activeEvent?.status === 'Active' && activeEvent.id !== 'default-active-event'
+        ? activeEvent.id
+        : null;
+
+      await issueHouseholdStub(hhId, activeEventId, {
+        issuedBy: 'MSWDO Staff',
+        waveNumber,
+      });
+
       if (refreshHouseholds) refreshHouseholds();
       
       // Also update activeFamily if currently open
@@ -421,8 +513,18 @@ export default function MobileMonitor() {
         setActiveFamily((prev) => prev ? { ...prev, stubIssued: true } : null);
       }
 
-      setReliefScanModal((prev) => prev ? { ...prev, status: 'issued-success' } : null);
-      setToastMsg(`✓ Relief pack marked as ISSUED successfully!`);
+      // If view-log history is open for this family, refresh it as well
+      if (historyFamily && (historyFamily.householdId === hhId || historyFamily.id === hhId)) {
+        getHouseholdReliefHistory(hhId).then((res) => setFamilyReliefHistory(res || []));
+      }
+
+      setReliefScanModal((prev) => prev ? {
+        ...prev,
+        status: 'issued-success',
+        issuedWave: waveNumber,
+      } : null);
+
+      setToastMsg(`✓ Relief pack marked as ISSUED successfully! (Wave ${waveNumber})`);
       setTimeout(() => setToastMsg(''), 4000);
     } catch (err) {
       console.warn('Error issuing relief stub:', err);
@@ -889,13 +991,13 @@ export default function MobileMonitor() {
         </div>
       )}
 
-      {/* FAMILY MONITORING HISTORY */}
+      {/* FAMILY ACTIVITY HISTORY & RELIEF LOG */}
       {historyFamily && (
         <div className="vin-mob-sheet-overlay" onClick={() => setHistoryFamily(null)}>
-          <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
+          <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div className="vin-mob-sheet-header">
               <div>
-                <h2 className="vin-mob-sheet-title">Monitoring History</h2>
+                <h2 className="vin-mob-sheet-title">Family Activity History</h2>
                 <span style={{ fontSize: '.78rem', color: '#64748b' }}>
                   {historyFamily.center} • {historyFamily.room}
                 </span>
@@ -907,79 +1009,237 @@ export default function MobileMonitor() {
 
             <div>
               <div className="vin-mob-input-label">FAMILY HEAD</div>
-              <h3 style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 800 }}>
+              <h3 style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
                 {historyFamily.name}
               </h3>
-              <span style={{ fontSize: '.75rem', color: '#64748b' }}>
-                {historyFamilyLogs.length} round{historyFamilyLogs.length !== 1 ? 's' : ''} logged
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: '.78rem', color: '#64748b' }}>
+                <span>Code: <strong>{historyFamily.householdCode || historyFamily.id}</strong></span>
+                <span>•</span>
+                <span>Stub: <strong>{historyFamily.stubCode || 'N/A'}</strong></span>
+              </div>
             </div>
 
-            {historyFamilyLogs.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {historyFamilyLogs.map((logItem) => (
-                  <button
-                    key={logItem.id}
-                    type="button"
-                    onClick={() => setSelectedLogDetails(logItem)}
-                    style={{
-                      padding: '10px 12px',
-                      backgroundColor: '#ffffff',
-                      borderRadius: 10,
-                      border: '1.5px solid #e2e8f0',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4,
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 700, fontSize: '.84rem', color: '#0f172a' }}>
-                        {logItem.createdAt
-                          ? new Date(logItem.createdAt).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })
-                          : 'Recorded'}
-                      </span>
-                      <span
+            {/* Segmented Tab Controls: Attendance Logs vs Relief Goods History */}
+            <div style={{ display: 'flex', gap: 6, margin: '14px 0 10px', background: '#f1f5f9', padding: 4, borderRadius: 10 }}>
+              <button
+                type="button"
+                onClick={() => setHistoryTab('attendance')}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: historyTab === 'attendance' ? '#ffffff' : 'transparent',
+                  color: historyTab === 'attendance' ? '#7c3aed' : '#64748b',
+                  boxShadow: historyTab === 'attendance' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Clock size={14} /> Attendance ({historyFamilyLogs.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryTab('relief')}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: historyTab === 'relief' ? '#ffffff' : 'transparent',
+                  color: historyTab === 'relief' ? '#7c3aed' : '#64748b',
+                  boxShadow: historyTab === 'relief' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <PackageCheck size={14} /> Relief History ({familyReliefHistory.length})
+              </button>
+            </div>
+
+            {/* TAB 1: Attendance History */}
+            {historyTab === 'attendance' && (
+              <div>
+                {historyFamilyLogs.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {historyFamilyLogs.map((logItem) => (
+                      <button
+                        key={logItem.id}
+                        type="button"
+                        onClick={() => setSelectedLogDetails(logItem)}
                         style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: 6,
-                          background:
-                            logItem.householdStatus === 'Present'
-                              ? '#f3e8ff'
-                              : logItem.householdStatus === 'Decamped'
-                              ? '#f1f5f9'
-                              : '#fef3c7',
-                          color:
-                            logItem.householdStatus === 'Present'
-                              ? '#6b21a8'
-                              : logItem.householdStatus === 'Decamped'
-                              ? '#475569'
-                              : '#92400e',
+                          padding: '10px 12px',
+                          backgroundColor: '#ffffff',
+                          borderRadius: 10,
+                          border: '1.5px solid #e2e8f0',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4,
+                          textAlign: 'left',
                         }}
                       >
-                        {logItem.householdStatus}
-                      </span>
-                    </span>
-                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', color: '#64748b' }}>
-                      <span>{logItem.presentCount}/{logItem.totalMembers} present • Tap to view details</span>
-                      <ChevronRight size={14} />
-                    </span>
-                  </button>
-                ))}
+                        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, fontSize: '.84rem', color: '#0f172a' }}>
+                            {logItem.createdAt
+                              ? new Date(logItem.createdAt).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true,
+                                })
+                              : 'Recorded'}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background:
+                                logItem.householdStatus === 'Present'
+                                  ? '#f3e8ff'
+                                  : logItem.householdStatus === 'Decamped'
+                                  ? '#f1f5f9'
+                                  : '#fef3c7',
+                              color:
+                                logItem.householdStatus === 'Present'
+                                  ? '#6b21a8'
+                                  : logItem.householdStatus === 'Decamped'
+                                  ? '#475569'
+                                  : '#92400e',
+                            }}
+                          >
+                            {logItem.householdStatus}
+                          </span>
+                        </span>
+                        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', color: '#64748b' }}>
+                          <span>{logItem.presentCount}/{logItem.totalMembers} present • Tap to view details</span>
+                          <ChevronRight size={14} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0', display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '.85rem' }}>
+                    <Clock size={16} />
+                    <span>No monitoring records yet for this household.</span>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div style={{ padding: 14, backgroundColor: '#f8faf9', borderRadius: 12, border: '1px solid #eef2f0', display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: '.85rem' }}>
-                <Clock size={16} />
-                <span>No monitoring records yet for this household.</span>
+            )}
+
+            {/* TAB 2: Relief Goods Distribution History */}
+            {historyTab === 'relief' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {loadingReliefHistory ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748b', fontSize: '0.85rem' }}>
+                    Loading relief distribution history…
+                  </div>
+                ) : familyReliefHistory.length === 0 ? (
+                  <div style={{ padding: 16, backgroundColor: '#f8fafc', borderRadius: 12, border: '1px dashed #cbd5e1', textAlign: 'center' }}>
+                    <Package size={28} color="#94a3b8" style={{ margin: '0 auto 6px' }} />
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#334155' }}>
+                      No Relief Packs Issued Yet
+                    </div>
+                    <p style={{ margin: '4px 0 12px', fontSize: '0.78rem', color: '#64748b' }}>
+                      This family has not received relief assistance for this event yet.
+                    </p>
+                    <button
+                      type="button"
+                      className="vin-mob-sheet-submit-btn"
+                      onClick={() => handleConfirmIssueRelief(historyFamily.householdId || historyFamily.id, 1)}
+                      style={{ padding: '10px 14px', fontSize: '0.84rem' }}
+                    >
+                      <PackageCheck size={16} /> Issue Wave 1 Relief Pack
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Summary Counter */}
+                    <div style={{
+                      padding: '10px 12px',
+                      background: '#f5f3ff',
+                      borderRadius: 10,
+                      border: '1px solid #ddd6fe',
+                      marginBottom: 10,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: '#6d28d9', fontWeight: 700, textTransform: 'uppercase' }}>
+                          TOTAL AID RECEIVED
+                        </div>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#5b21b6' }}>
+                          {familyReliefHistory.length} Relief Pack{familyReliefHistory.length !== 1 ? 's' : ''} Claimed
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#6b21a8' }}>
+                        First: {formatDateTime(familyReliefHistory[familyReliefHistory.length - 1]?.stubIssuedAt).split(',')[0]}
+                      </div>
+                    </div>
+
+                    {/* Timeline List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
+                      {familyReliefHistory.map((item, idx) => (
+                        <div
+                          key={item.id || idx}
+                          style={{
+                            padding: '10px 12px',
+                            backgroundColor: '#ffffff',
+                            borderRadius: 10,
+                            border: '1px solid #e2e8f0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <PackageCheck size={15} color="#16a34a" />
+                              {item.waveLabel || `Wave ${familyReliefHistory.length - idx}`}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+                              Claimed
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Clock size={13} color="#64748b" />
+                            <span>{formatDateTime(item.stubIssuedAt)}</span>
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Stub: <strong>{item.stubCode}</strong></span>
+                            <span>{item.centerName} • {item.roomName}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Quick Button to Issue Next Wave Pack */}
+                    <button
+                      type="button"
+                      className="vin-mob-sheet-submit-btn"
+                      onClick={() => handleConfirmIssueRelief(historyFamily.householdId || historyFamily.id, familyReliefHistory.length + 1)}
+                      style={{ marginTop: 12, padding: '11px 14px', fontSize: '0.86rem' }}
+                    >
+                      <PackageCheck size={16} /> Issue Wave {familyReliefHistory.length + 1} Relief Pack
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1111,7 +1371,7 @@ export default function MobileMonitor() {
                   Relief Pack Issued!
                 </h3>
                 <p style={{ fontSize: '0.86rem', color: '#64748b', marginBottom: 16 }}>
-                  Pass <strong>{reliefScanModal.household?.stubCode || reliefScanModal.household?.householdCode || 'Recorded'}</strong> for <strong>{reliefScanModal.household?.name || 'Household'}</strong> has been verified and recorded.
+                  {reliefScanModal.issuedWave ? `Relief Pack Wave ${reliefScanModal.issuedWave}` : 'Relief pack'} for <strong>{reliefScanModal.household?.name || 'Household'}</strong> has been verified and permanently recorded in the disaster relief history log.
                 </p>
                 <button
                   type="button"
@@ -1124,39 +1384,160 @@ export default function MobileMonitor() {
               </div>
             )}
 
-            {reliefScanModal.status === 'already-issued' && (
-              <div style={{ textAlign: 'center', padding: '12px 6px' }}>
+            {reliefScanModal.status === 'history-warning' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Alert Box */}
                 <div style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  background: '#fef3c7',
-                  border: '2px solid #fde68a',
-                  color: '#b45309',
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: reliefScanModal.claimedToday ? '#fef2f2' : '#f5f3ff',
+                  border: `1.5px solid ${reliefScanModal.claimedToday ? '#fecaca' : '#ddd6fe'}`,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                }}>
+                  {reliefScanModal.claimedToday ? (
+                    <AlertTriangle size={22} color="#dc2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                  ) : (
+                    <PackageCheck size={22} color="#7c3aed" style={{ flexShrink: 0, marginTop: 2 }} />
+                  )}
+                  <div>
+                    <div style={{
+                      fontWeight: 800,
+                      fontSize: '0.92rem',
+                      color: reliefScanModal.claimedToday ? '#991b1b' : '#5b21b6',
+                    }}>
+                      {reliefScanModal.claimedToday
+                        ? '⚠️ Already Claimed Today!'
+                        : `Previous Relief Received (${reliefScanModal.totalPacks} Pack${reliefScanModal.totalPacks !== 1 ? 's' : ''})`}
+                    </div>
+                    <p style={{
+                      margin: '4px 0 0',
+                      fontSize: '0.82rem',
+                      color: reliefScanModal.claimedToday ? '#b91c1c' : '#6b21a8',
+                      lineHeight: 1.4,
+                    }}>
+                      {reliefScanModal.claimedToday
+                        ? `This household already claimed a relief pack today at ${formatTimeOnly(reliefScanModal.latestClaim?.stubIssuedAt)}. Please verify before distributing another pack.`
+                        : `This household received previous disaster relief packs. You can verify history and issue subsequent waves below.`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Household Overview */}
+                <div className="vin-hh-stub-card" style={{ margin: 0 }}>
+                  <div className="vin-mob-profile-top">
+                    <div className="vin-mob-avatar-circle" style={{ width: 44, height: 44 }}><User size={20} /></div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>{reliefScanModal.household?.name || 'Household'}</div>
+                      <div style={{ fontSize: '.8rem', color: '#64748b' }}>
+                        Code: <strong>{reliefScanModal.household?.stubCode || reliefScanModal.household?.householdCode || 'Pending'}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="vin-hh-stub-meta">
+                    <div><span className="vin-mob-field-label">ROOM</span><div>{reliefScanModal.household?.room}</div></div>
+                    <div><span className="vin-mob-field-label">MEMBERS</span><div>{reliefScanModal.household?.familyCount} persons</div></div>
+                    <div><span className="vin-mob-field-label">CENTER</span><div style={{ fontSize: '.8rem' }}>{reliefScanModal.household?.center}</div></div>
+                    <div><span className="vin-mob-field-label">TOTAL PACKS</span><div><strong>{reliefScanModal.totalPacks} claimed</strong></div></div>
+                  </div>
+                </div>
+
+                {/* First Pack Date & Time Highlight (Informs user exactly when first pack was received) */}
+                <div style={{
+                  padding: '10px 14px',
+                  background: '#f8fafc',
+                  borderRadius: 10,
+                  border: '1.5px solid #e2e8f0',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 10px'
+                  justifyContent: 'space-between',
                 }}>
-                  <AlertTriangle size={28} />
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      FIRST RELIEF PACK RECEIVED
+                    </div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a', marginTop: 2 }}>
+                      {formatDateTime(reliefScanModal.firstClaim?.stubIssuedAt)}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    background: '#ede9fe',
+                    color: '#6d28d9',
+                  }}>
+                    {reliefScanModal.firstClaim?.waveLabel || 'Wave 1'}
+                  </span>
                 </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#92400e', marginBottom: 4 }}>
-                  Already Claimed
-                </h3>
-                <p style={{ fontSize: '0.86rem', color: '#475569', marginBottom: 12 }}>
-                  This family (<strong>{reliefScanModal.household.name}</strong> • {reliefScanModal.household.room}) has already claimed their relief pack for this distribution cycle.
-                </p>
-                <div style={{ padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b', marginBottom: 16 }}>
-                  Pass / Stub Code: <strong>{reliefScanModal.household?.stubCode || reliefScanModal.household?.householdCode || 'N/A'}</strong>
+
+                {/* Complete History Log Timeline */}
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>DISTRIBUTION HISTORY LOG</span>
+                    <span style={{ color: '#7c3aed', fontWeight: 700 }}>{reliefScanModal.history.length} Record{reliefScanModal.history.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
+                    {reliefScanModal.history.map((hItem, idx) => (
+                      <div key={hItem.id || idx} style={{
+                        padding: '8px 10px',
+                        background: '#ffffff',
+                        borderRadius: 8,
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a' }}>
+                            {hItem.waveLabel || `Wave ${reliefScanModal.history.length - idx}`}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                            {formatDateTime(hItem.stubIssuedAt)} • Stub: {hItem.stubCode}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 4, border: '1px solid #bbf7d0' }}>
+                          Claimed
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="vin-btn-cancel"
-                  style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700 }}
-                  onClick={() => setReliefScanModal(null)}
-                >
-                  Close
-                </button>
+
+                {/* Multi-Wave Issue or Close Action Buttons */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    className="vin-mob-sheet-submit-btn"
+                    onClick={() => handleConfirmIssueRelief(reliefScanModal.household.id, reliefScanModal.totalPacks + 1)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      background: reliefScanModal.claimedToday ? '#b45309' : '#7c3aed',
+                      padding: '13px',
+                      fontSize: '0.92rem',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <PackageCheck size={18} />
+                    {reliefScanModal.claimedToday
+                      ? `Authorize & Issue Additional Pack (Wave ${reliefScanModal.totalPacks + 1})`
+                      : `Confirm & Issue Wave ${reliefScanModal.totalPacks + 1} Relief Pack`}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="vin-btn-cancel"
+                    style={{ width: '100%', padding: '12px', borderRadius: 12, fontWeight: 700 }}
+                    onClick={() => setReliefScanModal(null)}
+                  >
+                    Close {reliefScanModal.claimedToday ? '(Prevent Duplicate)' : ''}
+                  </button>
+                </div>
               </div>
             )}
 

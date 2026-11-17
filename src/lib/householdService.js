@@ -925,11 +925,12 @@ export async function getAllReliefStubs() {
 export async function getHouseholdReliefHistory(householdId) {
   if (!householdId) return [];
   try {
-    const [stubsRes, eventsRes, placementsRes] = await Promise.allSettled([
+    const [stubsRes, eventsRes, placementsRes, hhRes] = await Promise.allSettled([
       supabase
         .from('relief_goods_stubs')
-        .select('household_id, event_id, stub_code, stub_issued, stub_issued_at')
-        .eq('household_id', householdId),
+        .select('id, household_id, event_id, stub_code, stub_issued, stub_issued_at, stub_issued_by, created_at')
+        .eq('household_id', householdId)
+        .order('stub_issued_at', { ascending: false }),
       supabase
         .from('evacuation_events')
         .select('id, event_name, event_type, status, declared_at, created_at'),
@@ -937,29 +938,64 @@ export async function getHouseholdReliefHistory(householdId) {
         .from('room_placements')
         .select('event_id, center_id, room_id, center:evacuation_centers(id, name, location), room:rooms(id, room_name)')
         .eq('household_id', householdId),
+      supabase
+        .from('households')
+        .select('id, stub_code, stub_issued, stub_issued_at, center_id, room_id, center:evacuation_centers!households_center_id_fkey(id, name), room:rooms(id, room_name)')
+        .eq('id', householdId)
+        .maybeSingle(),
     ]);
 
     const stubs = (stubsRes.status === 'fulfilled' && stubsRes.value.data) ? stubsRes.value.data : [];
     const events = (eventsRes.status === 'fulfilled' && eventsRes.value.data) ? eventsRes.value.data : [];
     const placements = (placementsRes.status === 'fulfilled' && placementsRes.value.data) ? placementsRes.value.data : [];
+    const hh = (hhRes.status === 'fulfilled' && hhRes.value.data) ? hhRes.value.data : null;
 
     const eventsMap = new Map(events.map((ev) => [ev.id, ev]));
     const placementsMap = new Map(placements.map((p) => [p.event_id, p]));
 
-    return stubs.map((s) => {
+    let items = stubs.map((s) => {
       const ev = eventsMap.get(s.event_id);
       const pl = placementsMap.get(s.event_id);
       return {
+        id: s.id,
         stubCode: s.stub_code || '—',
         stubIssued: Boolean(s.stub_issued),
-        stubIssuedAt: s.stub_issued_at,
+        stubIssuedAt: s.stub_issued_at || s.created_at,
+        stubIssuedBy: s.stub_issued_by || 'MSWDO Staff',
         eventId: s.event_id,
         eventName: ev?.event_name || (s.event_id === 'default-active-event' ? 'Active Operation' : 'Disaster Relief Operation'),
         eventType: ev?.event_type || 'Relief Operation',
-        centerName: pl?.center?.name || 'Assigned Center',
-        roomName: pl?.room?.room_name || 'Assigned Room',
+        centerName: pl?.center?.name || hh?.center?.name || 'Assigned Center',
+        roomName: pl?.room?.room_name || hh?.room?.room_name || 'Assigned Room',
       };
-    }).sort((a, b) => new Date(b.stubIssuedAt || 0) - new Date(a.stubIssuedAt || 0));
+    });
+
+    // Fallback for households marked stub_issued in households table before relief_goods_stubs row was created
+    if (items.length === 0 && hh && hh.stub_issued && hh.stub_issued_at) {
+      items.push({
+        id: `hh-legacy-${hh.id}`,
+        stubCode: hh.stub_code || '—',
+        stubIssued: true,
+        stubIssuedAt: hh.stub_issued_at,
+        stubIssuedBy: 'MSWDO Staff',
+        eventId: null,
+        eventName: 'Disaster Relief Operation',
+        eventType: 'Relief Operation',
+        centerName: hh.center?.name || 'Assigned Center',
+        roomName: hh.room?.room_name || 'Assigned Room',
+      });
+    }
+
+    // Sort ascending by time first to calculate wave numbers chronologically
+    items.sort((a, b) => new Date(a.stubIssuedAt || 0) - new Date(b.stubIssuedAt || 0));
+    items = items.map((item, idx) => ({
+      ...item,
+      wave: idx + 1,
+      waveLabel: `Relief Pack Wave ${idx + 1}`,
+    }));
+
+    // Return descending (most recent pack first)
+    return items.reverse();
   } catch (err) {
     console.warn('Error fetching household relief history:', err);
     return [];
@@ -969,7 +1005,7 @@ export async function getHouseholdReliefHistory(householdId) {
 /**
  * Mark a household stub as issued and persist the event-specific issue record.
  */
-export async function issueHouseholdStub(id, eventId = null) {
+export async function issueHouseholdStub(id, eventId = null, options = {}) {
   const issuedAt = new Date().toISOString();
 
   // Ensure household has a unique stub code assigned upon issuance
@@ -999,45 +1035,26 @@ export async function issueHouseholdStub(id, eventId = null) {
 
   if (error) throw error;
 
-  if (eventId) {
-    const { data: existingStub, error: lookupError } = await supabase
-      .from('relief_goods_stubs')
-      .select('household_id')
-      .eq('household_id', id)
-      .eq('event_id', eventId)
-      .maybeSingle();
+  // Insert a new record in relief_goods_stubs to record this distribution wave permanently in history
+  const stubRecord = {
+    household_id: id,
+    event_id: eventId || null,
+    stub_code: stubCode,
+    stub_issued: true,
+    stub_issued_at: issuedAt,
+    stub_issued_by: options.issuedBy || 'MSWDO Staff',
+  };
 
-    if (lookupError) throw lookupError;
+  const { error: insertError } = await supabase
+    .from('relief_goods_stubs')
+    .insert(stubRecord);
 
-    const stubRecord = {
-      stub_code: data.stub_code,
-      stub_issued: true,
-      stub_issued_at: issuedAt,
-    };
-
-    if (existingStub) {
-      const { error: updateError } = await supabase
-        .from('relief_goods_stubs')
-        .update(stubRecord)
-        .eq('household_id', id)
-        .eq('event_id', eventId);
-
-      if (updateError) throw updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from('relief_goods_stubs')
-        .insert({
-          household_id: id,
-          event_id: eventId,
-          ...stubRecord,
-        });
-
-      if (insertError) throw insertError;
-    }
+  if (insertError) {
+    console.warn('Could not insert into relief_goods_stubs:', insertError.message);
   }
 
   notifyHouseholdChanges();
-  return data;
+  return { ...data, issuedAt };
 }
 
 /**
