@@ -26,9 +26,6 @@ import {
 } from '../../lib/householdProfileOptions.js';
 import { joinFullName, splitFullName } from '../../lib/householdNames.js';
 import {
-  isCenterMatch,
-} from '../../lib/evacuationCenters';
-import {
   useHouseholds,
   usePaginatedMasterlist,
   createHousehold,
@@ -293,48 +290,21 @@ function StubIssuancePanel({ household, households, onClose }) {
 /* ──────────────────────────────────────────────
    Household Filter Sheet (bottom-sheet panel)
    ────────────────────────────────────────────── */
-function HHFilterSheet({ filterStatus, filterCenter, filterRoom, households, search, centersList = [], onApply, onClose }) {
+function HHFilterSheet({ filterStatus, filterRoom, centerName, centersList = [], onApply, onClose }) {
   /* Local draft state — only committed when user taps "Show results" */
   const [draftStatus, setDraftStatus] = useState(filterStatus);
-  const [draftCenter, setDraftCenter] = useState(filterCenter);
   const [draftRoom, setDraftRoom] = useState(filterRoom);
-  const [showCenterPicker, setShowCenterPicker] = useState(false);
   const [showRoomPicker, setShowRoomPicker] = useState(false);
-
-  /* If selected center changes, reset room if needed */
-  const handleCenterChange = (c) => {
-    setDraftCenter(c);
-  };
 
   const handleReset = () => {
     setDraftStatus('All');
-    setDraftCenter('All Centers');
     setDraftRoom('All Rooms');
   };
 
   const handleApply = () => {
-    onApply(draftStatus, draftCenter, draftRoom);
+    onApply(draftStatus, draftRoom);
     onClose();
   };
-
-  /* Live result count based on draft selections */
-  const draftCount = households.filter((h) => {
-    const matchSearch =
-      h.name.toLowerCase().includes(search.toLowerCase()) ||
-      h.room.toLowerCase().includes(search.toLowerCase()) ||
-      (h.stubCode || '').toLowerCase().includes(search.toLowerCase());
-    const isActive = h.evacueeStatus === 'Active' || (!h.evacueeStatus && h.room && h.room !== 'Unassigned');
-    const matchStatus =
-      draftStatus === 'All' ||
-      (draftStatus === 'Active' && isActive) ||
-      (draftStatus === 'Not Active' && !isActive);
-    const matchCenter = isCenterMatch(h.center, draftCenter, centersList);
-    const matchRoom =
-      draftRoom === 'All Rooms' ||
-      h.room === draftRoom ||
-      `Room ${h.room}` === draftRoom;
-    return matchSearch && matchStatus && matchCenter && matchRoom;
-  }).length;
 
   return (
     <div className="vin-mob-sheet-overlay" onClick={onClose}>
@@ -371,22 +341,6 @@ function HHFilterSheet({ filterStatus, filterCenter, filterRoom, households, sea
           </div>
         </div>
 
-        {/* Center Picker Field (Click to open Center Selection pop-up) */}
-        <div className="vin-hh-filter-section">
-          <div className="vin-hh-filter-section-label">Center</div>
-          <div
-            className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
-            onClick={() => setShowCenterPicker(true)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="vin-hh-filter-select-display-txt">
-              {draftCenter}
-            </div>
-            <ChevronDown size={16} className="vin-hh-filter-select-icon" />
-          </div>
-        </div>
-
         {/* Room Picker Field (Click to open Room Selection pop-up) */}
         <div className="vin-hh-filter-section">
           <div className="vin-hh-filter-section-label">Room</div>
@@ -409,21 +363,11 @@ function HHFilterSheet({ filterStatus, filterCenter, filterRoom, households, sea
         </button>
       </div>
 
-      {/* Pop-up Panel for selecting Center */}
-      {showCenterPicker && (
-        <CenterSelectSheet
-          selected={draftCenter}
-          centersList={centersList}
-          onSelect={(c) => handleCenterChange(c)}
-          onClose={() => setShowCenterPicker(false)}
-        />
-      )}
-
       {/* Pop-up Panel for selecting Room */}
       {showRoomPicker && (
         <RoomSelectSheet
           selected={draftRoom}
-          centerName={draftCenter}
+          centerName={centerName}
           centersList={centersList}
           onSelect={(r) => setDraftRoom(r)}
           onClose={() => setShowRoomPicker(false)}
@@ -700,7 +644,6 @@ export default function MobileHouseholds() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Active' | 'Not Active'
-  const [filterCenter, setFilterCenter] = useState(assignedCenter || 'All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [openFilter, setOpenFilter] = useState(null);
@@ -708,13 +651,6 @@ export default function MobileHouseholds() {
   const [assigningHousehold, setAssigningHousehold] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
-
-  // Sync station filter whenever user switches station from the header pill
-  useEffect(() => {
-    if (assignedCenter) {
-      setFilterCenter(assignedCenter);
-    }
-  }, [assignedCenter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -724,25 +660,7 @@ export default function MobileHouseholds() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const targetCenterObj = useMemo(() => {
-    if (!filterCenter || filterCenter === 'All Centers') return null;
-    return centers.find((c) => c.displayName === filterCenter || c.name === filterCenter);
-  }, [centers, filterCenter]);
-
-  const isGlobalSearching = debouncedSearch.trim().length > 0;
-
-  // CRITICAL OPTIMIZATION FOR MOBILE MEMORY:
-  // When user is searching (typing query), search across ALL 27 evacuation centers (centerId: '')
-  // When search is empty, prioritize and scope to the currently assigned center to keep DOM fast & crash-free!
-  const queryCenterId = useMemo(() => {
-    if (isGlobalSearching) {
-      if (filterCenter && filterCenter !== 'All Centers' && filterCenter !== assignedCenter) {
-        return targetCenterObj?.id || '';
-      }
-      return '';
-    }
-    return targetCenterObj?.id || assignedCenterObj?.id || '';
-  }, [isGlobalSearching, filterCenter, assignedCenter, targetCenterObj, assignedCenterObj]);
+  const queryCenterId = assignedCenterObj?.id || assignedCenterId || '';
 
   const {
     data: masterlistHouseholds,
@@ -861,7 +779,6 @@ export default function MobileHouseholds() {
 
   const activeFilters =
     (filterStatus !== 'All' ? 1 : 0) +
-    (filterCenter !== 'All Centers' ? 1 : 0) +
     (filterRoom !== 'All Rooms' ? 1 : 0);
 
   const handleSelectHousehold = async (item) => {
@@ -1266,9 +1183,7 @@ export default function MobileHouseholds() {
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Households</h1>
           <p className="vin-mob-subtitle">
-            {isGlobalSearching ? (
-              `Searching 27 centers: ${(masterlistTotalCount || 0).toLocaleString()} found`
-            ) : assignedCenterObj ? (
+            {assignedCenterObj ? (
               `Station: ${assignedCenterObj.displayName || assignedCenter} (${(masterlistTotalCount || 0).toLocaleString()} families)`
             ) : (
               `${(masterlistTotalCount || dbTotalCount || households.length).toLocaleString()} registered households`
@@ -1295,7 +1210,7 @@ export default function MobileHouseholds() {
           <Search size={18} className="vin-mob-search-icon" />
           <input
             type="text"
-            placeholder="Search all 27 centers by name, code, barangay..."
+            placeholder="Search by name, code, or barangay..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -1316,16 +1231,6 @@ export default function MobileHouseholds() {
         </div>
       </div>
 
-      {/* Global Search Notice Banner */}
-      {isGlobalSearching && (
-        <div className="vin-mob-global-search-banner">
-          <Search size={13} className="vin-mob-global-search-icon" />
-          <span>
-            Global Search: searching across <strong>all 27 centers</strong> for &ldquo;{debouncedSearch}&rdquo;
-          </span>
-        </div>
-      )}
-
       {/* Filter bar with left-aligned Filters button and active chips matching user design */}
       <div className="vin-hh-filter-bar">
         {/* Main Filters Button (opens bottom sheet panel) */}
@@ -1340,22 +1245,6 @@ export default function MobileHouseholds() {
             <span className="vin-hh-filters-trigger-badge">{activeFilters}</span>
           )}
         </button>
-
-        {/* Active Filter Chips (like in Image 1) */}
-        {filterCenter !== 'All Centers' && (
-          <button
-            type="button"
-            className="vin-hh-active-chip"
-            onClick={() => {
-              setFilterCenter('All Centers');
-              setCurrentPage(1);
-            }}
-            title="Remove center filter"
-          >
-            <span>{filterCenter.replace('Elementary School', '').replace('National High School', '').trim()}</span>
-            <X size={13} className="vin-hh-chip-close" />
-          </button>
-        )}
 
         {filterRoom !== 'All Rooms' && (
           <button
@@ -1535,14 +1424,11 @@ export default function MobileHouseholds() {
       {showFilterSheet && (
         <HHFilterSheet
           filterStatus={filterStatus}
-          filterCenter={filterCenter}
           filterRoom={filterRoom}
-          households={households}
-          search={search}
+          centerName={assignedCenter}
           centersList={centers}
-          onApply={(newStatus, newCenter, newRoom) => {
+          onApply={(newStatus, newRoom) => {
             setFilterStatus(newStatus);
-            setFilterCenter(newCenter);
             setFilterRoom(newRoom);
             setCurrentPage(1);
           }}

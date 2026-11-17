@@ -23,7 +23,7 @@ import {
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
-import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
+import { RoomSelectSheet } from '../../components/CenterSelectSheet';
 import QrScannerModal from '../../components/QrScannerModal';
 
 export default function MobileMonitor() {
@@ -32,25 +32,14 @@ export default function MobileMonitor() {
   const { activeEvent } = useActiveEvent();
   const { placements } = useEventRoomPlacements(activeEvent?.id);
   const { logs, refresh: refreshLogs } = useMonitoringLogs(centers);
-  const {
-    assignedCenter,
-    assignedCenterId,
-    assignedCenterObj,
-  } = useMobileCenter();
+  const { assignedCenter } = useMobileCenter();
 
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Present' | 'For Follow-up' | 'Absent' | 'Transferred'
   const [filterRelief, setFilterRelief] = useState('All');     // 'All' | 'Issued' | 'Not Issued'
-  const [filterCenter, setFilterCenter] = useState(assignedCenter || 'All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
 
-  // Keep filterCenter synced when user switches station from the header pill
-  useEffect(() => {
-    if (assignedCenter) {
-      setFilterCenter(assignedCenter);
-    }
-  }, [assignedCenter]);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeFamily, setActiveFamily] = useState(null);
   const [historyFamily, setHistoryFamily] = useState(null);
@@ -248,7 +237,6 @@ export default function MobileMonitor() {
   const activeFilters =
     (filterStatus !== 'All' ? 1 : 0) +
     (filterRelief !== 'All' ? 1 : 0) +
-    (filterCenter !== 'All Centers' ? 1 : 0) +
     (filterRoom !== 'All Rooms' ? 1 : 0);
 
   const filtered = records.filter((r) => {
@@ -266,7 +254,7 @@ export default function MobileMonitor() {
       filterRelief === 'All' ||
       (filterRelief === 'Issued' && r.stubIssued) ||
       (filterRelief === 'Not Issued' && !r.stubIssued);
-    const matchCenter = isCenterMatch(r.center, filterCenter, centers);
+    const matchCenter = isCenterMatch(r.center, assignedCenter || 'All Centers', centers);
     const matchRoom =
       filterRoom === 'All Rooms' ||
       r.room === filterRoom ||
@@ -631,19 +619,6 @@ export default function MobileMonitor() {
             }}
           >
             <span>Relief: {filterRelief}</span>
-            <X size={13} className="vin-hh-chip-close" />
-          </button>
-        )}
-        {filterCenter !== 'All Centers' && (
-          <button
-            type="button"
-            className="vin-hh-active-chip"
-            onClick={() => {
-              setFilterCenter('All Centers');
-              setCurrentPage(1);
-            }}
-          >
-            <span>{filterCenter.split(' ').slice(0, 2).join(' ')}</span>
             <X size={13} className="vin-hh-chip-close" />
           </button>
         )}
@@ -1264,15 +1239,14 @@ export default function MobileMonitor() {
         <MonFilterSheet
           filterStatus={filterStatus}
           filterRelief={filterRelief}
-          filterCenter={filterCenter}
           filterRoom={filterRoom}
+          centerName={assignedCenter}
           records={records}
           search={search}
           centersList={centers}
-          onApply={(status, relief, center, room) => {
+          onApply={(status, relief, room) => {
             setFilterStatus(status);
             setFilterRelief(relief);
-            setFilterCenter(center);
             setFilterRoom(room);
             setCurrentPage(1);
           }}
@@ -1767,23 +1741,20 @@ export default function MobileMonitor() {
 /* ──────────────────────────────────────────────
    Monitor Filter Sheet (bottom sheet panel)
    ────────────────────────────────────────────── */
-function MonFilterSheet({ filterStatus, filterRelief, filterCenter, filterRoom, records, search, centersList = [], onApply, onClose }) {
+function MonFilterSheet({ filterStatus, filterRelief, filterRoom, centerName, records, search, centersList = [], onApply, onClose }) {
   const [draftStatus, setDraftStatus] = useState(filterStatus);
   const [draftRelief, setDraftRelief] = useState(filterRelief);
-  const [draftCenter, setDraftCenter] = useState(filterCenter);
   const [draftRoom, setDraftRoom] = useState(filterRoom);
-  const [showCenterPicker, setShowCenterPicker] = useState(false);
   const [showRoomPicker, setShowRoomPicker] = useState(false);
 
   const handleReset = () => {
     setDraftStatus('All');
     setDraftRelief('All');
-    setDraftCenter('All Centers');
     setDraftRoom('All Rooms');
   };
 
   const handleApply = () => {
-    onApply(draftStatus, draftRelief, draftCenter, draftRoom);
+    onApply(draftStatus, draftRelief, draftRoom);
     onClose();
   };
 
@@ -1802,7 +1773,7 @@ function MonFilterSheet({ filterStatus, filterRelief, filterCenter, filterRoom, 
       draftRelief === 'All' ||
       (draftRelief === 'Issued' && r.stubIssued) ||
       (draftRelief === 'Not Issued' && !r.stubIssued);
-    const matchCenter = isCenterMatch(r.center, draftCenter, centersList);
+    const matchCenter = isCenterMatch(r.center, centerName || 'All Centers', centersList);
     const matchRoom = draftRoom === 'All Rooms' || r.room === draftRoom;
     return matchSearch && matchStatus && matchRelief && matchCenter && matchRoom;
   }).length;
@@ -1865,20 +1836,6 @@ function MonFilterSheet({ filterStatus, filterRelief, filterCenter, filterRoom, 
           </div>
         </div>
 
-        {/* Center Picker */}
-        <div className="vin-hh-filter-section">
-          <div className="vin-hh-filter-section-label">Center</div>
-          <div
-            className="vin-hh-filter-select-wrap vin-hh-filter-tap-field"
-            onClick={() => setShowCenterPicker(true)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="vin-hh-filter-select-display-txt">{draftCenter}</div>
-            <ChevronDown size={16} className="vin-hh-filter-select-icon" />
-          </div>
-        </div>
-
         {/* Room Picker */}
         <div className="vin-hh-filter-section">
           <div className="vin-hh-filter-section-label">Room</div>
@@ -1899,25 +1856,11 @@ function MonFilterSheet({ filterStatus, filterRelief, filterCenter, filterRoom, 
         </button>
       </div>
 
-      {/* Center Picker Bottom Sheet */}
-      {showCenterPicker && (
-        <CenterSelectSheet
-          selected={draftCenter}
-          centersList={centersList}
-          allCentersSub="Show records from all evacuation centers"
-          onSelect={(c) => {
-            setDraftCenter(c);
-            setDraftRoom('All Rooms');
-          }}
-          onClose={() => setShowCenterPicker(false)}
-        />
-      )}
-
       {/* Room Picker Bottom Sheet */}
       {showRoomPicker && (
         <RoomSelectSheet
           selected={draftRoom}
-          centerName={draftCenter}
+          centerName={centerName}
           centersList={centersList}
           allRoomsSub="Show records from all rooms"
           onSelect={(r) => setDraftRoom(r)}

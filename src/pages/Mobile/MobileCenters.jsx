@@ -445,7 +445,7 @@ export default function MobileCenters() {
                               {item.name}
                               {isCurrentStation && (
                                 <span className="vin-ctr-station-star-tag">
-                                  ⭐ Active Station
+                                  Active Station
                                 </span>
                               )}
                             </div>
