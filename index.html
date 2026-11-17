@@ -23,6 +23,13 @@
       }
     </script>
     <style>
+      /* Match the native OS splash background from the very first paint
+         so there is no black/white flash between the OS splash and the
+         in-app loading splash. Overridden by index.css once it loads. */
+      html, body {
+        background-color: #581c87;
+      }
+
       .skip-app-splash #pwa-splash-screen {
         display: none !important;
       }
