@@ -1637,7 +1637,7 @@ export default function Household() {
               setCurrentPage(1);
             }}
           />
-          {isSearchingServer && (
+          {activeTab === 'masterlist' && masterlistLoading && (
             <span style={{ fontSize: '0.8rem', color: '#7c3aed', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#f5f3ff', borderRadius: 6, border: '1px solid #ddd6fe' }}>
               <Clock size={13} className="animate-spin" /> Searching full database...
             </span>
@@ -1705,8 +1705,7 @@ export default function Household() {
           </div>
 
           <span>
-            Showing <strong>{filtered.length.toLocaleString()}</strong> of <strong>{totalCount.toLocaleString()}</strong> households
-            {serverSearchResults !== null && ' (Dynamic database search results)'}
+            Showing <strong>{totalCount.toLocaleString()}</strong> households
           </span>
         </div>
       </div>
@@ -1859,11 +1858,11 @@ export default function Household() {
       </div>
 
       {/* ── Pagination Controls ── */}
-      {filtered.length > 0 && (
+      {totalCount > 0 && (
         <div className="vin-admin-pagination" style={{ flexWrap: 'wrap', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <span className="vin-pagination-info">
-              Showing <strong>{(startIndex + 1).toLocaleString()}</strong>–<strong>{Math.min(startIndex + pageSize, filtered.length).toLocaleString()}</strong> of <strong>{filtered.length.toLocaleString()}</strong> households
+              Showing <strong>{(startIndex + 1).toLocaleString()}</strong>–<strong>{Math.min(startIndex + pageSize, totalCount).toLocaleString()}</strong> of <strong>{totalCount.toLocaleString()}</strong> households
             </span>
 
             <div className="vin-page-size-selector">
@@ -2887,7 +2886,7 @@ export default function Household() {
         centerValue={filterCenter}
         roomValue={filterRoom}
         centersList={centers}
-        resultCount={filtered.length}
+        resultCount={totalCount}
         onApply={({ status, center, room }) => {
           setFilterStub(status);
           setFilterCenter(center);

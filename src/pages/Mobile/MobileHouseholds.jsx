@@ -711,10 +711,9 @@ export default function MobileHouseholds() {
   }, [centers, filterCenter]);
 
   const {
-    households: masterlistHouseholds,
+    data: masterlistHouseholds,
     totalCount: masterlistTotalCount,
-    totalPages: masterlistTotalPages,
-    isLoading: masterlistLoading,
+    loading: masterlistLoading,
     refresh: refreshMasterlist,
   } = usePaginatedMasterlist({
     page: currentPage,
@@ -824,7 +823,7 @@ export default function MobileHouseholds() {
 
   /* ── Server-side Paginated Households ── */
   const paginatedHouseholds = masterlistHouseholds;
-  const totalPages = masterlistTotalPages;
+  const totalPages = Math.ceil((masterlistTotalCount || 0) / pageSize) || 1;
 
   const activeFilters =
     (filterStatus !== 'All' ? 1 : 0) +
@@ -1277,7 +1276,7 @@ export default function MobileHouseholds() {
           )}
         </div>
       </div>
-      {isSearchingServer && (
+      {masterlistLoading && (
         <div style={{ fontSize: '0.78rem', color: '#7c3aed', padding: '0 4px 6px', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed', display: 'inline-block' }} /> Searching all {(dbTotalCount || households.length).toLocaleString()} records...
         </div>

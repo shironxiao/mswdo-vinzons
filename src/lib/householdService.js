@@ -244,6 +244,7 @@ export function usePaginatedMasterlist({
   barangay = '',
   centerId = '',
   roomId = '',
+  evacueeStatus = '',
   stubStatus = 'All',
   centersList = [],
   enabled = true,
@@ -268,6 +269,7 @@ export function usePaginatedMasterlist({
         barangay,
         centerId,
         roomId,
+        evacueeStatus,
         stubStatus,
         centersList,
       });
@@ -1287,5 +1289,5 @@ export async function deleteHousehold(householdId) {
     .eq('id', householdId);
   if (householdError) throw householdError;
 
-  dispatchHouseholdsChanged();
+  notifyHouseholdChanges();
 }
