@@ -154,10 +154,10 @@ export default function MobileDashboard() {
           sub: `${room} • ${center}`,
           timestamp: household.stub_issued_at,
           badge: 'Issued',
-          badgeVariant: 'amber',
+          badgeVariant: 'green',
           icon: Ticket,
-          iconColor: '#b45309',
-          iconBgClass: 'amber',
+          iconColor: '#7c3aed',
+          iconBgClass: 'green',
         });
       }
     });
