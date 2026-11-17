@@ -1344,10 +1344,8 @@ export default function MobileHouseholds() {
         )}
       </div>
 
-      {/* Legend */}
+      {/* Result count */}
       <div className="vin-hh-legend">
-        <span className="vin-hh-legend-dot issued" /> Active
-        <span className="vin-hh-legend-dot notissued" /> Not Active
         <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
           {masterlistTotalCount.toLocaleString()} result{masterlistTotalCount !== 1 ? 's' : ''}
         </span>
