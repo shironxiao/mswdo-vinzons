@@ -69,6 +69,10 @@ export default function EvacueeMonitoring() {
       .filter((household) => (
         household.evacueeStatus === 'Active' &&
         household.centerId &&
+        household.roomId &&
+        household.room &&
+        household.room !== 'Unassigned' &&
+        household.room.trim().toLowerCase() !== 'unassigned' &&
         !placedIds.has(household.id)
       ))
       .map((household) => ({

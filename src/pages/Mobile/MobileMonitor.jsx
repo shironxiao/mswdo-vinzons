@@ -14,7 +14,11 @@ import {
   useEvacuationCenters,
   isCenterMatch,
 } from '../../lib/evacuationCenters';
-import { useHouseholds, issueHouseholdStub } from '../../lib/householdService.js';
+import {
+  useHouseholds,
+  useEventRoomPlacements,
+  issueHouseholdStub,
+} from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
@@ -24,6 +28,7 @@ export default function MobileMonitor() {
   const { centers } = useEvacuationCenters();
   const { households, refresh: refreshHouseholds } = useHouseholds(centers);
   const { activeEvent } = useActiveEvent();
+  const { placements } = useEventRoomPlacements(activeEvent?.id);
   const { logs, refresh: refreshLogs } = useMonitoringLogs(centers);
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
@@ -46,15 +51,77 @@ export default function MobileMonitor() {
   });
 
   // Dynamic monitor records derived from live Supabase households & monitoring logs
+  // Only households assigned to an evacuation center room are included in the room monitor
   const records = useMemo(() => {
-    return households.map((h, idx) => {
+    // 1. Filter: exclude unassigned households and decamped evacuees
+    const assignedHouseholds = households.filter((h) => {
+      if (h.evacueeStatus === 'Decamped') return false;
+
+      // Check if room is directly assigned on the household
+      const hasDirectRoom = Boolean(
+        h.roomId &&
+        h.room &&
+        h.room !== 'Unassigned' &&
+        h.room.trim().toLowerCase() !== 'unassigned' &&
+        h.centerId &&
+        h.center &&
+        h.center !== 'Unassigned Center' &&
+        h.center.trim().toLowerCase() !== 'unassigned center'
+      );
+
+      // Check active room placement from room_placements table
+      const activePlacement = placements?.find(
+        (p) =>
+          p.household_id === h.id &&
+          p.status === 'Evacuated' &&
+          p.room_id &&
+          p.room_id !== 'Unassigned'
+      );
+
+      return hasDirectRoom || Boolean(activePlacement);
+    });
+
+    return assignedHouseholds.map((h, idx) => {
       const allNames = [h.name, ...(h.members || []).map((m) => m.name || m)];
       const total = allNames.length;
+
+      // Check if room/center can be resolved or augmented from active placement
+      const activePlacement = placements?.find(
+        (p) =>
+          p.household_id === h.id &&
+          p.status === 'Evacuated' &&
+          p.room_id &&
+          p.room_id !== 'Unassigned'
+      );
+
+      let effectiveRoom = h.room;
+      let effectiveRoomId = h.roomId;
+      let effectiveCenter = h.center;
+      let effectiveCenterId = h.centerId;
+
+      if ((!effectiveRoom || effectiveRoom === 'Unassigned' || !effectiveRoomId) && activePlacement) {
+        effectiveRoomId = activePlacement.room_id;
+        effectiveCenterId = activePlacement.center_id || effectiveCenterId;
+        const centerObj = centers.find((c) => c.id === effectiveCenterId);
+        const roomObj = centerObj?.rooms?.find(
+          (r) => r.id === effectiveRoomId || r.roomId === effectiveRoomId
+        );
+        effectiveRoom =
+          roomObj?.name ||
+          roomObj?.roomName ||
+          activePlacement.room?.room_name ||
+          (typeof effectiveRoomId === 'string' && !effectiveRoomId.includes('-')
+            ? `Room ${effectiveRoomId}`
+            : 'Room 1');
+        if (centerObj) {
+          effectiveCenter = centerObj.displayName || centerObj.name || effectiveCenter;
+        }
+      }
 
       // Find most recent monitoring log for this household
       const latestLog = logs.find((l) => l.householdId === h.id);
 
-      let status = h.evacueeStatus === 'Decamped' ? 'Decamped' : 'Present';
+      let status = 'Present';
       let ratio = `${total}/${total}`;
       let dateFormatted = h.createdAt
         ? new Date(h.createdAt).toLocaleString('en-US', {
@@ -91,11 +158,11 @@ export default function MobileMonitor() {
       return {
         id: h.id || idx + 1,
         householdId: h.id,
-        centerId: h.centerId,
-        roomId: h.roomId,
+        centerId: effectiveCenterId,
+        roomId: effectiveRoomId,
         name: h.name,
-        center: h.center || 'Unassigned Center',
-        room: h.room || 'Unassigned',
+        center: effectiveCenter || 'Unassigned Center',
+        room: effectiveRoom,
         ratio,
         timestamp: dateFormatted,
         status,
@@ -108,7 +175,7 @@ export default function MobileMonitor() {
         evacueeStatus: h.evacueeStatus || 'Active',
       };
     });
-  }, [households, logs, attendanceOverrides]);
+  }, [households, placements, centers, logs, attendanceOverrides]);
 
   const activeFilters =
     (filterStatus !== 'All' ? 1 : 0) +
@@ -497,7 +564,9 @@ export default function MobileMonitor() {
               {paginatedRecords.length === 0 ? (
                 <tr>
                   <td colSpan={2} className="vin-mob-table-empty">
-                    No families match the current filter.
+                    {records.length === 0
+                      ? 'No evacuees have been assigned to an evacuation room yet.'
+                      : 'No families match the current filter.'}
                   </td>
                 </tr>
               ) : (
@@ -539,7 +608,11 @@ export default function MobileMonitor() {
                           <div className="vin-mob-head-details">
                             <div className="vin-mob-head-name">{item.name}</div>
                             <div className="vin-mob-head-sub">
-                              <span>Room {item.room}</span>
+                              <span>
+                                {item.room?.toLowerCase().startsWith('room')
+                                  ? item.room
+                                  : `Room ${item.room}`}
+                              </span>
                               <span className="vin-mob-sub-dot">•</span>
                               <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
                             </div>
