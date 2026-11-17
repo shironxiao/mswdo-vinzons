@@ -1344,11 +1344,10 @@ export default function MobileHouseholds() {
         )}
       </div>
 
-      {/* Result count */}
+      {/* Legend */}
       <div className="vin-hh-legend">
-        <span style={{ marginLeft: 'auto', fontSize: '.78rem', color: '#64748b' }}>
-          {masterlistTotalCount.toLocaleString()} result{masterlistTotalCount !== 1 ? 's' : ''}
-        </span>
+        <span className="vin-hh-legend-dot issued" /> Active
+        <span className="vin-hh-legend-dot notissued" /> Not Active
       </div>
 
       {/* ── HOUSEHOLD DATA TABLE ── */}
