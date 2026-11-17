@@ -22,6 +22,7 @@ import {
   getHouseholdReliefHistory,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
+import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 import QrScannerModal from '../../components/QrScannerModal';
@@ -32,12 +33,25 @@ export default function MobileMonitor() {
   const { activeEvent } = useActiveEvent();
   const { placements } = useEventRoomPlacements(activeEvent?.id);
   const { logs, refresh: refreshLogs } = useMonitoringLogs(centers);
+  const {
+    assignedCenter,
+    assignedCenterId,
+    assignedCenterObj,
+  } = useMobileCenter();
+
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Present' | 'For Follow-up' | 'Absent' | 'Transferred'
   const [filterRelief, setFilterRelief] = useState('All');     // 'All' | 'Issued' | 'Not Issued'
-  const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [filterCenter, setFilterCenter] = useState(assignedCenter || 'All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
+
+  // Keep filterCenter synced when user switches station from the header pill
+  useEffect(() => {
+    if (assignedCenter) {
+      setFilterCenter(assignedCenter);
+    }
+  }, [assignedCenter]);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeFamily, setActiveFamily] = useState(null);
   const [historyFamily, setHistoryFamily] = useState(null);

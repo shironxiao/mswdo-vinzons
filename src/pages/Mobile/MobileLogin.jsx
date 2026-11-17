@@ -19,8 +19,8 @@ export default function MobileLogin() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Navigate to Mobile Dashboard on click
-    navigate('/mobile/dashboard');
+    // Navigate to post-login Evacuation Center Selection Panel
+    navigate('/mobile/select-center');
   };
 
   const handleSwitchToAdmin = () => {

@@ -11,6 +11,21 @@
   font-size: 0.8rem;
   color: #64748b;
 }
+
+.vin-ctr-station-star-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #6b21a8;
+  background: #f3e8ff;
+  border: 1px solid #d8b4fe;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  vertical-align: middle;
+}
 .vin-ctr-dot {
   display: inline-block;
   width: 10px;

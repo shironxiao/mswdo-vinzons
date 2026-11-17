@@ -37,6 +37,84 @@
   margin: 0;
 }
 
+/* Station Banner for Mobile Dashboard */
+.vin-mob-station-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%);
+  border: 1.5px solid #d8b4fe;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.08);
+}
+
+.vin-mob-station-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vin-mob-station-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #7c3aed;
+  background: #ffffff;
+  border: 1px solid #e9d5ff;
+  border-radius: 9999px;
+  padding: 2px 8px;
+  width: fit-content;
+}
+
+.vin-mob-station-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #581c87;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vin-mob-station-sub {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6b21a8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.vin-mob-station-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.vin-mob-station-switch-btn:hover {
+  background: #6b21a8;
+}
+
 /* Header Register / Action Button */
 .vin-mob-register-btn {
   display: inline-flex;

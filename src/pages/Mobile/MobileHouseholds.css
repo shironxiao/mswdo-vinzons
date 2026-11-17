@@ -1463,3 +1463,41 @@
 .vin-center-picker-submit:active {
   transform: scale(0.99);
 }
+
+/* ── Global Search Notice Banner & Center Tags ── */
+.vin-mob-global-search-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f3e8ff;
+  border: 1px solid #d8b4fe;
+  color: #6b21a8;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+.vin-mob-global-search-icon {
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+
+.vin-mob-sub-current-station {
+  color: #059669;
+  font-weight: 700;
+  background: #ecfdf5;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+}
+
+.vin-mob-sub-other-center {
+  color: #7c3aed;
+  font-weight: 600;
+  background: #faf5ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+}

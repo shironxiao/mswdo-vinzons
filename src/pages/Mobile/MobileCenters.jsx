@@ -10,6 +10,7 @@ import {
   createEvacuationCenter,
   useEvacuationCenters,
 } from '../../lib/evacuationCenters';
+import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { useHouseholds } from '../../lib/householdService.js';
 import { CenterSelectSheet, RoomSelectSheet } from '../../components/CenterSelectSheet';
 
@@ -233,6 +234,12 @@ function CenterFilterSheet({
 export default function MobileCenters() {
   const { centers: dbCenters, refetch } = useEvacuationCenters();
   const { households } = useHouseholds(dbCenters);
+  const {
+    assignedCenter,
+    assignedCenterId,
+    assignedCenterObj,
+    setAssignedCenter,
+  } = useMobileCenter();
   const centers = useMemo(() => dbCenters.map((center) => ({
     id: center.id,
     name: center.displayName || center.name,
@@ -420,6 +427,10 @@ export default function MobileCenters() {
                   const totalOcc = item.rooms.reduce((a, r) => a + r.occupied, 0);
                   const colorCls = centerColorClass(item);
                   const statusLabel = centerStatusLabel(item);
+                  const isCurrentStation =
+                    (item.id && item.id === assignedCenterObj?.id) ||
+                    item.name === assignedCenter ||
+                    item.fullName === assignedCenter;
 
                   return (
                     <tr
@@ -433,7 +444,14 @@ export default function MobileCenters() {
                             <Building size={16} />
                           </div>
                           <div className="vin-mob-head-details">
-                            <div className="vin-mob-head-name">{item.name}</div>
+                            <div className="vin-mob-head-name">
+                              {item.name}
+                              {isCurrentStation && (
+                                <span className="vin-ctr-station-star-tag">
+                                  ⭐ Active Station
+                                </span>
+                              )}
+                            </div>
                             <div className="vin-mob-head-sub">
                               <MapPin size={11} style={{ display: 'inline', marginRight: 2 }} />
                               <span>{item.location}</span>
@@ -450,16 +468,34 @@ export default function MobileCenters() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
+                      <td style={{ textAlign: 'right', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                         <button
                           type="button"
                           className="vin-mob-row-btn update"
+                          style={{ marginRight: 6 }}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedCenter(item);
                           }}
                         >
                           Rooms
+                        </button>
+                        <button
+                          type="button"
+                          className={`vin-mob-row-btn ${isCurrentStation ? 'active' : ''}`}
+                          style={{
+                            background: isCurrentStation ? '#7c3aed' : '#ede9fe',
+                            color: isCurrentStation ? '#ffffff' : '#6b21a8',
+                            border: 'none',
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isCurrentStation) {
+                              setAssignedCenter(item.fullName || item.name, item.id);
+                            }
+                          }}
+                        >
+                          {isCurrentStation ? 'Station ✓' : 'Select'}
                         </button>
                       </td>
                     </tr>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Home,
   Building,
@@ -7,19 +7,18 @@ import {
   ChevronRight,
   MapPin,
   RefreshCw,
+  Layers,
+  Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
-import { useHouseholds } from '../../lib/householdService.js';
-import { useMonitoringLogs } from '../../lib/monitoringService.js';
+import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { supabase } from '../../lib/supabase.js';
 import './MobileCommon.css';
 
 // Number of activities shown initially and per "See More" click
 const PAGE_SIZE = 5;
-// How many rows we pull per source per fetch (big enough to allow several
-// "See More" clicks without hitting the server again)
-const FETCH_BATCH = 50;
+// How many rows we pull per source per fetch
+const FETCH_BATCH = 30;
 
 function formatActivityTime(timestamp) {
   const elapsedMinutes = Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000);
@@ -41,17 +40,72 @@ function getCenterAndRoom(row, centers) {
 
 export default function MobileDashboard() {
   const navigate = useNavigate();
-  const { centers } = useEvacuationCenters();
-  const { households } = useHouseholds(centers);
-  const { logs } = useMonitoringLogs(centers);
+  const {
+    centers,
+    assignedCenter,
+    assignedCenterId,
+    assignedCenterObj,
+    hasSelectedCenter,
+    openCenterPicker,
+  } = useMobileCenter();
+
+  // If no center has been selected yet, route to the center selection panel
+  useEffect(() => {
+    if (!hasSelectedCenter) {
+      navigate('/mobile/select-center', { replace: true });
+    }
+  }, [hasSelectedCenter, navigate]);
+
   const [recentActivities, setRecentActivities] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  // Fast, lightweight counts queried directly via Supabase HEAD requests
+  const [metrics, setMetrics] = useState({
+    householdsCount: 0,
+    stubsCount: 0,
+    monitoringCount: 0,
+    loading: true,
+  });
+
+  const isAllCenters = !assignedCenterObj && (assignedCenter === 'All Centers' || !assignedCenter);
+  const activeCenterId = assignedCenterObj?.id || (isAllCenters ? null : assignedCenterId);
+
+  // Load lightweight exact HEAD counts scoped to the assigned center
+  const loadScopedMetrics = useCallback(async () => {
+    try {
+      let hhQuery = supabase.from('households').select('*', { count: 'exact', head: true });
+      let stubsQuery = supabase.from('households').select('*', { count: 'exact', head: true }).eq('stub_issued', true);
+      let monQuery = supabase.from('monitoring_logs').select('*', { count: 'exact', head: true });
+
+      if (activeCenterId) {
+        hhQuery = hhQuery.eq('center_id', activeCenterId);
+        stubsQuery = stubsQuery.eq('center_id', activeCenterId);
+        monQuery = monQuery.eq('center_id', activeCenterId);
+      }
+
+      const [hhRes, stubsRes, monRes] = await Promise.all([
+        hhQuery,
+        stubsQuery,
+        monQuery,
+      ]);
+
+      setMetrics({
+        householdsCount: hhRes.count ?? 0,
+        stubsCount: stubsRes.count ?? 0,
+        monitoringCount: monRes.count ?? 0,
+        loading: false,
+      });
+    } catch (err) {
+      console.warn('Error loading dashboard scoped metrics:', err);
+    }
+  }, [activeCenterId]);
+
+  // Fetch recent activities filtered by assigned center
   const fetchRecentActivities = useCallback(async () => {
-    const [householdsResult, monitoringResult, placementsResult] = await Promise.all([
-      supabase
+    try {
+      let hhQuery = supabase
         .from('households')
         .select(`
           id,
@@ -67,8 +121,9 @@ export default function MobileDashboard() {
           members:household_members ( id )
         `)
         .order('updated_at', { ascending: false })
-        .limit(FETCH_BATCH),
-      supabase
+        .limit(FETCH_BATCH);
+
+      let monQuery = supabase
         .from('monitoring_logs')
         .select(`
           id,
@@ -82,8 +137,9 @@ export default function MobileDashboard() {
           room:rooms ( id, room_name )
         `)
         .order('created_at', { ascending: false })
-        .limit(FETCH_BATCH),
-      supabase
+        .limit(FETCH_BATCH);
+
+      let placeQuery = supabase
         .from('room_placements')
         .select(`
           id,
@@ -98,181 +154,145 @@ export default function MobileDashboard() {
           room:rooms ( id, room_name )
         `)
         .order('check_in_at', { ascending: false })
-        .limit(FETCH_BATCH),
-    ]);
+        .limit(FETCH_BATCH);
 
-    if (householdsResult.error) {
-      console.warn('Could not fetch household activity:', householdsResult.error.message);
-    }
-    if (monitoringResult.error) {
-      console.warn('Could not fetch monitoring activity:', monitoringResult.error.message);
-    }
-    if (placementsResult.error) {
-      console.warn('Could not fetch placement activity:', placementsResult.error.message);
-    }
-    if (householdsResult.error && monitoringResult.error && placementsResult.error) {
-      setActivityError(true);
-      setActivityLoading(false);
-      return;
-    }
+      // CRITICAL: Scope queries to active center to prevent memory crashes on mobile!
+      if (activeCenterId) {
+        hhQuery = hhQuery.eq('center_id', activeCenterId);
+        monQuery = monQuery.eq('center_id', activeCenterId);
+        placeQuery = placeQuery.eq('center_id', activeCenterId);
+      }
 
-    const activities = [];
-    (householdsResult.data || []).forEach((household) => {
-      const { center, room } = getCenterAndRoom(household, centers);
-      const title = household.head_name || 'Household';
-      const members = household.members || [];
-      const headName = (household.head_name || '').trim().toLowerCase();
-      const hasHead = members.some((m) =>
-        m.is_household_head ||
-        (m.relationship_to_head && String(m.relationship_to_head).toLowerCase() === 'head') ||
-        (m.full_name && m.full_name.trim().toLowerCase() === headName)
-      );
-      const familyCount = hasHead ? Math.max(1, members.length) : (members.length > 0 ? 1 + members.length : 1);
+      const [householdsResult, monitoringResult, placementsResult] = await Promise.all([
+        hhQuery,
+        monQuery,
+        placeQuery,
+      ]);
 
-      if (household.created_at) {
+      if (householdsResult.error && monitoringResult.error && placementsResult.error) {
+        setActivityError(true);
+        setActivityLoading(false);
+        return;
+      }
+
+      const activities = [];
+      (householdsResult.data || []).forEach((household) => {
+        const { center, room } = getCenterAndRoom(household, centers);
+        const title = household.head_name || 'Household';
+        const members = household.members || [];
+        const familyCount = members.length > 0 ? members.length : 1;
+
+        if (household.created_at) {
+          activities.push({
+            id: `household-${household.id}`,
+            path: '/mobile/households',
+            type: 'Household Registered',
+            title: `${title} & Family`,
+            sub: `${room} • ${center}`,
+            timestamp: household.created_at,
+            badge: `${familyCount} Members`,
+            badgeVariant: 'green',
+            icon: Home,
+            iconColor: '#7c3aed',
+            iconBgClass: 'green',
+          });
+        }
+
+        if (household.stub_issued && household.stub_issued_at) {
+          activities.push({
+            id: `stub-${household.id}`,
+            path: '/mobile/households',
+            type: 'Relief Stub Issued',
+            title: `${title} • ${household.stub_code || 'Stub'}`,
+            sub: `${room} • ${center}`,
+            timestamp: household.stub_issued_at,
+            badge: 'Issued',
+            badgeVariant: 'green',
+            icon: Ticket,
+            iconColor: '#7c3aed',
+            iconBgClass: 'green',
+          });
+        }
+      });
+
+      (placementsResult.data || []).forEach((placement) => {
+        if (!placement.check_in_at) return;
+        const { center, room } = getCenterAndRoom(placement, centers);
+        const title = placement.household?.head_name || 'Household';
+        const isDecamped = placement.status === 'Decamped';
         activities.push({
-          id: `household-${household.id}`,
+          id: `placement-${placement.id}`,
           path: '/mobile/households',
-          type: 'Household Registered',
+          type: isDecamped ? 'Decamped from Center' : 'Assigned to Center',
           title: `${title} & Family`,
           sub: `${room} • ${center}`,
-          timestamp: household.created_at,
-          badge: `${familyCount} Members`,
-          badgeVariant: 'green',
-          icon: Home,
-          iconColor: '#7c3aed',
-          iconBgClass: 'green',
+          timestamp: isDecamped ? (placement.check_out_at || placement.check_in_at) : placement.check_in_at,
+          badge: isDecamped ? 'Decamped' : 'Assigned',
+          badgeVariant: isDecamped ? 'blue' : 'mint',
+          icon: MapPin,
+          iconColor: isDecamped ? '#0284c7' : '#6b21a8',
+          iconBgClass: isDecamped ? 'blue' : 'mint',
         });
-      }
+      });
 
-      if (household.stub_issued && household.stub_issued_at) {
+      (monitoringResult.data || []).forEach((log) => {
+        const { center, room } = getCenterAndRoom(log, centers);
+        const status = log.household_status || 'Recorded';
         activities.push({
-          id: `stub-${household.id}`,
-          path: '/mobile/households',
-          type: 'Relief Stub Issued',
-          title: `${title} • ${household.stub_code || 'Stub'}`,
-          sub: `${room} • ${center}`,
-          timestamp: household.stub_issued_at,
-          badge: 'Issued',
-          badgeVariant: 'green',
-          icon: Ticket,
-          iconColor: '#7c3aed',
-          iconBgClass: 'green',
+          id: `monitoring-${log.id}`,
+          path: '/mobile/monitor',
+          type: 'Attendance Check',
+          title: `${log.household?.head_name || 'Household'} Family`,
+          sub: `${center} • ${log.present_count || 0}/${log.total_members || 0} Present • ${room}`,
+          timestamp: log.created_at,
+          badge: status,
+          badgeVariant: 'blue',
+          icon: Activity,
+          iconColor: '#0284c7',
+          iconBgClass: 'blue',
         });
-      }
-    });
-
-    (placementsResult.data || []).forEach((placement) => {
-      if (!placement.check_in_at) return;
-      const { center, room } = getCenterAndRoom(placement, centers);
-      const title = placement.household?.head_name || 'Household';
-      const isDecamped = placement.status === 'Decamped';
-      activities.push({
-        id: `placement-${placement.id}`,
-        path: '/mobile/households',
-        type: isDecamped ? 'Decamped from Center' : 'Assigned to Center',
-        title: `${title} & Family`,
-        sub: `${room} • ${center}`,
-        timestamp: isDecamped ? (placement.check_out_at || placement.check_in_at) : placement.check_in_at,
-        badge: isDecamped ? 'Decamped' : 'Assigned',
-        badgeVariant: isDecamped ? 'blue' : 'mint',
-        icon: MapPin,
-        iconColor: isDecamped ? '#0284c7' : '#6b21a8',
-        iconBgClass: isDecamped ? 'blue' : 'mint',
       });
-    });
 
-    (monitoringResult.data || []).forEach((log) => {
-      const { center, room } = getCenterAndRoom(log, centers);
-      const status = log.household_status || 'Recorded';
-      activities.push({
-        id: `monitoring-${log.id}`,
-        path: '/mobile/monitor',
-        type: 'Attendance Check',
-        title: `${log.household?.head_name || 'Household'} Family`,
-        sub: `${center} • ${log.present_count || 0}/${log.total_members || 0} Present • ${room}`,
-        timestamp: log.created_at,
-        badge: status,
-        badgeVariant: 'blue',
-        icon: Activity,
-        iconColor: '#0284c7',
-        iconBgClass: 'blue',
-      });
-    });
-
-    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    setRecentActivities(activities);
-    setActivityError(false);
-    setActivityLoading(false);
-  }, [centers]);
+      activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      setRecentActivities(activities);
+      setActivityError(false);
+      setActivityLoading(false);
+    } catch (err) {
+      console.warn('Could not fetch recent activities:', err);
+      setActivityError(true);
+      setActivityLoading(false);
+    }
+  }, [activeCenterId, centers]);
 
   useEffect(() => {
     let isMounted = true;
     let refreshTimeout;
     const scheduleRefresh = () => {
       window.clearTimeout(refreshTimeout);
-      refreshTimeout = window.setTimeout(loadRecentActivities, 250);
-    };
-    const loadRecentActivities = async () => {
-      try {
-        await fetchRecentActivities();
-      } catch (error) {
-        console.warn('Could not load recent dashboard activity:', error);
+      refreshTimeout = window.setTimeout(() => {
         if (isMounted) {
-          setActivityError(true);
-          setActivityLoading(false);
+          fetchRecentActivities();
+          loadScopedMetrics();
         }
-      }
+      }, 300);
     };
 
-    loadRecentActivities();
+    fetchRecentActivities();
+    loadScopedMetrics();
+
     const channel = supabase
-      .channel('mobile-dashboard-recent-activity')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, loadRecentActivities)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, loadRecentActivities)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_placements' }, loadRecentActivities)
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') scheduleRefresh();
-      });
-    const householdChannel = typeof BroadcastChannel === 'undefined'
-      ? null
-      : new BroadcastChannel('vinzons-households');
-    const monitoringChannel = typeof BroadcastChannel === 'undefined'
-      ? null
-      : new BroadcastChannel('vinzons-monitoring-logs');
-    householdChannel?.addEventListener('message', scheduleRefresh);
-    monitoringChannel?.addEventListener('message', scheduleRefresh);
-    const refreshInterval = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
-    }, 30000);
-    window.addEventListener('online', scheduleRefresh);
-    window.addEventListener('focus', scheduleRefresh);
-    document.addEventListener('visibilitychange', scheduleRefresh);
+      .channel(`mobile-dash-${activeCenterId || 'all'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_placements' }, scheduleRefresh)
+      .subscribe();
 
     return () => {
       isMounted = false;
       window.clearTimeout(refreshTimeout);
-      window.clearInterval(refreshInterval);
-      window.removeEventListener('online', scheduleRefresh);
-      window.removeEventListener('focus', scheduleRefresh);
-      document.removeEventListener('visibilitychange', scheduleRefresh);
-      householdChannel?.removeEventListener('message', scheduleRefresh);
-      monitoringChannel?.removeEventListener('message', scheduleRefresh);
-      householdChannel?.close();
-      monitoringChannel?.close();
       supabase.removeChannel(channel);
     };
-  }, [fetchRecentActivities]);
-
-  const metrics = {
-    // Distinct households that have actually been monitored (assigned & tracked),
-    // NOT the full masterlist which can be hundreds of pre-registered families.
-    householdsCount: new Set(logs.map((log) => log.householdId)).size,
-    centersCount: centers.length,
-    stubsCount: households.filter((household) => household.stubIssued).length,
-    // Total number of attendance check-in entries recorded across all rounds
-    monitoringCount: logs.length,
-  };
+  }, [fetchRecentActivities, loadScopedMetrics, activeCenterId]);
 
   const handleLoadMore = () => {
     setVisibleCount((prev) => prev + PAGE_SIZE);
@@ -281,19 +301,63 @@ export default function MobileDashboard() {
   const visibleActivities = recentActivities.slice(0, visibleCount);
   const hasMore = recentActivities.length > visibleCount;
 
+  // Active Station details for the Center card
+  const centerCardDetails = useMemo(() => {
+    if (assignedCenterObj) {
+      const roomCount = assignedCenterObj.rooms?.length || assignedCenterObj.total_rooms || 1;
+      const cap = assignedCenterObj.capacity || (roomCount * 25);
+      return {
+        value: `${roomCount} ${roomCount === 1 ? 'Room' : 'Rooms'}`,
+        label: `Capacity: ${cap} pers.`,
+      };
+    }
+    return {
+      value: centers.length || 27,
+      label: 'Total Centers',
+    };
+  }, [assignedCenterObj, centers.length]);
+
   return (
     <div className="vin-mob-page">
       {/* Header */}
       <header className="vin-mob-header">
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Dashboard</h1>
-          <p className="vin-mob-subtitle">MSWDO Vinzons evacuee management overview</p>
+          <p className="vin-mob-subtitle">MSWDO Vinzons evacuee operations overview</p>
         </div>
       </header>
 
-      {/* 2x2 Dynamic Metric Cards Grid */}
+      {/* Active Evacuation Center Station Banner */}
+      <div className="vin-mob-station-card">
+        <div className="vin-mob-station-card-left">
+          <span className="vin-mob-station-badge">Current Station</span>
+          <h2 className="vin-mob-station-title">
+            {assignedCenterObj?.displayName || assignedCenter || 'All Evacuation Centers'}
+          </h2>
+          <p className="vin-mob-station-sub">
+            <MapPin size={12} />
+            <span>{assignedCenterObj?.location || 'Town-wide Overview (27 Centers)'}</span>
+            {assignedCenterObj?.total_rooms ? (
+              <span>• {assignedCenterObj.total_rooms} Rooms</span>
+            ) : null}
+            {assignedCenterObj?.capacity ? (
+              <span>• Cap: {assignedCenterObj.capacity} pers.</span>
+            ) : null}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="vin-mob-station-switch-btn"
+          onClick={openCenterPicker}
+          title="Switch Evacuation Center"
+        >
+          Switch
+        </button>
+      </div>
+
+      {/* 2x2 Scoped Dynamic Metric Cards Grid */}
       <div className="vin-mob-metrics-grid">
-        {/* Card 1: Households (Dynamic) */}
+        {/* Card 1: Households in this Station */}
         <div
           className="vin-mob-metric-card"
           onClick={() => navigate('/mobile/households')}
@@ -304,10 +368,12 @@ export default function MobileDashboard() {
             <Home size={22} />
           </div>
           <div className="vin-mob-metric-val">{metrics.householdsCount}</div>
-          <div className="vin-mob-metric-lbl">Households</div>
+          <div className="vin-mob-metric-lbl">
+            {assignedCenterObj ? 'Station Families' : 'Households'}
+          </div>
         </div>
 
-        {/* Card 2: Centers (Dynamic) */}
+        {/* Card 2: Center Rooms & Capacity */}
         <div
           className="vin-mob-metric-card"
           onClick={() => navigate('/mobile/centers')}
@@ -317,11 +383,11 @@ export default function MobileDashboard() {
           <div className="vin-mob-icon-box blue">
             <Building size={22} />
           </div>
-          <div className="vin-mob-metric-val">{metrics.centersCount}</div>
-          <div className="vin-mob-metric-lbl">Centers</div>
+          <div className="vin-mob-metric-val">{centerCardDetails.value}</div>
+          <div className="vin-mob-metric-lbl">{centerCardDetails.label}</div>
         </div>
 
-        {/* Card 3: Stubs Recorded (Goes to Households) */}
+        {/* Card 3: Stubs Issued in this Station */}
         <div
           className="vin-mob-metric-card"
           onClick={() => navigate('/mobile/households')}
@@ -335,7 +401,7 @@ export default function MobileDashboard() {
           <div className="vin-mob-metric-lbl">Stubs Issued</div>
         </div>
 
-        {/* Card 4: Recorded Activity (Dynamic) */}
+        {/* Card 4: Attendance Checks in this Station */}
         <div
           className="vin-mob-metric-card"
           onClick={() => navigate('/mobile/monitor')}
@@ -346,25 +412,29 @@ export default function MobileDashboard() {
             <Activity size={22} />
           </div>
           <div className="vin-mob-metric-val">{metrics.monitoringCount}</div>
-          <div className="vin-mob-metric-lbl">Recorded</div>
+          <div className="vin-mob-metric-lbl">Attendance Logs</div>
         </div>
       </div>
 
-      {/* ── Recent Activity Section (Detailed Timeline Feed) ── */}
+      {/* ── Recent Activity Section (Scoped Timeline Feed) ── */}
       <div className="vin-mob-section-head">
         <h2 className="vin-mob-section-title">Recent Activity</h2>
-        <span className="vin-mob-section-sub">Live operations</span>
+        <span className="vin-mob-section-sub">
+          {assignedCenterObj ? `Station: ${assignedCenterObj.displayName || assignedCenter}` : 'All Centers'}
+        </span>
       </div>
 
       <div className="vin-mob-activity-feed">
         {activityLoading && recentActivities.length === 0 && (
-          <p className="vin-mob-section-sub" role="status">Loading recent activity...</p>
+          <p className="vin-mob-section-sub" role="status">Loading station activity...</p>
         )}
         {!activityLoading && activityError && recentActivities.length === 0 && (
           <p className="vin-mob-section-sub" role="alert">Could not load recent activity. Please try again later.</p>
         )}
         {!activityLoading && !activityError && recentActivities.length === 0 && (
-          <p className="vin-mob-section-sub">No recent activity yet.</p>
+          <p className="vin-mob-section-sub">
+            No recent activity recorded yet for {assignedCenterObj?.displayName || assignedCenter || 'this center'}.
+          </p>
         )}
         {visibleActivities.map((act) => {
           const IconComponent = act.icon;

@@ -40,6 +40,7 @@ import {
   fetchHouseholdDetails,
 } from '../../lib/householdService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
+import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 
 const MOBILE_HOUSEHOLD_DRAFT_KEY = 'mswdo.mobile.household-registration-draft';
 const REGISTRATION_YES_NO_FIELDS = [
@@ -691,10 +692,16 @@ export default function MobileHouseholds() {
   const { activeEvent } = useActiveEvent();
   const { placements = [], refresh: refreshPlacements } = useEventRoomPlacements(activeEvent?.id);
 
+  const {
+    assignedCenter,
+    assignedCenterId,
+    assignedCenterObj,
+  } = useMobileCenter();
+
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');     // 'All' | 'Active' | 'Not Active'
-  const [filterCenter, setFilterCenter] = useState('All Centers');
+  const [filterCenter, setFilterCenter] = useState(assignedCenter || 'All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [openFilter, setOpenFilter] = useState(null);
@@ -702,6 +709,13 @@ export default function MobileHouseholds() {
   const [assigningHousehold, setAssigningHousehold] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // Sync station filter whenever user switches station from the header pill
+  useEffect(() => {
+    if (assignedCenter) {
+      setFilterCenter(assignedCenter);
+    }
+  }, [assignedCenter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -716,6 +730,21 @@ export default function MobileHouseholds() {
     return centers.find((c) => c.displayName === filterCenter || c.name === filterCenter);
   }, [centers, filterCenter]);
 
+  const isGlobalSearching = debouncedSearch.trim().length > 0;
+
+  // CRITICAL OPTIMIZATION FOR MOBILE MEMORY:
+  // When user is searching (typing query), search across ALL 27 evacuation centers (centerId: '')
+  // When search is empty, prioritize and scope to the currently assigned center to keep DOM fast & crash-free!
+  const queryCenterId = useMemo(() => {
+    if (isGlobalSearching) {
+      if (filterCenter && filterCenter !== 'All Centers' && filterCenter !== assignedCenter) {
+        return targetCenterObj?.id || '';
+      }
+      return '';
+    }
+    return targetCenterObj?.id || assignedCenterObj?.id || '';
+  }, [isGlobalSearching, filterCenter, assignedCenter, targetCenterObj, assignedCenterObj]);
+
   const {
     data: masterlistHouseholds,
     totalCount: masterlistTotalCount,
@@ -725,7 +754,7 @@ export default function MobileHouseholds() {
     page: currentPage,
     pageSize,
     search: debouncedSearch,
-    centerId: targetCenterObj?.id || '',
+    centerId: queryCenterId,
     roomId: filterRoom === 'All Rooms' ? '' : filterRoom,
     evacueeStatus: filterStatus === 'All' ? '' : filterStatus,
     centersList: centers,
@@ -1238,8 +1267,13 @@ export default function MobileHouseholds() {
         <div className="vin-mob-header-info">
           <h1 className="vin-mob-title">Households</h1>
           <p className="vin-mob-subtitle">
-            {(dbTotalCount || households.length).toLocaleString()} registered households
-            {isLoadingMore && !search && ` (loading ${households.length.toLocaleString()}...)`}
+            {isGlobalSearching ? (
+              `Searching 27 centers: ${(masterlistTotalCount || 0).toLocaleString()} found`
+            ) : assignedCenterObj ? (
+              `Station: ${assignedCenterObj.displayName || assignedCenter} (${(masterlistTotalCount || 0).toLocaleString()} families)`
+            ) : (
+              `${(masterlistTotalCount || dbTotalCount || households.length).toLocaleString()} registered households`
+            )}
           </p>
         </div>
         <button type="button" className="vin-mob-register-btn" onClick={openRegister}>
@@ -1262,7 +1296,7 @@ export default function MobileHouseholds() {
           <Search size={18} className="vin-mob-search-icon" />
           <input
             type="text"
-            placeholder="Search name, code, barangay..."
+            placeholder="Search all 27 centers by name, code, barangay..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -1282,6 +1316,16 @@ export default function MobileHouseholds() {
           )}
         </div>
       </div>
+
+      {/* Global Search Notice Banner */}
+      {isGlobalSearching && (
+        <div className="vin-mob-global-search-banner">
+          <Search size={13} className="vin-mob-global-search-icon" />
+          <span>
+            Global Search: searching across <strong>all 27 centers</strong> for &ldquo;{debouncedSearch}&rdquo;
+          </span>
+        </div>
+      )}
 
       {/* Filter bar with left-aligned Filters button and active chips matching user design */}
       <div className="vin-hh-filter-bar">
@@ -1395,9 +1439,11 @@ export default function MobileHouseholds() {
                               <span className="vin-mob-unassigned-tag">No Room</span>
                             )}
                             <span className="vin-mob-sub-dot">•</span>
-                            <span>{item.center.split(' ').slice(0, 2).join(' ')}</span>
-                            <span className="vin-mob-sub-dot">•</span>
                             <span>{item.familyCount} pers.</span>
+                            <span className="vin-mob-sub-dot">•</span>
+                            <span className={(item.center_id && item.center_id === assignedCenterObj?.id) || item.center === assignedCenter ? 'vin-mob-sub-current-station' : 'vin-mob-sub-other-center'}>
+                              {(item.center_id && item.center_id === assignedCenterObj?.id) || item.center === assignedCenter ? '📍 Station' : `🏢 ${item.center.split(' ').slice(0, 2).join(' ')}`}
+                            </span>
                           </div>
                           <div className="vin-mob-head-badges">
                             {(() => {

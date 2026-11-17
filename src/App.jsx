@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layouts/admin/AdminLayout';
 import { EventProvider } from './context/EventContext.jsx';
+import { MobileCenterProvider } from './context/MobileCenterContext.jsx';
 import MobileLayout from './layouts/mobile/MobileLayout';
 import PWAInstallBanner from './components/PWAInstallBanner';
 
@@ -19,6 +20,7 @@ import AdminLogin from './pages/Admin/AdminLogin';
 
 // Mobile Pages
 import MobileLogin from './pages/Mobile/MobileLogin';
+import MobileCenterSelect from './pages/Mobile/MobileCenterSelect';
 import MobileDashboard from './pages/Mobile/MobileDashboard';
 import MobileHouseholds from './pages/Mobile/MobileHouseholds';
 import MobileCenters from './pages/Mobile/MobileCenters';
@@ -43,13 +45,30 @@ export default function App() {
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/mobile" element={<Navigate to="/mobile/dashboard" replace />} />
 
+        {/* Post-login Evacuation Center Selection Screen */}
+        <Route
+          path="/mobile/select-center"
+          element={
+            <MobileCenterProvider>
+              <MobileCenterSelect />
+            </MobileCenterProvider>
+          }
+        />
+
         {/* ========================================================
             MOBILE LAYOUT ROUTE:
             Single source of truth for all Mobile views!
             Both Topbar, Hamburger Menu, and Bottom Navigation Bar
             are shared here. Any change automatically updates everywhere!
             ======================================================== */}
-        <Route path="/mobile" element={<MobileLayout />}>
+        <Route
+          path="/mobile"
+          element={
+            <MobileCenterProvider>
+              <MobileLayout />
+            </MobileCenterProvider>
+          }
+        >
           <Route path="dashboard" element={<MobileDashboard />} />
           <Route path="households" element={<MobileHouseholds />} />
           <Route path="centers" element={<MobileCenters />} />

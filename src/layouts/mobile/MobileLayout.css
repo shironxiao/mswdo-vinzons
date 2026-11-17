@@ -82,6 +82,53 @@
   white-space: nowrap;
 }
 
+.vin-mobile-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vin-mobile-topbar-center-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 9999px;
+  padding: 2px 8px;
+  color: #fae8ff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 170px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.vin-mobile-topbar-center-pill:hover,
+.vin-mobile-topbar-center-pill:active {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.vin-mobile-topbar-center-icon {
+  color: #f0abfc;
+  flex-shrink: 0;
+}
+
+.vin-mobile-topbar-center-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vin-mobile-topbar-center-chevron {
+  color: #e9d5ff;
+  flex-shrink: 0;
+}
+
 .vin-mobile-topbar-actions {
   display: flex;
   align-items: center;

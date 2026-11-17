@@ -4,15 +4,27 @@ import {
   Wifi,
   WifiOff,
   User,
+  MapPin,
+  ChevronDown,
 } from 'lucide-react';
 import { MOBILE_NAV_ITEMS } from './mobileNavConfig';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
+import { CenterSelectSheet } from '../../components/CenterSelectSheet.jsx';
+import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import mswoLogo from '../../assets/mswdo logo.png';
 import './MobileLayout.css';
 
 export default function MobileLayout({ children }) {
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const {
+    centers,
+    assignedCenter,
+    setAssignedCenter,
+    isCenterPickerOpen,
+    openCenterPicker,
+    closeCenterPicker,
+  } = useMobileCenter();
 
   // Dynamic Online/Offline detector
   const [isOnline, setIsOnline] = useState(
@@ -41,7 +53,21 @@ export default function MobileLayout({ children }) {
         <header className="vin-mobile-topbar">
           <div className="vin-mobile-brand">
             <img src={mswoLogo} alt="MSWDO Logo" className="vin-mobile-brand-logo" />
-            <h1 className="vin-mobile-brand-title">MSWDO - Vinzons</h1>
+            <div className="vin-mobile-brand-text">
+              <h1 className="vin-mobile-brand-title">MSWDO - Vinzons</h1>
+              <button
+                type="button"
+                className="vin-mobile-topbar-center-pill"
+                onClick={openCenterPicker}
+                title="Tap to switch evacuation center"
+              >
+                <MapPin size={11} className="vin-mobile-topbar-center-icon" />
+                <span className="vin-mobile-topbar-center-name">
+                  {assignedCenter || 'Select Center'}
+                </span>
+                <ChevronDown size={11} className="vin-mobile-topbar-center-chevron" />
+              </button>
+            </div>
           </div>
 
           <div className="vin-mobile-topbar-actions">
@@ -100,6 +126,19 @@ export default function MobileLayout({ children }) {
         }}
         onCancel={() => setShowLogoutModal(false)}
       />
+
+      {/* Global Evacuation Center Bottom Sheet Switcher */}
+      {isCenterPickerOpen && (
+        <CenterSelectSheet
+          selected={assignedCenter}
+          centersList={centers}
+          onSelect={(centerName) => setAssignedCenter(centerName)}
+          onClose={closeCenterPicker}
+          showAllOption={true}
+          allCentersLabel="All Centers"
+          allCentersSub="Show records across all 27 evacuation centers"
+        />
+      )}
     </div>
   );
 }
