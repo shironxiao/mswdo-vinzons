@@ -12,7 +12,8 @@ export default defineConfig({
         'favicon.svg',
         'favicon.png',
         'icons.svg',
-        'mswdo-logo.png'
+        'mswdo-logo.png',
+        'mswdo-logo-maskable.png'
       ],
       manifest: {
         name: 'MSWDO Vinzons - Evacuee Management System',
@@ -32,7 +33,7 @@ export default defineConfig({
             purpose: 'any'
           },
           {
-            src: '/mswdo-logo.png',
+            src: '/mswdo-logo-maskable.png',
             sizes: '192x192 512x512',
             type: 'image/png',
             purpose: 'maskable'
