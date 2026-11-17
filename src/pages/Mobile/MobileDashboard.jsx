@@ -5,6 +5,8 @@ import {
   Ticket,
   Activity,
   ChevronRight,
+  MapPin,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
@@ -13,7 +15,11 @@ import { useMonitoringLogs } from '../../lib/monitoringService.js';
 import { supabase } from '../../lib/supabase.js';
 import './MobileCommon.css';
 
-const RECENT_ACTIVITY_LIMIT = 5;
+// Number of activities shown initially and per "See More" click
+const PAGE_SIZE = 5;
+// How many rows we pull per source per fetch (big enough to allow several
+// "See More" clicks without hitting the server again)
+const FETCH_BATCH = 50;
 
 function formatActivityTime(timestamp) {
   const elapsedMinutes = Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000);
@@ -41,9 +47,10 @@ export default function MobileDashboard() {
   const [recentActivities, setRecentActivities] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const fetchRecentActivities = useCallback(async () => {
-    const [householdsResult, monitoringResult] = await Promise.all([
+    const [householdsResult, monitoringResult, placementsResult] = await Promise.all([
       supabase
         .from('households')
         .select(`
@@ -54,12 +61,13 @@ export default function MobileDashboard() {
           stub_issued,
           stub_issued_at,
           created_at,
+          updated_at,
           center:evacuation_centers!households_center_id_fkey ( id, name, location ),
           room:rooms ( id, room_name ),
           members:household_members ( id )
         `)
-        .order('created_at', { ascending: false })
-        .limit(RECENT_ACTIVITY_LIMIT),
+        .order('updated_at', { ascending: false })
+        .limit(FETCH_BATCH),
       supabase
         .from('monitoring_logs')
         .select(`
@@ -74,7 +82,23 @@ export default function MobileDashboard() {
           room:rooms ( id, room_name )
         `)
         .order('created_at', { ascending: false })
-        .limit(RECENT_ACTIVITY_LIMIT),
+        .limit(FETCH_BATCH),
+      supabase
+        .from('room_placements')
+        .select(`
+          id,
+          household_id,
+          center_id,
+          room_id,
+          status,
+          check_in_at,
+          check_out_at,
+          household:households ( id, head_name ),
+          center:evacuation_centers ( id, name, location ),
+          room:rooms ( id, room_name )
+        `)
+        .order('check_in_at', { ascending: false })
+        .limit(FETCH_BATCH),
     ]);
 
     if (householdsResult.error) {
@@ -83,7 +107,10 @@ export default function MobileDashboard() {
     if (monitoringResult.error) {
       console.warn('Could not fetch monitoring activity:', monitoringResult.error.message);
     }
-    if (householdsResult.error && monitoringResult.error) {
+    if (placementsResult.error) {
+      console.warn('Could not fetch placement activity:', placementsResult.error.message);
+    }
+    if (householdsResult.error && monitoringResult.error && placementsResult.error) {
       setActivityError(true);
       setActivityLoading(false);
       return;
@@ -135,6 +162,26 @@ export default function MobileDashboard() {
       }
     });
 
+    (placementsResult.data || []).forEach((placement) => {
+      if (!placement.check_in_at) return;
+      const { center, room } = getCenterAndRoom(placement, centers);
+      const title = placement.household?.head_name || 'Household';
+      const isDecamped = placement.status === 'Decamped';
+      activities.push({
+        id: `placement-${placement.id}`,
+        path: '/mobile/households',
+        type: isDecamped ? 'Decamped from Center' : 'Assigned to Center',
+        title: `${title} & Family`,
+        sub: `${room} • ${center}`,
+        timestamp: isDecamped ? (placement.check_out_at || placement.check_in_at) : placement.check_in_at,
+        badge: isDecamped ? 'Decamped' : 'Assigned',
+        badgeVariant: isDecamped ? 'blue' : 'mint',
+        icon: MapPin,
+        iconColor: isDecamped ? '#0284c7' : '#6b21a8',
+        iconBgClass: isDecamped ? 'blue' : 'mint',
+      });
+    });
+
     (monitoringResult.data || []).forEach((log) => {
       const { center, room } = getCenterAndRoom(log, centers);
       const status = log.household_status || 'Recorded';
@@ -154,7 +201,7 @@ export default function MobileDashboard() {
     });
 
     activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    setRecentActivities(activities.slice(0, RECENT_ACTIVITY_LIMIT));
+    setRecentActivities(activities);
     setActivityError(false);
     setActivityLoading(false);
   }, [centers]);
@@ -183,6 +230,7 @@ export default function MobileDashboard() {
       .channel('mobile-dashboard-recent-activity')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, loadRecentActivities)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, loadRecentActivities)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_placements' }, loadRecentActivities)
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') scheduleRefresh();
       });
@@ -222,6 +270,13 @@ export default function MobileDashboard() {
     stubsCount: households.filter((household) => household.stubIssued).length,
     monitoringCount: new Set(logs.map((log) => log.householdId)).size,
   };
+
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + PAGE_SIZE);
+  };
+
+  const visibleActivities = recentActivities.slice(0, visibleCount);
+  const hasMore = recentActivities.length > visibleCount;
 
   return (
     <div className="vin-mob-page">
@@ -308,7 +363,7 @@ export default function MobileDashboard() {
         {!activityLoading && !activityError && recentActivities.length === 0 && (
           <p className="vin-mob-section-sub">No recent activity yet.</p>
         )}
-        {recentActivities.map((act) => {
+        {visibleActivities.map((act) => {
           const IconComponent = act.icon;
           return (
             <div
@@ -342,6 +397,17 @@ export default function MobileDashboard() {
             </div>
           );
         })}
+
+        {hasMore && (
+          <button
+            type="button"
+            className="vin-mob-load-more-btn"
+            onClick={handleLoadMore}
+          >
+            <RefreshCw size={16} />
+            See {Math.min(PAGE_SIZE, recentActivities.length - visibleCount)} more
+          </button>
+        )}
       </div>
     </div>
   );

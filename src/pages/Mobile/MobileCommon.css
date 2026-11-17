@@ -341,6 +341,36 @@
   transform: translateX(2px);
 }
 
+/* "See More" button for paginating the activity feed */
+.vin-mob-load-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  margin-top: 2px;
+  background: #ffffff;
+  color: #6b21a8;
+  border: 1.5px solid #ede9fe;
+  border-radius: 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.vin-mob-load-more-btn:hover {
+  background-color: #faf5ff;
+  border-color: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.vin-mob-load-more-btn:active {
+  transform: scale(0.99);
+}
+
 .vin-mob-quick-card {
   background: #ffffff;
   border: 1.5px solid #f3e8ff;
