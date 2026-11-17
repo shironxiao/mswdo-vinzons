@@ -1276,11 +1276,6 @@ export default function MobileHouseholds() {
           )}
         </div>
       </div>
-      {masterlistLoading && (
-        <div style={{ fontSize: '0.78rem', color: '#7c3aed', padding: '0 4px 6px', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed', display: 'inline-block' }} /> Searching all {(dbTotalCount || households.length).toLocaleString()} records...
-        </div>
-      )}
 
       {/* Filter bar with left-aligned Filters button and active chips matching user design */}
       <div className="vin-hh-filter-bar">
