@@ -4,8 +4,6 @@ import {
   Wifi,
   WifiOff,
   User,
-  MapPin,
-  ChevronDown,
 } from 'lucide-react';
 import { MOBILE_NAV_ITEMS } from './mobileNavConfig';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
@@ -22,7 +20,6 @@ export default function MobileLayout({ children }) {
     assignedCenter,
     setAssignedCenter,
     isCenterPickerOpen,
-    openCenterPicker,
     closeCenterPicker,
   } = useMobileCenter();
 
@@ -55,18 +52,6 @@ export default function MobileLayout({ children }) {
             <img src={mswoLogo} alt="MSWDO Logo" className="vin-mobile-brand-logo" />
             <div className="vin-mobile-brand-text">
               <h1 className="vin-mobile-brand-title">MSWDO - Vinzons</h1>
-              <button
-                type="button"
-                className="vin-mobile-topbar-center-pill"
-                onClick={openCenterPicker}
-                title="Tap to switch evacuation center"
-              >
-                <MapPin size={11} className="vin-mobile-topbar-center-icon" />
-                <span className="vin-mobile-topbar-center-name">
-                  {assignedCenter || 'Select Center'}
-                </span>
-                <ChevronDown size={11} className="vin-mobile-topbar-center-chevron" />
-              </button>
             </div>
           </div>
 
