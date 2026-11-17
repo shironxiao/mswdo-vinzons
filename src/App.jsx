@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layouts/admin/AdminLayout';
 import { EventProvider } from './context/EventContext.jsx';
 import MobileLayout from './layouts/mobile/MobileLayout';
+import PWAInstallBanner from './components/PWAInstallBanner';
 
 // Admin Pages
 import Dashboard from './pages/Admin/Dashboard';
@@ -83,6 +84,7 @@ export default function App() {
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      <PWAInstallBanner />
     </BrowserRouter>
   );
 }

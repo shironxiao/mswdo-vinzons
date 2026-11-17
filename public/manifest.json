@@ -1,0 +1,26 @@
+{
+  "name": "MSWDO Vinzons - Evacuee Management System",
+  "short_name": "MSWDO Vinzons",
+  "description": "Vinzons Evacuee Management & Relief Operations System",
+  "start_url": "/login",
+  "display": "standalone",
+  "background_color": "#581c87",
+  "theme_color": "#581c87",
+  "orientation": "portrait",
+  "scope": "/",
+  "id": "/",
+  "icons": [
+    {
+      "src": "/mswdo-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/mswdo-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
