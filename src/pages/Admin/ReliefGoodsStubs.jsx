@@ -1,6 +1,7 @@
 import { useState, useMemo, useContext, useEffect } from 'react';
-import { Building, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleCheck, Clock3, History, PackageCheck, PackageOpen, X } from 'lucide-react';
+import { Building, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CircleCheck, Clock3, History, PackageCheck, PackageOpen, Printer, X } from 'lucide-react';
 import './AdminFeatures.css';
+import { PrintStubModal } from '../../components/PrintStubModal.jsx';
 import {
   useEvacuationCenters,
   isCenterMatch,
@@ -53,6 +54,8 @@ export default function ReliefGoodsStubs() {
   const [householdReliefHistory, setHouseholdReliefHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [pageSize, setPageSize] = useState(25);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printTargetHousehold, setPrintTargetHousehold] = useState(null);
 
   const stubRecords = useMemo(
     () => stubRecordState.eventId === selectedEventId ? stubRecordState.records : [],
@@ -326,7 +329,35 @@ export default function ReliefGoodsStubs() {
                 },
               },
             ]}
-          />
+          >
+            <button
+              type="button"
+              className="vin-admin-print-all-btn"
+              onClick={() => {
+                setPrintTargetHousehold(null);
+                setIsPrintModalOpen(true);
+              }}
+              title="Print relief goods QR stubs"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '8px 16px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 6px rgba(107, 33, 168, 0.25)',
+              }}
+            >
+              <Printer size={16} />
+              <span>Print Stubs</span>
+            </button>
+          </AdminFilterBar>
         </div>
 
         <table className="vin-feature-table">
@@ -434,6 +465,26 @@ export default function ReliefGoodsStubs() {
                         <History size={14} />
                         <span>History</span>
                       </button>
+
+                      {household.stubIssued && (
+                        <button
+                          type="button"
+                          className="vin-btn-view-relief-history"
+                          onClick={() => {
+                            setPrintTargetHousehold(household);
+                            setIsPrintModalOpen(true);
+                          }}
+                          title="Print QR Relief Stub"
+                          style={{
+                            background: '#faf5ff',
+                            color: '#7c3aed',
+                            borderColor: '#d8b4fe',
+                          }}
+                        >
+                          <Printer size={14} />
+                          <span>Print</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -711,6 +762,19 @@ export default function ReliefGoodsStubs() {
           setCurrentPage(1);
         }}
         onClose={() => setShowFilterModal(false)}
+      />
+
+      {/* ── PRINT RELIEF STUBS MODAL ── */}
+      <PrintStubModal
+        isOpen={isPrintModalOpen}
+        onClose={() => {
+          setIsPrintModalOpen(false);
+          setPrintTargetHousehold(null);
+        }}
+        selectedEvent={selectedEvent}
+        centers={centers}
+        initialCenter={filterCenter !== 'All Centers' ? filterCenter : 'All Centers'}
+        initialHousehold={printTargetHousehold}
       />
     </div>
   );

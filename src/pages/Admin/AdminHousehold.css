@@ -1394,6 +1394,20 @@
   transform: translateY(-1px);
 }
 
+/* Print — purple accent (quick single stub print) */
+.vin-hh-btn--print {
+  background: #faf5ff;
+  color: #7c3aed;
+  border: 1.5px solid #c084fc;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.1);
+}
+.vin-hh-btn--print:hover:not(:disabled) {
+  background: #f3e8ff;
+  border-color: #a855f7;
+  color: #6b21a8;
+  transform: translateY(-1px);
+}
+
 /* Delete — red text with red outline / light red bg, never solid red */
 .vin-hh-btn--delete {
   background: #fff1f2;

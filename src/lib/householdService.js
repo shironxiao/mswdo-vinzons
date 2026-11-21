@@ -180,6 +180,28 @@ export async function fetchHouseholdDetails(id, centersList = []) {
   return normalizeHousehold(data, centersList);
 }
 
+export const VINZONS_BARANGAYS = [
+  'Aguit-it',
+  'Banocboc',
+  'Barangay I (Poblacion)',
+  'Barangay II (Poblacion)',
+  'Barangay III (Poblacion)',
+  'Cagbalogo',
+  'Calangcawan Norte',
+  'Calangcawan Sur',
+  'Guinacutan',
+  'Mangcawayan',
+  'Mangcayo',
+  'Manlucugan',
+  'Matango',
+  'Napilihan',
+  'Pinagtigasan',
+  'Sabang',
+  'Santo Domingo',
+  'Singi',
+  'Sula',
+];
+
 /**
  * Server-side paginated & filtered households query
  */
@@ -188,6 +210,7 @@ export async function fetchPaginatedHouseholds({
   pageSize = 25,
   search = '',
   barangay = '',
+  purok = '',
   centerId = '',
   roomId = '',
   evacueeStatus = '',
@@ -209,6 +232,9 @@ export async function fetchPaginatedHouseholds({
 
   if (barangay && barangay !== 'All' && barangay !== 'All Barangays') {
     query = query.eq('barangay', barangay);
+  }
+  if (purok && purok !== 'All' && purok !== 'All Puroks') {
+    query = query.eq('purok', purok);
   }
   if (centerId && centerId !== 'All Centers' && centerId !== 'All') {
     query = query.eq('center_id', centerId);
@@ -243,6 +269,70 @@ export async function fetchPaginatedHouseholds({
     pageSize,
     totalPages: Math.ceil((count ?? 0) / pageSize) || 1,
   };
+}
+
+/**
+ * Fetches households for batch printing with range/batching
+ */
+export async function fetchHouseholdsForPrint({
+  barangay = '',
+  purok = '',
+  centerId = '',
+  offset = 0,
+  limit = 450,
+  centersList = [],
+}) {
+  let query = supabase
+    .from('households')
+    .select(HOUSEHOLD_SUMMARY_SELECT);
+
+  if (barangay && barangay !== 'All' && barangay !== 'All Barangays') {
+    query = query.eq('barangay', barangay);
+  }
+  if (purok && purok !== 'All' && purok !== 'All Puroks') {
+    query = query.eq('purok', purok);
+  }
+  if (centerId && centerId !== 'All Centers' && centerId !== 'All') {
+    query = query.eq('center_id', centerId);
+  }
+
+  query = query
+    .order('barangay', { ascending: true })
+    .order('purok', { ascending: true })
+    .order('head_name', { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((row) => normalizeHousehold(row, centersList)).filter(Boolean);
+}
+
+/**
+ * Gets exact count of households for print filters
+ */
+export async function countHouseholdsForPrint({
+  barangay = '',
+  purok = '',
+  centerId = '',
+}) {
+  let query = supabase
+    .from('households')
+    .select('*', { count: 'exact', head: true });
+
+  if (barangay && barangay !== 'All' && barangay !== 'All Barangays') {
+    query = query.eq('barangay', barangay);
+  }
+  if (purok && purok !== 'All' && purok !== 'All Puroks') {
+    query = query.eq('purok', purok);
+  }
+  if (centerId && centerId !== 'All Centers' && centerId !== 'All') {
+    query = query.eq('center_id', centerId);
+  }
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
 }
 
 /**

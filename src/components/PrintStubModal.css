@@ -1,0 +1,571 @@
+/* ── Print Stub Modal Styles ── */
+.vin-print-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: vinFadeIn 0.15s ease-out;
+}
+
+@keyframes vinFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.vin-print-modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+/* Modal Header */
+.vin-print-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+
+.vin-print-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vin-print-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f3e8ff;
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-print-modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-print-modal-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.vin-print-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.vin-print-modal-close-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+/* Modal Body */
+.vin-print-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Mode Switcher Tabs */
+.vin-print-mode-tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vin-print-tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.vin-print-tab-btn.active {
+  background: #ffffff;
+  color: #7c3aed;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* Filters Grid */
+.vin-print-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 680px) {
+  .vin-print-filter-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.vin-print-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vin-print-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vin-print-select,
+.vin-print-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s ease;
+  text-overflow: ellipsis;
+}
+
+.vin-print-select:focus,
+.vin-print-input:focus {
+  border-color: #7c3aed;
+}
+
+/* Summary Box */
+.vin-print-summary-box {
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vin-print-summary-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-print-summary-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #581c87;
+}
+
+.vin-print-summary-meta {
+  font-size: 0.82rem;
+  color: #7e22ce;
+}
+
+.vin-print-summary-badge {
+  background: #7c3aed;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Multi-Barangay Cards List */
+.vin-barangay-list-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 8px;
+  background: #f8fafc;
+}
+
+.vin-barangay-item-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all 0.15s ease;
+}
+
+.vin-barangay-item-card:hover {
+  border-color: #d8b4fe;
+  background: #faf5ff;
+}
+
+.vin-barangay-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-barangay-name {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-barangay-meta {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.vin-barangay-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vin-btn-sub-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-btn-sub-print:hover {
+  background: #dbeafe;
+}
+
+.vin-btn-sub-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #faf5ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-btn-sub-pdf:hover {
+  background: #f3e8ff;
+}
+
+/* Single Household Selector Preview */
+.vin-single-hh-preview {
+  background: #ffffff;
+  border: 1.5px dashed #7c3aed;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.08);
+}
+
+.vin-single-hh-qr {
+  width: 80px;
+  height: 80px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vin-single-hh-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.vin-single-hh-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vin-single-hh-code {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #6b21a8;
+  font-family: monospace;
+}
+
+.vin-single-hh-meta {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* Footer & Main Action Buttons */
+.vin-print-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vin-btn-secondary {
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  padding: 8px 16px;
+  border-radius: 9px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-btn-secondary:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.vin-btn-print-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
+  color: #ffffff;
+  border: none;
+  padding: 9px 20px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(107, 33, 168, 0.25);
+  transition: all 0.15s ease;
+}
+
+.vin-btn-print-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9 0%, #581c87 100%);
+  transform: translateY(-1px);
+}
+
+.vin-btn-print-primary:disabled {
+  background: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.vin-btn-pdf-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px solid #bfdbfe;
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vin-btn-pdf-download:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.vin-btn-pdf-download:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+/* ── Pagination in Single Household Mode ── */
+.vin-single-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.vin-single-page-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vin-single-page-nav-btn {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.vin-single-page-nav-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.vin-single-page-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Batch Printing Range Selector ── */
+.vin-batch-range-box {
+  background: #ffffff;
+  border: 1.5px solid #d8b4fe;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vin-batch-range-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vin-batch-range-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #6b21a8;
+}
+
+.vin-batch-range-desc {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+/* ── Loading Overlay ── */
+.vin-print-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(3px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 20px;
+}
+
+.vin-print-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3.5px solid #f3e8ff;
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: vinSpin 0.75s linear infinite;
+}
+
+@keyframes vinSpin {
+  to { transform: rotate(360deg); }
+}
+
+.vin-print-loading-text {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #581c87;
+}

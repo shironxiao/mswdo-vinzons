@@ -48,6 +48,12 @@ import { EventContext } from '../../context/eventContext.js';
 import { importMasterlist } from '../../lib/masterlistImport.js';
 import AdminSearchInput from '../../components/AdminSearchInput.jsx';
 import HouseholdReviewModal from '../../components/HouseholdReviewModal.jsx';
+import { PrintStubModal } from '../../components/PrintStubModal.jsx';
+import {
+  buildStubsHtml,
+  openPrintWindow,
+  chunkArray,
+} from '../../lib/stubPrintService.js';
 
 const ADMIN_HOUSEHOLD_DRAFT_KEY = 'mswdo.admin.household-registration-draft';
 const REGISTRATION_YES_NO_FIELDS = [
@@ -166,239 +172,33 @@ function findDuplicateHolder(households, targetHHId, memberName) {
   );
 }
 
-function chunkArray(arr, size) {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
-}
-
 /* ──────────────────────────────────────────────
-   Print ALL issued stubs (3x3 grid per page, 9 stubs)
+   Print ALL issued stubs (delegates to stubPrintService)
    ────────────────────────────────────────────── */
-function printAllStubs(issuedList) {
+function printAllStubs(issuedList, eventName = 'Relief Operation') {
   if (!issuedList || issuedList.length === 0) return;
-  const win = window.open('', '_blank');
-  if (!win) {
-    alert('Please allow popups to print stubs.');
-    return;
-  }
-
-  const chunks = chunkArray(issuedList, 9);
-
-  const pagesHtml = chunks.map((chunk) => {
-    const cardsHtml = chunk.map((h) => {
-      const qrEl = document.getElementById(`admin-print-qr-${h.id}`);
-      const qrSvg = qrEl ? qrEl.outerHTML : '';
-      return `
-        <div class="stub-card">
-          <div class="stub-header">
-            <div class="stub-title">Relief Goods Stub</div>
-            <div class="stub-sub">Vinzons Municipal Social Welfare</div>
-          </div>
-          <div class="stub-code">${h.stubCode}</div>
-          <div class="stub-qr">${qrSvg}</div>
-          <div class="stub-footer">
-            <span class="stub-head-label">Household Head</span>
-            <span class="stub-head-name">${h.name}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="print-page">
-        <div class="grid-3x3">
-          ${cardsHtml}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Relief Goods Stubs (3x3)</title>
-      <meta charset="utf-8" />
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        @page {
-          size: A4 portrait;
-          margin: 6mm;
-        }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-          background: #f8fafc;
-          color: #0f172a;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .print-page {
-          width: 198mm;
-          height: 284mm;
-          margin: 0 auto 10mm;
-          background: #fff;
-          padding: 3mm;
-          box-sizing: border-box;
-          page-break-after: always;
-          break-after: page;
-        }
-        .print-page:last-child {
-          margin-bottom: 0;
-          page-break-after: auto;
-          break-after: auto;
-        }
-        .grid-3x3 {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          grid-template-rows: repeat(3, 1fr);
-          gap: 3.5mm;
-          width: 100%;
-          height: 100%;
-        }
-        .stub-card {
-          border: 1.5px dashed #94a3b8;
-          border-radius: 8px;
-          padding: 8px 6px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: space-between;
-          text-align: center;
-          background: #fff;
-          overflow: hidden;
-        }
-        .stub-title {
-          font-size: 10px;
-          font-weight: 800;
-          text-transform: uppercase;
-          color: #0f172a;
-          letter-spacing: 0.3px;
-          line-height: 1.1;
-        }
-        .stub-sub {
-          font-size: 7.5px;
-          color: #64748b;
-          margin-top: 1px;
-          line-height: 1.1;
-        }
-        .stub-code {
-          font-size: 13px;
-          font-weight: 900;
-          letter-spacing: 1.5px;
-          color: #6b21a8;
-          margin: 2px 0;
-        }
-        .stub-qr {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 2px 0;
-        }
-        .stub-qr svg {
-          width: 78px !important;
-          height: 78px !important;
-          display: block;
-        }
-        .stub-footer {
-          width: 100%;
-          border-top: 1px solid #e2e8f0;
-          padding-top: 3px;
-        }
-        .stub-head-label {
-          display: block;
-          font-size: 7.5px;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.2px;
-        }
-        .stub-head-name {
-          display: block;
-          font-size: 10.5px;
-          font-weight: 800;
-          color: #0f172a;
-          margin-top: 1px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        @media print {
-          body {
-            background: #fff;
-            padding: 0;
-          }
-          .print-page {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            page-break-after: always;
-            break-after: page;
-          }
-          .print-page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      ${pagesHtml}
-      <script>
-        window.onload = function() {
-          setTimeout(function() {
-            window.print();
-          }, 250);
-        };
-      </script>
-    </body>
-    </html>
-  `);
-  win.document.close();
+  const html = buildStubsHtml({
+    eventName,
+    households: issuedList,
+    isSingle: false,
+    autoPrint: true,
+  });
+  openPrintWindow(html);
 }
 
-/* Print single stub */
-function printStub(household) {
-  const win = window.open('', '_blank');
-  if (!win) {
-    alert('Please allow popups to print stubs.');
-    return;
-  }
-  const displayCode = household.stubCode || household.householdCode || `HH-${household.id}`;
-  const qrEl = document.getElementById(`admin-modal-qr-${household.id}`) || document.getElementById(`admin-print-qr-${household.id}`);
-  const qrSvg = qrEl ? qrEl.outerHTML : '';
-  win.document.write(`
-    <!DOCTYPE html>
-    <html><head><title>Relief Stub – ${displayCode}</title>
-    <meta charset="utf-8" />
-    <style>
-      body{font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;padding:32px;max-width:320px;margin:auto;text-align:center}
-      .card{border:1.5px dashed #94a3b8;border-radius:12px;padding:18px 14px;display:flex;flex-direction:column;align-items:center}
-      h2{font-size:1.15rem;font-weight:800;margin:0 0 2px;text-transform:uppercase}
-      .sub{color:#64748b;font-size:.8rem;margin-bottom:10px}
-      .code{font-size:1.5rem;font-weight:900;letter-spacing:2px;color:#6b21a8;margin:6px 0}
-      .qr{margin:8px auto}
-      .qr svg{width:120px!important;height:120px!important;display:block;margin:auto}
-      .head-box{width:100%;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:8px}
-      .head-label{font-size:.72rem;color:#64748b;text-transform:uppercase}
-      .head-name{font-size:1.05rem;font-weight:800;color:#0f172a;margin-top:2px}
-    </style></head><body>
-    <div class="card">
-      <h2>Relief Goods Stub</h2>
-      <p class="sub">Vinzons Municipal Social Welfare</p>
-      <p class="code">${displayCode}</p>
-      <div class="qr">${qrSvg}</div>
-      <div class="head-box">
-        <div class="head-label">Household Head</div>
-        <div class="head-name">${household.name}</div>
-      </div>
-    </div>
-    <script>window.onload=()=>setTimeout(()=>window.print(), 200);</script>
-    </body></html>
-  `);
-  win.document.close();
+/* Print single stub (delegates to stubPrintService with full header & QR) */
+function printStub(household, eventName = 'Relief Operation') {
+  if (!household) return;
+  const html = buildStubsHtml({
+    eventName,
+    centerName: household.centerName || household.center || 'Unassigned Center',
+    barangay: household.barangay || 'Unassigned',
+    purok: household.purok || 'Unassigned',
+    households: [household],
+    isSingle: true,
+    autoPrint: true,
+  });
+  openPrintWindow(html);
 }
 
 /* ──────────────────────────────────────────────
@@ -652,6 +452,8 @@ export default function Household() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printModalInitialHh, setPrintModalInitialHh] = useState(null);
 
   // Fast server-paginated masterlist hook (fetches only 25 items on-demand)
   const {
@@ -1689,15 +1491,18 @@ export default function Household() {
               },
             ]}
           >
-            {/* Print All Button */}
+            {/* Print Stubs Button with Center/Barangay/Purok Options */}
             <button
               type="button"
               className="vin-admin-print-all-btn"
-              onClick={() => printAllStubs(filteredIssued)}
-              disabled={filteredIssued.length === 0}
+              onClick={() => {
+                setPrintModalInitialHh(null);
+                setIsPrintModalOpen(true);
+              }}
+              title="Print relief goods QR stubs from database with Center, Barangay, and Purok options"
             >
               <Printer size={16} />
-              <span>Print All ({filteredIssued.length})</span>
+              <span>Print Stubs</span>
             </button>
           </AdminFilterBar>
         </div>
@@ -3031,25 +2836,18 @@ export default function Household() {
         />
       )}
 
-      {/* ── HIDDEN QR SVGS FOR PRINTING ── */}
-      <div
-        style={{ position: 'fixed', left: '-9999px', top: '-9999px', pointerEvents: 'none', opacity: 0 }}
-        aria-hidden="true"
-      >
-        {households
-          .slice(0, 250)
-          .map((h) => (
-            <QRCodeSVG
-              key={h.id}
-              id={`admin-print-qr-${h.id}`}
-              value={h.stubCode || h.householdCode || String(h.id)}
-              size={120}
-              level="M"
-              bgColor="#ffffff"
-              fgColor="#000000"
-            />
-          ))}
-      </div>
+      {/* ── PRINT RELIEF STUBS MODAL (Center, Barangay, Purok, Single/Batch, PDF) ── */}
+      <PrintStubModal
+        isOpen={isPrintModalOpen}
+        onClose={() => {
+          setIsPrintModalOpen(false);
+          setPrintModalInitialHh(null);
+        }}
+        selectedEvent={selectedEvent}
+        centers={centers}
+        initialCenter={filterCenter !== 'All Centers' ? filterCenter : 'All Centers'}
+        initialHousehold={printModalInitialHh}
+      />
 
       {/* ── Delete Confirmation Modal ── */}
       {deleteTarget && (
