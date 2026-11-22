@@ -609,9 +609,12 @@ export function useHouseholds(centersList = []) {
   };
 }
 
-export function useEventRoomPlacements(eventId) {
+export function useEventRoomPlacements(eventId, { includeMemberAgeDetails = false } = {}) {
   const [placements, setPlacements] = useState([]);
   const refreshTimeoutRef = useRef(null);
+  const householdSelect = includeMemberAgeDetails
+    ? HOUSEHOLD_DETAIL_SELECT
+    : HOUSEHOLD_SUMMARY_SELECT;
 
   const fetchPlacements = useCallback(async () => {
     if (!eventId || eventId === 'default-active-event') return;
@@ -622,7 +625,7 @@ export function useEventRoomPlacements(eventId) {
         .select(`
           id, household_id, center_id, room_id, event_id, status, check_in_at, check_out_at,
           household:households (
-            ${HOUSEHOLD_SUMMARY_SELECT}
+            ${householdSelect}
           )
         `)
         .eq('event_id', eventId)
@@ -633,7 +636,7 @@ export function useEventRoomPlacements(eventId) {
     } catch (placementError) {
       console.error('Could not load evacuation placements:', placementError);
     }
-  }, [eventId]);
+  }, [eventId, householdSelect]);
 
   useEffect(() => {
     if (!eventId || eventId === 'default-active-event') return undefined;

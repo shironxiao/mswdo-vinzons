@@ -4,7 +4,11 @@ import * as XLSX from 'xlsx';
 import './Reports.css';
 import { EventContext } from '../../context/eventContext.js';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
-import { useEventRoomPlacements, useHouseholds } from '../../lib/householdService.js';
+import {
+  normalizeHousehold,
+  useEventRoomPlacements,
+  useHouseholds,
+} from '../../lib/householdService.js';
 
 const AGE_GROUPS = [
   { label: 'INFANT (0-11 MOS)', min: 0, max: 1, units: 'months' },
@@ -217,7 +221,7 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
       <tr><th class="family-name" rowspan="3">NAME OF FAMILY<br>HEAD/DEPENDENT</th>
         <th class="age-band" colspan="14">SEX &amp; AGE DISTRIBUTION OF IDPs INSIDE ECS</th>
         <th rowspan="3">PREGNANT</th><th rowspan="3">LACTATING MOTHERS</th>
-        ${specialHeaders}<th rowspan="3">SOLO PARENT</th></tr>
+        ${specialHeaders.slice(0, 2)}<th rowspan="3">SOLO PARENT</th>${specialHeaders.slice(2)}</tr>
       <tr>${ageHeaders}${specialGroups.map(() => '<th colspan="2"></th>').join('')}</tr>
       <tr>${ageSexHeaders}${specialSexHeaders}</tr>
     </thead><tbody>${body}</tbody></table></div>
@@ -228,8 +232,8 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
 export default function Reports() {
   const { selectedEvent } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
-  const { households } = useHouseholds(centers);
-  const { placements } = useEventRoomPlacements(selectedEvent?.id);
+  const { households, totalCount: masterlistCount } = useHouseholds(centers);
+  const { placements } = useEventRoomPlacements(selectedEvent?.id, { includeMemberAgeDetails: true });
   const [selectedCenterId, setSelectedCenterId] = useState('');
   const [barangayName, setBarangayName] = useState('');
   const [disasterType, setDisasterType] = useState(selectedEvent?.event_type || 'Typhoon');
@@ -245,10 +249,15 @@ export default function Reports() {
   )), [placements, selectedEvent?.id, selectedEvent?.status]);
   const eventHouseholds = useMemo(() => currentPlacements
     .map((placement) => {
-      const household = households.find((item) => item.id === placement.household_id);
+      const joinedHousehold = Array.isArray(placement.household)
+        ? placement.household[0]
+        : placement.household;
+      const household = joinedHousehold
+        ? normalizeHousehold(joinedHousehold, centers)
+        : households.find((item) => item.id === placement.household_id);
       return household ? { ...household, placement } : null;
     })
-    .filter(Boolean), [currentPlacements, households]);
+    .filter(Boolean), [currentPlacements, households, centers]);
   const centerHouseholds = eventHouseholds.filter((household) =>
     household.placement.center_id === selectedCenter?.id
   );
@@ -315,7 +324,7 @@ export default function Reports() {
           <span className="vin-rep-metric-label">Centers With Evacuees</span>
         </div>
         <div className="vin-rep-metric-card card-yellow">
-          <span className="vin-rep-metric-number">{households.length}</span>
+          <span className="vin-rep-metric-number">{masterlistCount}</span>
           <span className="vin-rep-metric-label">Households On Masterlist</span>
         </div>
         <div className="vin-rep-metric-card card-yellow">
