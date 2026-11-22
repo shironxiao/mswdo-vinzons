@@ -170,6 +170,12 @@
   background: #fff;
 }
 
+.dromic-field-error {
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 .dromic-preview-summary {
   display: flex;
   justify-content: space-between;
@@ -295,6 +301,95 @@
   cursor: pointer;
 }
 
+.dromic-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border: 1px solid #e9d5ff;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.dromic-pagination-summary,
+.dromic-page-size,
+.dromic-page-controls,
+.dromic-page-numbers {
+  display: flex;
+  align-items: center;
+}
+
+.dromic-pagination-summary {
+  gap: 18px;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 0.84rem;
+}
+
+.dromic-pagination-summary strong {
+  color: #0f172a;
+}
+
+.dromic-page-size {
+  gap: 8px;
+  font-weight: 600;
+}
+
+.dromic-page-size select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #d2ddd6;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.dromic-page-controls,
+.dromic-page-numbers {
+  gap: 6px;
+}
+
+.dromic-page-controls button {
+  display: inline-flex;
+  min-width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border: 1px solid #d2ddd6;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dromic-page-controls button:hover:not(:disabled) {
+  border-color: #7c3aed;
+  color: #6b21a8;
+}
+
+.dromic-page-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dromic-page-controls .dromic-page-numbers button.active {
+  border-color: #6b21a8;
+  background: linear-gradient(135deg, #7c3aed 0%, #6b21a8 100%);
+  color: #fff;
+}
+
+.dromic-page-numbers span {
+  min-width: 24px;
+  text-align: center;
+  color: #94a3b8;
+  font-weight: 800;
+}
+
 /* Download Button */
 .vin-download-btn {
   background-color: #dfb235;
@@ -333,6 +428,13 @@
   }
   .dromic-report-heading {
     flex-direction: column;
+  }
+  .dromic-pagination {
+    align-items: flex-start;
+  }
+  .dromic-page-controls {
+    max-width: 100%;
+    flex-wrap: wrap;
   }
   .dromic-form-grid {
     grid-template-columns: 1fr 1fr;

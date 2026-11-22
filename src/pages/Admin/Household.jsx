@@ -1399,7 +1399,7 @@ export default function Household() {
               transition: 'all 0.15s ease',
             }}
           >
-            Masterlist Registry ({totalCount.toLocaleString()})
+            Masterlist Registry ({dbTotalCount.toLocaleString()})
           </button>
         </div>
       </div>

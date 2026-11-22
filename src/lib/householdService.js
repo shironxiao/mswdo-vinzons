@@ -202,6 +202,35 @@ export const VINZONS_BARANGAYS = [
   'Sula',
 ];
 
+export async function fetchHouseholdBarangays() {
+  const barangays = new Map();
+  const batchSize = 1000;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('households')
+      .select('barangay')
+      .not('barangay', 'is', null)
+      .order('barangay', { ascending: true })
+      .range(from, from + batchSize - 1);
+
+    if (error) throw error;
+
+    (data || []).forEach((row) => {
+      const barangay = String(row.barangay || '').trim();
+      if (barangay && !barangays.has(barangay.toLowerCase())) {
+        barangays.set(barangay.toLowerCase(), barangay);
+      }
+    });
+
+    if (!data || data.length < batchSize) break;
+    from += batchSize;
+  }
+
+  return Array.from(barangays.values()).sort((a, b) => a.localeCompare(b));
+}
+
 /**
  * Server-side paginated & filtered households query
  */

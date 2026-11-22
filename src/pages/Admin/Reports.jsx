@@ -1,10 +1,18 @@
-import { Fragment, useContext, useMemo, useState } from 'react';
-import { FileSpreadsheet, Printer } from 'lucide-react';
+import { Fragment, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  FileSpreadsheet,
+  Printer,
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
 import './Reports.css';
 import { EventContext } from '../../context/eventContext.js';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
 import {
+  fetchHouseholdBarangays,
   normalizeHousehold,
   useEventRoomPlacements,
   useHouseholds,
@@ -21,6 +29,25 @@ const AGE_GROUPS = [
 ];
 
 const DROMIC_COLUMN_COUNT = 28;
+const DISASTER_TYPES = [
+  'Typhoon',
+  'Flood',
+  'Earthquake',
+  'Fire',
+  'Landslide',
+  'Tsunami',
+  'Storm Surge',
+  'Other',
+];
+
+function getPaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+  if (currentPage <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
+  if (currentPage >= totalPages - 3) {
+    return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+}
 
 function normalizedVulnerabilities(values = []) {
   return values.map((value) => String(value).toUpperCase().replace(/[^A-Z0-9]/g, ''));
@@ -77,7 +104,7 @@ function personDromicRow(person, household, isHead) {
 }
 
 function buildDromicRows(households) {
-  return households.flatMap((household) => {
+  return households.map((household) => {
     const head = {
       name: household.name,
       age: household.age,
@@ -86,10 +113,25 @@ function buildDromicRows(households) {
       sex: household.sex,
       vulnerabilities: household.vulnerabilities || [],
     };
-    return [
+    const headName = String(household.name || '').trim().toLowerCase();
+    const members = (household.members || []).filter((member) => (
+      !member.isHead &&
+      String(member.relationship || '').trim().toLowerCase() !== 'head' &&
+      String(member.name || '').trim().toLowerCase() !== headName
+    ));
+    const personRows = [
       personDromicRow(head, household, true),
-      ...(household.members || []).map((member) => personDromicRow(member, household, false)),
+      ...members.map((member) => personDromicRow(member, household, false)),
     ];
+    const familyRow = [...personRows[0]];
+
+    personRows.slice(1).forEach((personRow) => {
+      for (let column = 1; column < DROMIC_COLUMN_COUNT; column += 1) {
+        familyRow[column] += personRow[column];
+      }
+    });
+
+    return familyRow;
   });
 }
 
@@ -174,6 +216,13 @@ function escapeHtml(value) {
   }[character]));
 }
 
+function findCenterBarangay(location, barangayOptions) {
+  const normalizedLocation = String(location || '').trim().toLowerCase();
+  return barangayOptions.find((barangay) => (
+    normalizedLocation.includes(barangay.toLowerCase())
+  )) || '';
+}
+
 function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerName, rows }) {
   const ageHeaders = AGE_GROUPS.map((group) => `<th colspan="2">${escapeHtml(group.label)}</th>`).join('');
   const ageSexHeaders = AGE_GROUPS.map(() => '<th>M</th><th>F</th>').join('');
@@ -184,7 +233,7 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
     'INDIGENOUS PEOPLE (IPs)',
     '4Ps BENEFICIARIES',
   ];
-  const specialHeaders = specialGroups.map((label) => `<th colspan="2">${label}</th>`).join('');
+  const specialHeaders = specialGroups.map((label) => `<th colspan="2">${label}</th>`);
   const specialSexHeaders = specialGroups.map(() => '<th>M</th><th>F</th>').join('');
   const body = rows.map((row) => `<tr>${row.map((cell, index) =>
     `<td class="${index === 0 ? 'person-name' : 'count'}">${escapeHtml(cell || '')}</td>`
@@ -205,6 +254,8 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
       .dromic thead .age-band { background: #fff2cc; }
       .dromic thead .family-name { background: #c6e0b4; width: 210px; }
       .dromic tbody tr { height: 22px; }
+      .dromic thead { display: table-header-group; }
+      .dromic tbody tr { break-inside: avoid; page-break-inside: avoid; }
       .dromic tbody td:nth-child(odd) { background: #ddebf7; }
       .dromic tbody .person-name { text-align: left; font-weight: 600; padding-left: 5px; background: #fff; }
       .dromic tbody .count { min-width: 20px; }
@@ -221,8 +272,8 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
       <tr><th class="family-name" rowspan="3">NAME OF FAMILY<br>HEAD/DEPENDENT</th>
         <th class="age-band" colspan="14">SEX &amp; AGE DISTRIBUTION OF IDPs INSIDE ECS</th>
         <th rowspan="3">PREGNANT</th><th rowspan="3">LACTATING MOTHERS</th>
-        ${specialHeaders.slice(0, 2)}<th rowspan="3">SOLO PARENT</th>${specialHeaders.slice(2)}</tr>
-      <tr>${ageHeaders}${specialGroups.map(() => '<th colspan="2"></th>').join('')}</tr>
+        ${specialHeaders.slice(0, 2).join('')}<th rowspan="3">SOLO PARENT</th>${specialHeaders.slice(2).join('')}</tr>
+      <tr>${ageHeaders}${specialHeaders.map(() => '<th colspan="2"></th>').join('')}</tr>
       <tr>${ageSexHeaders}${specialSexHeaders}</tr>
     </thead><tbody>${body}</tbody></table></div>
     <script>window.addEventListener('load', () => window.print());</script>
@@ -234,15 +285,48 @@ export default function Reports() {
   const { centers } = useEvacuationCenters();
   const { households, totalCount: masterlistCount } = useHouseholds(centers);
   const { placements } = useEventRoomPlacements(selectedEvent?.id, { includeMemberAgeDetails: true });
+  const initialDisasterType = selectedEvent?.event_type || 'Typhoon';
   const [selectedCenterId, setSelectedCenterId] = useState('');
   const [barangayName, setBarangayName] = useState('');
-  const [disasterType, setDisasterType] = useState(selectedEvent?.event_type || 'Typhoon');
+  const [barangayOptions, setBarangayOptions] = useState([]);
+  const [barangayOptionsLoading, setBarangayOptionsLoading] = useState(true);
+  const [barangayOptionsError, setBarangayOptionsError] = useState('');
+  const [disasterType, setDisasterType] = useState(() => (
+    DISASTER_TYPES.includes(initialDisasterType) ? initialDisasterType : 'Other'
+  ));
+  const [customDisasterType, setCustomDisasterType] = useState(() => (
+    !DISASTER_TYPES.includes(initialDisasterType)
+      ? initialDisasterType
+      : ''
+  ));
   const [occurrenceDate, setOccurrenceDate] = useState(
     selectedEvent?.declared_at ? new Date(selectedEvent.declared_at).toISOString().slice(0, 10) : ''
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [reportPage, setReportPage] = useState(1);
+  const [reportPageSize, setReportPageSize] = useState(25);
+
+  useEffect(() => {
+    let isCurrent = true;
+    fetchHouseholdBarangays()
+      .then((options) => {
+        if (isCurrent) setBarangayOptions(options);
+      })
+      .catch((error) => {
+        console.error('Could not load barangay options for the DROMIC report:', error);
+        if (isCurrent) setBarangayOptionsError(error.message || 'Could not load barangays from the database.');
+      })
+      .finally(() => {
+        if (isCurrent) setBarangayOptionsLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   const selectedCenter = centers.find((center) => center.id === selectedCenterId) || centers[0];
+  const centerBarangay = findCenterBarangay(selectedCenter?.location, barangayOptions);
   const currentPlacements = useMemo(() => placements.filter((placement) => (
     placement.event_id === selectedEvent?.id &&
     (selectedEvent?.status === 'Active' ? placement.status === 'Evacuated' : true)
@@ -262,8 +346,18 @@ export default function Reports() {
     household.placement.center_id === selectedCenter?.id
   );
   const dromicRows = useMemo(() => buildDromicRows(centerHouseholds), [centerHouseholds]);
-  const headerBarangay = barangayName || selectedCenter?.location || '';
-  const headerDisaster = disasterType || selectedEvent?.event_type || 'Disaster';
+  const centerEvacueesCount = centerHouseholds.reduce(
+    (total, household) => total + (household.familyCount || 1),
+    0
+  );
+  const reportTotalPages = Math.max(1, Math.ceil(dromicRows.length / reportPageSize));
+  const currentReportPage = Math.min(reportPage, reportTotalPages);
+  const reportStartIndex = (currentReportPage - 1) * reportPageSize;
+  const paginatedDromicRows = dromicRows.slice(reportStartIndex, reportStartIndex + reportPageSize);
+  const headerBarangay = barangayName || centerBarangay;
+  const headerDisaster = disasterType === 'Other'
+    ? customDisasterType.trim() || 'Other'
+    : disasterType || selectedEvent?.event_type || 'Disaster';
   const headerDate = occurrenceDate || (
     selectedEvent?.declared_at ? new Date(selectedEvent.declared_at).toLocaleDateString() : ''
   );
@@ -329,7 +423,7 @@ export default function Reports() {
         </div>
         <div className="vin-rep-metric-card card-yellow">
           <span className="vin-rep-metric-number">{totalEvacuees}</span>
-          <span className="vin-rep-metric-label">Evacuees In Selected Event</span>
+          <span className="vin-rep-metric-label">Evacuees Across All Centers</span>
         </div>
         <div className="vin-rep-metric-card card-green">
           <span className="vin-rep-metric-number">{issuedStubCount}</span>
@@ -362,7 +456,7 @@ export default function Reports() {
               onChange={(event) => {
                 const center = centers.find((item) => item.id === event.target.value);
                 setSelectedCenterId(event.target.value);
-                setBarangayName(center?.location || '');
+                setBarangayName(findCenterBarangay(center?.location, barangayOptions));
               }}
             >
               {centers.map((center) => (
@@ -372,11 +466,45 @@ export default function Reports() {
           </label>
           <label>
             Name of barangay
-            <input value={headerBarangay} onChange={(event) => setBarangayName(event.target.value)} />
+            <select
+              value={headerBarangay}
+              onChange={(event) => setBarangayName(event.target.value)}
+              disabled={barangayOptionsLoading || barangayOptions.length === 0}
+            >
+              <option value="">
+                {barangayOptionsLoading
+                  ? 'Loading barangays...'
+                  : barangayOptionsError || (barangayOptions.length ? 'Select a barangay' : 'No barangays found')}
+              </option>
+              {barangayOptions.map((barangay) => (
+                <option key={barangay} value={barangay}>{barangay}</option>
+              ))}
+            </select>
+            {barangayOptionsError && (
+              <span className="dromic-field-error" role="alert">{barangayOptionsError}</span>
+            )}
           </label>
           <label>
             Type of disaster
-            <input value={headerDisaster} onChange={(event) => setDisasterType(event.target.value)} />
+            <div className="dromic-disaster-control">
+              <select
+                value={disasterType}
+                onChange={(event) => {
+                  setDisasterType(event.target.value);
+                  if (event.target.value !== 'Other') setCustomDisasterType('');
+                }}
+              >
+                {DISASTER_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+              {disasterType === 'Other' && (
+                <input
+                  value={customDisasterType}
+                  onChange={(event) => setCustomDisasterType(event.target.value)}
+                  placeholder="Type disaster"
+                  aria-label="Other disaster type"
+                />
+              )}
+            </div>
           </label>
           <label>
             Date of occurrence
@@ -390,7 +518,9 @@ export default function Reports() {
 
         <div className="dromic-preview-summary">
           <span>{selectedCenter?.displayName || selectedCenter?.name || 'No center selected'}</span>
-          <span>{centerHouseholds.length} {centerHouseholds.length === 1 ? 'family' : 'families'} • {dromicRows.length} people</span>
+          <span>
+            {centerHouseholds.length} {centerHouseholds.length === 1 ? 'family' : 'families'} • {centerEvacueesCount} people
+          </span>
         </div>
         <div className="dromic-meta-grid">
           <strong>NAME OF BARANGAY:</strong><span>{headerBarangay || '—'}</span>
@@ -426,7 +556,7 @@ export default function Reports() {
             <tbody>
               {dromicRows.length === 0 ? (
                 <tr><td colSpan={DROMIC_COLUMN_COUNT}>No households are placed at this center for the selected event.</td></tr>
-              ) : dromicRows.map((row, index) => (
+              ) : paginatedDromicRows.map((row, index) => (
                 <tr key={`${row[0]}-${index}`}>
                   {row.map((cell, cellIndex) => (
                     <td key={`${index}-${cellIndex}`}>{cell || ''}</td>
@@ -436,6 +566,87 @@ export default function Reports() {
             </tbody>
           </table>
         </div>
+        {dromicRows.length > 0 && (
+          <div className="dromic-pagination">
+            <div className="dromic-pagination-summary">
+              <span>
+                Showing <strong>{(reportStartIndex + 1).toLocaleString()}</strong>–
+                <strong>{Math.min(reportStartIndex + reportPageSize, dromicRows.length).toLocaleString()}</strong>
+                {' '}of <strong>{dromicRows.length.toLocaleString()}</strong> families
+              </span>
+              <label className="dromic-page-size">
+                Rows:
+                <select
+                  value={reportPageSize}
+                  onChange={(event) => {
+                    setReportPageSize(Number(event.target.value));
+                    setReportPage(1);
+                  }}
+                  aria-label="Rows per report page"
+                >
+                  {[10, 25, 50, 100].map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="dromic-page-controls">
+              <button
+                type="button"
+                disabled={currentReportPage === 1}
+                onClick={() => setReportPage(1)}
+                title="First page"
+                aria-label="First report page"
+              >
+                <ChevronsLeft size={16} />
+              </button>
+              <button
+                type="button"
+                disabled={currentReportPage === 1}
+                onClick={() => setReportPage(Math.max(1, currentReportPage - 1))}
+                title="Previous page"
+                aria-label="Previous report page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="dromic-page-numbers">
+                {getPaginationItems(currentReportPage, reportTotalPages).map((item, index) => (
+                  item === '...'
+                    ? <span key={`dots-${index}`} aria-hidden="true">…</span>
+                    : (
+                      <button
+                        key={item}
+                        type="button"
+                        className={Number(item) === currentReportPage ? 'active' : ''}
+                        aria-current={Number(item) === currentReportPage ? 'page' : undefined}
+                        onClick={() => setReportPage(Number(item))}
+                      >
+                        {item}
+                      </button>
+                    )
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={currentReportPage === reportTotalPages}
+                onClick={() => setReportPage(Math.min(reportTotalPages, currentReportPage + 1))}
+                title="Next page"
+                aria-label="Next report page"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                disabled={currentReportPage === reportTotalPages}
+                onClick={() => setReportPage(reportTotalPages)}
+                title="Last page"
+                aria-label="Last report page"
+              >
+                <ChevronsRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
         <button type="button" className="dromic-expand-btn" onClick={() => setIsPreviewOpen((open) => !open)}>
           {isPreviewOpen ? 'Collapse table preview' : 'Expand table preview'}
         </button>
