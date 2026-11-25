@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Home,
   Building,
@@ -56,10 +56,14 @@ export default function MobileDashboard() {
     }
   }, [hasSelectedCenter, navigate]);
 
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-  const [activityError, setActivityError] = useState(false);
+  const [activityState, setActivityState] = useState({
+    scopeKey: null,
+    activities: [],
+    loading: true,
+    error: false,
+  });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const activityRequestSequence = useRef(0);
 
   // Fast, lightweight counts queried directly via Supabase HEAD requests
   const [metrics, setMetrics] = useState({
@@ -69,8 +73,12 @@ export default function MobileDashboard() {
     loading: true,
   });
 
-  const isAllCenters = !assignedCenterObj && (assignedCenter === 'All Centers' || !assignedCenter);
+  const isAllCenters = assignedCenter === 'All Centers';
   const activeCenterId = assignedCenterObj?.id || (isAllCenters ? null : assignedCenterId);
+  const activityScopeKey = activeCenterId || (isAllCenters ? 'all-centers' : `unresolved:${assignedCenter || 'none'}`);
+  const recentActivities = activityState.scopeKey === activityScopeKey ? activityState.activities : [];
+  const activityLoading = activityState.scopeKey === activityScopeKey ? activityState.loading : true;
+  const activityError = activityState.scopeKey === activityScopeKey ? activityState.error : false;
 
   // Load lightweight exact HEAD counts scoped to the assigned center
   const loadScopedMetrics = useCallback(async () => {
@@ -104,6 +112,24 @@ export default function MobileDashboard() {
 
   // Fetch recent activities filtered by assigned center
   const fetchRecentActivities = useCallback(async () => {
+    const requestId = ++activityRequestSequence.current;
+    setActivityState((previous) => ({
+      scopeKey: activityScopeKey,
+      activities: previous.scopeKey === activityScopeKey ? previous.activities : [],
+      loading: previous.scopeKey === activityScopeKey ? previous.loading : true,
+      error: false,
+    }));
+
+    if (!hasSelectedCenter || (!isAllCenters && !activeCenterId)) {
+      setActivityState({
+        scopeKey: activityScopeKey,
+        activities: [],
+        loading: false,
+        error: false,
+      });
+      return;
+    }
+
     try {
       let hhQuery = supabase
         .from('households')
@@ -169,9 +195,14 @@ export default function MobileDashboard() {
         placeQuery,
       ]);
 
+      if (requestId !== activityRequestSequence.current) return;
       if (householdsResult.error && monitoringResult.error && placementsResult.error) {
-        setActivityError(true);
-        setActivityLoading(false);
+        setActivityState((previous) => ({
+          scopeKey: activityScopeKey,
+          activities: previous.scopeKey === activityScopeKey ? previous.activities : [],
+          loading: false,
+          error: true,
+        }));
         return;
       }
 
@@ -254,41 +285,58 @@ export default function MobileDashboard() {
       });
 
       activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      setRecentActivities(activities);
-      setActivityError(false);
-      setActivityLoading(false);
+      setActivityState({
+        scopeKey: activityScopeKey,
+        activities,
+        loading: false,
+        error: false,
+      });
     } catch (err) {
+      if (requestId !== activityRequestSequence.current) return;
       console.warn('Could not fetch recent activities:', err);
-      setActivityError(true);
-      setActivityLoading(false);
+      setActivityState((previous) => ({
+        scopeKey: activityScopeKey,
+        activities: previous.scopeKey === activityScopeKey ? previous.activities : [],
+        loading: false,
+        error: true,
+      }));
     }
-  }, [activeCenterId, centers]);
+  }, [activeCenterId, activityScopeKey, centers, hasSelectedCenter, isAllCenters]);
 
   useEffect(() => {
-    let isMounted = true;
     let refreshTimeout;
+    const initialFetch = window.setTimeout(() => {
+      fetchRecentActivities();
+      loadScopedMetrics();
+    }, 0);
     const scheduleRefresh = () => {
+      window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeout);
       refreshTimeout = window.setTimeout(() => {
-        if (isMounted) {
-          fetchRecentActivities();
-          loadScopedMetrics();
-        }
+        fetchRecentActivities();
+        loadScopedMetrics();
       }, 300);
     };
 
-    fetchRecentActivities();
-    loadScopedMetrics();
+    const householdChanges = { event: '*', schema: 'public', table: 'households' };
+    const monitoringChanges = { event: '*', schema: 'public', table: 'monitoring_logs' };
+    const placementChanges = { event: '*', schema: 'public', table: 'room_placements' };
+    if (activeCenterId) {
+      householdChanges.filter = `center_id=eq.${activeCenterId}`;
+      monitoringChanges.filter = `center_id=eq.${activeCenterId}`;
+      placementChanges.filter = `center_id=eq.${activeCenterId}`;
+    }
 
     const channel = supabase
       .channel(`mobile-dash-${activeCenterId || 'all'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_placements' }, scheduleRefresh)
+      .on('postgres_changes', householdChanges, scheduleRefresh)
+      .on('postgres_changes', monitoringChanges, scheduleRefresh)
+      .on('postgres_changes', placementChanges, scheduleRefresh)
       .subscribe();
 
     return () => {
-      isMounted = false;
+      activityRequestSequence.current += 1;
+      window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeout);
       supabase.removeChannel(channel);
     };
