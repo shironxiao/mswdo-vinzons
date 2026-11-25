@@ -7,6 +7,7 @@ import {
   fetchBarangayEvacuationAssignments,
   saveBarangayEvacuationAssignment,
 } from '../../lib/barangayEvacuationAssignments.js';
+import { fetchHouseholdBarangays, fetchHouseholdPuroks } from '../../lib/householdService.js';
 import './BarangayEvacuationAssignments.css';
 
 const EMPTY_FORM = {
@@ -14,17 +15,25 @@ const EMPTY_FORM = {
   barangay: '',
   purok: '',
   allPuroks: false,
-  centerId: '',
-  backupCenterId: '',
+  centerIds: [],
 };
 
 function centerLabel(center) {
   return center?.displayName || center?.name || 'Unknown center';
 }
 
+function assignmentCenterIds(assignment) {
+  return assignment.center_ids?.length
+    ? assignment.center_ids
+    : [assignment.center_id].filter(Boolean);
+}
+
 export default function BarangayEvacuationAssignments() {
   const { centers } = useEvacuationCenters();
   const [assignments, setAssignments] = useState([]);
+  const [barangayOptions, setBarangayOptions] = useState([]);
+  const [purokOptions, setPurokOptions] = useState([]);
+  const [locationError, setLocationError] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +42,49 @@ export default function BarangayEvacuationAssignments() {
   const [loadError, setLoadError] = useState('');
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let isCurrent = true;
+    fetchHouseholdBarangays()
+      .then((options) => {
+        if (isCurrent) {
+          setBarangayOptions(options);
+          setLocationError('');
+        }
+      })
+      .catch((error) => {
+        console.error('Could not load household barangays for assignments:', error);
+        if (isCurrent) setLocationError(error.message || 'Could not load barangays from household records.');
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isCurrent = true;
+    if (!form.barangay) return undefined;
+
+    fetchHouseholdPuroks(form.barangay)
+      .then((options) => {
+        if (isCurrent) {
+          setPurokOptions(options);
+          setLocationError('');
+        }
+      })
+      .catch((error) => {
+        console.error('Could not load household puroks for assignment:', error);
+        if (isCurrent) {
+          setPurokOptions([]);
+          setLocationError(error.message || 'Could not load puroks from household records.');
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [form.barangay]);
 
   const loadAssignments = useCallback(async () => {
     setIsLoading(true);
@@ -74,26 +126,13 @@ export default function BarangayEvacuationAssignments() {
     () => new Map(centers.map((center) => [center.id, center])),
     [centers]
   );
-  const barangayOptions = useMemo(
-    () => [...new Set(assignments.map((item) => item.barangay).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b)),
-    [assignments]
-  );
-  const purokOptions = useMemo(
-    () => [...new Set(assignments
-      .filter((item) => item.barangay.trim().toLowerCase() === form.barangay.trim().toLowerCase())
-      .map((item) => item.purok)
-      .filter((purok) => purok && purok.toLowerCase() !== 'all'))]
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
-    [assignments, form.barangay]
-  );
   const filteredAssignments = useMemo(() => {
     const query = search.trim().toLowerCase();
     return assignments.filter((item) => {
       if (!query) return true;
-      const primary = centerLabel(centersById.get(item.center_id));
-      const backup = centerLabel(centersById.get(item.backup_center_id));
-      return [item.barangay, item.purok, primary, backup]
+      const assignedCenters = assignmentCenterIds(item)
+        .map((centerId) => centerLabel(centersById.get(centerId)));
+      return [item.barangay, item.purok, ...assignedCenters]
         .some((value) => value.toLowerCase().includes(query));
     });
   }, [assignments, centersById, search]);
@@ -104,8 +143,7 @@ export default function BarangayEvacuationAssignments() {
       barangay: assignment.barangay,
       purok: assignment.purok === 'ALL' ? '' : assignment.purok,
       allPuroks: assignment.purok.trim().toLowerCase() === 'all',
-      centerId: assignment.center_id,
-      backupCenterId: assignment.backup_center_id || '',
+      centerIds: assignmentCenterIds(assignment),
     });
     setFormError('');
     setNotice('');
@@ -113,6 +151,7 @@ export default function BarangayEvacuationAssignments() {
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
+    setPurokOptions([]);
     setFormError('');
   };
 
@@ -126,8 +165,7 @@ export default function BarangayEvacuationAssignments() {
         id: form.id,
         barangay: form.barangay,
         purok: form.allPuroks ? 'ALL' : form.purok,
-        centerId: form.centerId,
-        backupCenterId: form.backupCenterId,
+        centerIds: form.centerIds,
       });
       resetForm();
       setNotice('Evacuation center assignment saved.');
@@ -167,7 +205,7 @@ export default function BarangayEvacuationAssignments() {
           <span className="vin-bga-eyebrow">EVACUATION CENTER MANAGEMENT</span>
           <h1 className="vin-bga-title">Barangay &amp; Purok Assignments</h1>
           <p className="vin-bga-description">
-            Set a primary and optional backup evacuation center for each barangay and purok.
+            Choose a barangay and its purok from household records, then assign one or more evacuation centers.
             A specific purok assignment can coexist with an All Puroks assignment.
           </p>
         </div>
@@ -179,39 +217,48 @@ export default function BarangayEvacuationAssignments() {
             <span className="vin-bga-icon"><MapPin size={19} /></span>
             <div>
               <h2>{form.id ? 'Edit assignment' : 'Add assignment'}</h2>
-              <p>One assignment per barangay and purok.</p>
+              <p>Assign one or more centers to a barangay and purok.</p>
             </div>
           </div>
 
           <label className="vin-bga-field">
             <span>Barangay</span>
-            <input
-              list="vin-bga-barangays"
+            <select
               value={form.barangay}
-              onChange={(event) => setForm((current) => ({ ...current, barangay: event.target.value }))}
-              placeholder="Choose or enter a barangay"
-              maxLength={100}
+              onChange={(event) => {
+                setPurokOptions([]);
+                setLocationError('');
+                setForm((current) => ({
+                  ...current,
+                  barangay: event.target.value,
+                  purok: '',
+                  allPuroks: false,
+                }));
+              }}
               required
-            />
-            <datalist id="vin-bga-barangays">
-              {barangayOptions.map((barangay) => <option key={barangay} value={barangay} />)}
-            </datalist>
+            >
+              <option value="">Select a barangay</option>
+              {barangayOptions.map((barangay) => (
+                <option key={barangay} value={barangay}>{barangay}</option>
+              ))}
+            </select>
           </label>
 
           <label className="vin-bga-field">
             <span>Purok / sitio</span>
-            <input
-              list="vin-bga-puroks"
+            <select
               value={form.allPuroks ? '' : form.purok}
               onChange={(event) => setForm((current) => ({ ...current, purok: event.target.value }))}
-              placeholder={form.allPuroks ? 'Applies to every purok' : 'Choose or enter a purok'}
-              maxLength={100}
-              disabled={form.allPuroks}
+              disabled={!form.barangay || form.allPuroks}
               required={!form.allPuroks}
-            />
-            <datalist id="vin-bga-puroks">
-              {purokOptions.map((purok) => <option key={purok} value={purok} />)}
-            </datalist>
+            >
+              <option value="">
+                {form.barangay ? (purokOptions.length ? 'Select a purok' : 'No puroks found') : 'Select a barangay first'}
+              </option>
+              {purokOptions.map((purok) => (
+                <option key={purok} value={purok}>{purok}</option>
+              ))}
+            </select>
           </label>
 
           <label className="vin-bga-all-puroks">
@@ -227,39 +274,34 @@ export default function BarangayEvacuationAssignments() {
             <span>Apply to All Puroks in this barangay</span>
           </label>
 
-          <label className="vin-bga-field">
-            <span>Primary evacuation center</span>
-            <select
-              value={form.centerId}
-              onChange={(event) => setForm((current) => ({ ...current, centerId: event.target.value }))}
-              required
-            >
-              <option value="">Select a primary center</option>
+          <fieldset className="vin-bga-center-field">
+            <legend>Evacuation centers <small>(select one or more)</small></legend>
+            <div className="vin-bga-center-options">
               {centers.map((center) => (
-                <option key={center.id} value={center.id}>
-                  {centerLabel(center)} — {center.location}
-                </option>
+                <label
+                  key={center.id}
+                  className={`vin-bga-center-option ${form.centerIds.includes(center.id) ? 'selected' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.centerIds.includes(center.id)}
+                    onChange={(event) => setForm((current) => ({
+                      ...current,
+                      centerIds: event.target.checked
+                        ? [...current.centerIds, center.id]
+                        : current.centerIds.filter((centerId) => centerId !== center.id),
+                    }))}
+                  />
+                  <span>
+                    <strong>{centerLabel(center)}</strong>
+                    <small>{center.location}</small>
+                  </span>
+                </label>
               ))}
-            </select>
-          </label>
+            </div>
+          </fieldset>
 
-          <label className="vin-bga-field">
-            <span>Backup evacuation center <small>(optional)</small></span>
-            <select
-              value={form.backupCenterId}
-              onChange={(event) => setForm((current) => ({ ...current, backupCenterId: event.target.value }))}
-            >
-              <option value="">No backup center</option>
-              {centers
-                .filter((center) => center.id !== form.centerId)
-                .map((center) => (
-                  <option key={center.id} value={center.id}>
-                    {centerLabel(center)} — {center.location}
-                  </option>
-                ))}
-            </select>
-          </label>
-
+          {locationError && <p className="vin-bga-message error" role="alert">{locationError}</p>}
           {formError && <p className="vin-bga-message error" role="alert">{formError}</p>}
           {notice && <p className="vin-bga-message success" role="status">{notice}</p>}
 
@@ -269,7 +311,11 @@ export default function BarangayEvacuationAssignments() {
                 <X size={16} /> Cancel edit
               </button>
             )}
-            <button type="submit" className="vin-bga-primary-btn" disabled={isSaving || centers.length === 0}>
+            <button
+              type="submit"
+              className="vin-bga-primary-btn"
+              disabled={isSaving || centers.length === 0 || !form.barangay || (!form.allPuroks && !form.purok) || form.centerIds.length === 0}
+            >
               {form.id ? <Pencil size={16} /> : <Plus size={17} />}
               {isSaving ? 'Saving…' : form.id ? 'Save changes' : 'Save assignment'}
             </button>
@@ -316,8 +362,7 @@ export default function BarangayEvacuationAssignments() {
                   <tr>
                     <th>Barangay</th>
                     <th>Purok</th>
-                    <th>Primary center</th>
-                    <th>Backup center</th>
+                    <th>Evacuation centers</th>
                     <th><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
@@ -328,16 +373,15 @@ export default function BarangayEvacuationAssignments() {
                       <td data-label="Purok">
                         {assignment.purok.trim().toLowerCase() === 'all' ? 'All Puroks' : assignment.purok}
                       </td>
-                      <td data-label="Primary center">
-                        <span className="vin-bga-center-name">
-                          <Building2 size={15} />
-                          {centerLabel(centersById.get(assignment.center_id))}
-                        </span>
-                      </td>
-                      <td data-label="Backup center">
-                        {assignment.backup_center_id
-                          ? centerLabel(centersById.get(assignment.backup_center_id))
-                          : <span className="vin-bga-no-backup">Not set</span>}
+                      <td data-label="Evacuation centers">
+                        <div className="vin-bga-assigned-centers">
+                          {assignmentCenterIds(assignment).map((centerId) => (
+                            <span key={centerId} className="vin-bga-center-name">
+                              <Building2 size={15} />
+                              {centerLabel(centersById.get(centerId))}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td data-label="Actions" className="vin-bga-row-actions">
                         <button type="button" onClick={() => editAssignment(assignment)} aria-label={`Edit ${assignment.barangay} ${assignment.purok} assignment`}>

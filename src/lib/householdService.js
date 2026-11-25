@@ -231,6 +231,39 @@ export async function fetchHouseholdBarangays() {
   return Array.from(barangays.values()).sort((a, b) => a.localeCompare(b));
 }
 
+export async function fetchHouseholdPuroks(barangay) {
+  const cleanBarangay = String(barangay || '').trim();
+  if (!cleanBarangay) return [];
+
+  const puroks = new Map();
+  const batchSize = 1000;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('households')
+      .select('purok')
+      .eq('barangay', cleanBarangay)
+      .not('purok', 'is', null)
+      .order('purok', { ascending: true })
+      .range(from, from + batchSize - 1);
+
+    if (error) throw error;
+
+    (data || []).forEach((row) => {
+      const purok = String(row.purok || '').trim();
+      if (purok && !puroks.has(purok.toLowerCase())) {
+        puroks.set(purok.toLowerCase(), purok);
+      }
+    });
+
+    if (!data || data.length < batchSize) break;
+    from += batchSize;
+  }
+
+  return Array.from(puroks.values()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
 /**
  * Server-side paginated & filtered households query
  */

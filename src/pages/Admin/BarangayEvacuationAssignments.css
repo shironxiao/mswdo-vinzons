@@ -143,6 +143,77 @@
   accent-color: #6b21a8;
 }
 
+.vin-bga-center-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.vin-bga-center-field legend {
+  padding: 0 5px;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.vin-bga-center-field legend small {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.vin-bga-center-options {
+  display: grid;
+  max-height: 260px;
+  gap: 6px;
+  overflow: auto;
+}
+
+.vin-bga-center-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.vin-bga-center-option.selected {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+}
+
+.vin-bga-center-option input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: #6b21a8;
+}
+
+.vin-bga-center-option span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vin-bga-center-option strong {
+  color: #334155;
+  font-size: 0.78rem;
+}
+
+.vin-bga-center-option small {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
 .vin-bga-form-actions {
   display: flex;
   justify-content: flex-end;
@@ -285,6 +356,13 @@
 .vin-bga-center-name svg {
   flex: 0 0 auto;
   color: #7c3aed;
+}
+
+.vin-bga-assigned-centers {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
 }
 
 .vin-bga-no-backup {
