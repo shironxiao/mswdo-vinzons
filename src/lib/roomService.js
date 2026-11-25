@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_rooms';
+const ROOM_CACHE_TTL_MS = 30_000;
+let roomsCache = { rooms: null, updatedAt: 0 };
 
 /**
  * Normalizes a raw Supabase room row with center display name
@@ -49,6 +51,7 @@ export function normalizeRoom(row, centersList = []) {
  */
 export function useRooms(centersList = []) {
   const [rooms, setRooms] = useState(() => {
+    if (roomsCache.rooms) return roomsCache.rooms;
     try {
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
@@ -64,8 +67,18 @@ export function useRooms(centersList = []) {
   const [loading, setLoading] = useState(true);
   const requestId = useRef(0);
 
-  const fetchRooms = useCallback(async () => {
+  const fetchRooms = useCallback(async (force = false) => {
     const currentRequest = ++requestId.current;
+    if (
+      !force &&
+      roomsCache.rooms &&
+      Date.now() - roomsCache.updatedAt < ROOM_CACHE_TTL_MS
+    ) {
+      setRooms(roomsCache.rooms);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('rooms')
@@ -83,6 +96,7 @@ export function useRooms(centersList = []) {
 
       if (currentRequest !== requestId.current) return;
       const normalized = (data || []).map((r) => normalizeRoom(r, centersList));
+      roomsCache = { rooms: normalized, updatedAt: Date.now() };
       setRooms(normalized);
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
@@ -104,15 +118,13 @@ export function useRooms(centersList = []) {
     const scheduleRefresh = () => {
       window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeout);
-      refreshTimeout = window.setTimeout(fetchRooms, 250);
+      refreshTimeout = window.setTimeout(() => fetchRooms(true), 250);
     };
 
     const channel = supabase
       .channel('rooms-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, scheduleRefresh)
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') scheduleRefresh();
-      });
+      .subscribe();
 
     const refreshWhenOnline = () => scheduleRefresh();
     const refreshWhenVisible = () => {
@@ -139,7 +151,8 @@ export function useRooms(centersList = []) {
     };
   }, [fetchRooms]);
 
-  return { rooms, setRooms, loading, refresh: fetchRooms };
+  const refreshRooms = useCallback(() => fetchRooms(true), [fetchRooms]);
+  return { rooms, setRooms, loading, refresh: refreshRooms };
 }
 
 /**

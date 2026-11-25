@@ -47,12 +47,39 @@ function sanitizeFilename(str) {
     .replace(/_+/g, '_');
 }
 
+function formatBarangayLocation(value) {
+  const barangay = String(value || '').trim();
+  if (!barangay || /^(all barangays|unassigned)$/i.test(barangay)) return '';
+  return /^brgy\.?\s*/i.test(barangay)
+    ? barangay.replace(/^brgy\.?\s*/i, 'Brgy. ')
+    : `Brgy. ${barangay.replace(/^barangay\s*/i, '')}`;
+}
+
+function formatPurokLocation(value) {
+  const purok = String(value || '').trim();
+  if (!purok || /^(all puroks|unassigned)$/i.test(purok)) return '';
+  return /^purok\s*/i.test(purok) ? purok : `Purok ${purok}`;
+}
+
+function getHouseholdLocation(household, barangay, purok) {
+  return [
+    formatBarangayLocation(household.barangay || barangay),
+    formatPurokLocation(household.purok || purok),
+  ].filter(Boolean).join(' ');
+}
+
+function getPageLocation(households, barangay, purok) {
+  const locations = households.map((household) => getHouseholdLocation(household, barangay, purok));
+  const uniqueLocations = new Set(locations.filter(Boolean));
+  if (uniqueLocations.size === 1 && locations.every(Boolean)) return [...uniqueLocations][0];
+  if (uniqueLocations.size > 0) return 'Multiple Locations';
+  return 'Location not specified';
+}
+
 /**
  * Builds the complete HTML page for 3x3 grid or single stub printing.
  */
 export function buildStubsHtml({
-  eventName = 'Relief Distribution Operation',
-  centerName = 'All Centers',
   barangay = 'All Barangays',
   purok = 'All Puroks',
   households = [],
@@ -64,17 +91,13 @@ export function buildStubsHtml({
     timeStyle: 'short',
   });
 
-  const totalCount = households.length;
-
   // Single stub layout
   if (isSingle && households.length === 1) {
     const h = households[0];
     const displayCode = h.stubCode || h.householdCode || `HH-${h.id}`;
     const qrSvg = generateQrSvgString(displayCode, 130, '#4c1d95');
-    const hhBarangay = h.barangay || barangay || 'Unassigned';
-    const hhPurok = h.purok || purok || 'Unassigned';
-    const hhCenter = h.centerName || centerName || 'Unassigned Center';
-    const docTitle = `${sanitizeFilename(hhBarangay)}_${sanitizeFilename(displayCode)}_Stub`;
+    const locationText = getHouseholdLocation(h, barangay, purok);
+    const docTitle = `${sanitizeFilename(h.barangay || 'Household')}_${sanitizeFilename(displayCode)}_Stub`;
 
     return `
       <!DOCTYPE html>
@@ -196,17 +219,13 @@ export function buildStubsHtml({
         <div class="single-stub-wrapper">
           <div class="stub-org">Vinzons Municipal Social Welfare and Development</div>
           <div class="stub-title">Relief Goods Stub</div>
-          <div class="stub-badge-row">
-            <span class="stub-pill">📍 Brgy. ${hhBarangay}</span>
-            <span class="stub-pill">Purok: ${hhPurok}</span>
-          </div>
+          ${locationText ? `<div class="stub-badge-row"><span class="stub-pill">${locationText}</span></div>` : ''}
           <div class="stub-code">${displayCode}</div>
           <div class="stub-qr">${qrSvg}</div>
           <div class="stub-head-box">
             <div class="stub-head-label">Household Head</div>
             <div class="stub-head-name">${h.name || 'Resident'}</div>
             <div class="stub-meta-info">
-              <strong>Center:</strong> ${hhCenter}<br/>
               ${h.roomName ? `<strong>Room:</strong> ${h.roomName} • ` : ''}
               <strong>Family Size:</strong> ${h.familyCount || 1} members
             </div>
@@ -229,11 +248,14 @@ export function buildStubsHtml({
   const docTitle = `${sanitizeFilename(barangay)}_Relief_Stubs`;
 
   const pagesHtml = chunks.map((chunk, pageIndex) => {
+    const pageLocation = getPageLocation(chunk, barangay, purok);
     const cardsHtml = chunk.map((h) => {
       const code = h.stubCode || h.householdCode || `HH-${h.id}`;
       const qrSvg = generateQrSvgString(code, 76, '#000000');
-      const hhBarangay = h.barangay || barangay;
-      const hhPurok = h.purok || purok;
+      const locationText = getHouseholdLocation(h, barangay, purok);
+      const locationTagHtml = locationText
+        ? `<div class="stub-location-tag">${locationText}</div>`
+        : '';
 
       return `
         <div class="stub-card">
@@ -241,17 +263,12 @@ export function buildStubsHtml({
             <div class="stub-title">RELIEF GOODS STUB</div>
             <div class="stub-org">Vinzons Municipal Social Welfare</div>
           </div>
-          <div class="stub-location-tag">
-            <span>Brgy. ${hhBarangay}</span>
-            <span>•</span>
-            <span>${hhPurok}</span>
-          </div>
+          ${locationTagHtml}
           <div class="stub-code">${code}</div>
           <div class="stub-qr">${qrSvg}</div>
           <div class="stub-footer">
             <div class="stub-head-label">Household Head</div>
             <div class="stub-head-name" title="${h.name || ''}">${h.name || 'Resident'}</div>
-            <div class="stub-center-sub">${h.centerName || centerName}</div>
           </div>
         </div>
       `;
@@ -263,15 +280,9 @@ export function buildStubsHtml({
         <header class="sheet-header">
           <div class="sheet-header-left">
             <div class="sheet-mun-title">MUNICIPALITY OF VINZONS • MSWDO RELIEF OPERATION</div>
-            <div class="sheet-event-title">${eventName}</div>
-            <div class="sheet-location-banner">
-              <span class="location-chip primary"><strong>EVACUATION CENTER:</strong> ${centerName}</span>
-              <span class="location-chip highlight"><strong>BARANGAY:</strong> ${barangay}</span>
-              <span class="location-chip"><strong>PUROK:</strong> ${purok}</span>
-            </div>
+            <div class="sheet-location-title">${pageLocation}</div>
           </div>
           <div class="sheet-header-right">
-            <div class="sheet-meta-item"><strong>Batch:</strong> ${totalCount} Households</div>
             <div class="sheet-meta-item"><strong>Date:</strong> ${generatedAt}</div>
             <div class="sheet-meta-item"><strong>Page:</strong> ${pageIndex + 1} of ${totalPages}</div>
           </div>
@@ -339,39 +350,12 @@ export function buildStubsHtml({
           text-transform: uppercase;
           color: #64748b;
         }
-        .sheet-event-title {
+        .sheet-location-title {
           font-size: 13px;
           font-weight: 900;
           color: #0f172a;
-          text-transform: uppercase;
           letter-spacing: 0.3px;
           margin: 1px 0 3px;
-        }
-        .sheet-location-banner {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          flex-wrap: wrap;
-        }
-        .location-chip {
-          display: inline-block;
-          font-size: 8.5px;
-          padding: 1.5px 6px;
-          border-radius: 4px;
-          background: #f1f5f9;
-          color: #334155;
-          border: 1px solid #cbd5e1;
-        }
-        .location-chip.primary {
-          background: #eff6ff;
-          color: #1e40af;
-          border-color: #bfdbfe;
-        }
-        .location-chip.highlight {
-          background: #f3e8ff;
-          color: #6b21a8;
-          border-color: #d8b4fe;
-          font-weight: 700;
         }
         .sheet-header-right {
           text-align: right;
@@ -476,14 +460,6 @@ export function buildStubsHtml({
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        .stub-center-sub {
-          font-size: 7px;
-          color: #64748b;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
         @media print {
           body {
             background: #fff;

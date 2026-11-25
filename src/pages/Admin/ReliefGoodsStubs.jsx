@@ -20,6 +20,9 @@ import AdminSearchInput from '../../components/AdminSearchInput.jsx';
 import { supabase } from '../../lib/supabase.js';
 
 const STATUSES = ['All Status', 'Issued', 'Pending'];
+const RELIEF_CACHE_TTL_MS = 30_000;
+let cachedAllStubRecords = { records: [], updatedAt: 0 };
+const eventStubRecordsCache = new Map();
 
 function getPaginationItems(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -46,10 +49,13 @@ export default function ReliefGoodsStubs() {
   const [search, setSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [stubRecordState, setStubRecordState] = useState({ eventId: null, records: [] });
+  const [stubRecordState, setStubRecordState] = useState(() => {
+    const cached = eventStubRecordsCache.get(selectedEventId);
+    return { eventId: selectedEventId || null, records: cached?.records || [] };
+  });
   const [stubErrorState, setStubErrorState] = useState({ eventId: null, message: '' });
   const [issuingHouseholdId, setIssuingHouseholdId] = useState(null);
-  const [allStubsRecords, setAllStubsRecords] = useState([]);
+  const [allStubsRecords, setAllStubsRecords] = useState(cachedAllStubRecords.records);
   const [selectedHistoryHousehold, setSelectedHistoryHousehold] = useState(null);
   const [householdReliefHistory, setHouseholdReliefHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -57,9 +63,12 @@ export default function ReliefGoodsStubs() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printTargetHousehold, setPrintTargetHousehold] = useState(null);
 
+  const cachedEventStubRecords = eventStubRecordsCache.get(selectedEventId);
   const stubRecords = useMemo(
-    () => stubRecordState.eventId === selectedEventId ? stubRecordState.records : [],
-    [stubRecordState, selectedEventId]
+    () => stubRecordState.eventId === selectedEventId
+      ? stubRecordState.records
+      : cachedEventStubRecords?.records || [],
+    [stubRecordState, selectedEventId, cachedEventStubRecords]
   );
   const stubError = stubErrorState.eventId === selectedEventId
     ? stubErrorState.message
@@ -67,9 +76,19 @@ export default function ReliefGoodsStubs() {
 
   useEffect(() => {
     let isMounted = true;
-    const fetchAllStubs = () => {
+    const fetchAllStubs = (force = false) => {
+      if (
+        !force &&
+        cachedAllStubRecords.updatedAt &&
+        Date.now() - cachedAllStubRecords.updatedAt < RELIEF_CACHE_TTL_MS
+      ) {
+        return;
+      }
       getAllReliefStubs().then((stubs) => {
+        cachedAllStubRecords = { records: stubs, updatedAt: Date.now() };
         if (isMounted) setAllStubsRecords(stubs);
+      }).catch((error) => {
+        console.error('Could not fetch relief stub records:', error);
       });
     };
     fetchAllStubs();
@@ -79,7 +98,7 @@ export default function ReliefGoodsStubs() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'relief_goods_stubs' },
-        fetchAllStubs
+        () => fetchAllStubs(true)
       )
       .subscribe();
 
@@ -93,10 +112,20 @@ export default function ReliefGoodsStubs() {
     if (!selectedEventId || selectedEventId === 'default-active-event') return undefined;
 
     let isSubscribed = true;
-    const loadStubRecords = () => {
+    const cached = eventStubRecordsCache.get(selectedEventId);
+
+    const loadStubRecords = (force = false) => {
+      if (
+        !force &&
+        cached?.updatedAt &&
+        Date.now() - cached.updatedAt < RELIEF_CACHE_TTL_MS
+      ) {
+        return;
+      }
       getEventReliefStubRecords(selectedEventId)
         .then((records) => {
           if (!isSubscribed) return;
+          eventStubRecordsCache.set(selectedEventId, { records, updatedAt: Date.now() });
           setStubRecordState({ eventId: selectedEventId, records });
           setStubErrorState({ eventId: selectedEventId, message: '' });
         })
@@ -120,7 +149,7 @@ export default function ReliefGoodsStubs() {
           table: 'relief_goods_stubs',
           filter: `event_id=eq.${selectedEventId}`,
         },
-        loadStubRecords
+        () => loadStubRecords(true)
       )
       .subscribe();
 

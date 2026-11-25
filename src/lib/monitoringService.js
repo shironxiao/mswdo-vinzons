@@ -2,6 +2,24 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from './supabase.js';
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_monitoring_logs';
+const MONITORING_CACHE_TTL_MS = 30_000;
+const monitoringLogsCache = new Map();
+
+function readMonitoringLogsCache(cacheKey) {
+  const cached = monitoringLogsCache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const stored = localStorage.getItem(cacheKey);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return { logs: parsed, updatedAt: 0 };
+    }
+  } catch {
+    // Ignore unavailable or malformed browser cache.
+  }
+  return null;
+}
 
 /**
  * Normalizes raw Supabase monitoring_logs row
@@ -56,27 +74,42 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
     : scopedCenterIds
       ? `${LOCAL_STORAGE_KEY}:centers:${centerIdsKey || 'none'}`
       : LOCAL_STORAGE_KEY;
-  const [logs, setLogs] = useState(() => {
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-    return [];
-  });
-
-  const [loading, setLoading] = useState(true);
+  const cachedLogsForKey = useMemo(() => readMonitoringLogsCache(cacheKey), [cacheKey]);
+  const [logState, setLogState] = useState(() => ({
+    cacheKey,
+    logs: cachedLogsForKey?.logs || [],
+  }));
+  const logs = logState.cacheKey === cacheKey
+    ? logState.logs
+    : cachedLogsForKey?.logs || [];
+  const [loadingState, setLoadingState] = useState(() => ({
+    cacheKey,
+    loading: !cachedLogsForKey?.logs,
+  }));
+  const loading = loadingState.cacheKey === cacheKey
+    ? loadingState.loading
+    : !cachedLogsForKey?.logs;
   const requestId = useRef(0);
 
-  const fetchLogs = useCallback(async () => {
+  const fetchLogs = useCallback(async (force = false) => {
     const currentRequest = ++requestId.current;
+    const cached = readMonitoringLogsCache(cacheKey);
+    if (
+      !force &&
+      cached?.updatedAt &&
+      Date.now() - cached.updatedAt < MONITORING_CACHE_TTL_MS
+    ) {
+      setLogState({ cacheKey, logs: cached.logs });
+      setLoadingState({ cacheKey, loading: false });
+      return;
+    }
+
     try {
       if (scopedCenterIds && scopedCenterIds.length === 0) {
-        if (currentRequest === requestId.current) setLogs([]);
+        if (currentRequest === requestId.current) {
+          setLogState({ cacheKey, logs: [] });
+          monitoringLogsCache.set(cacheKey, { logs: [], updatedAt: Date.now() });
+        }
         return;
       }
 
@@ -114,12 +147,19 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
         if (error) throw error;
         const batch = data || [];
         allRows.push(...batch);
+        if (!cached?.logs?.length) {
+          setLogState({
+            cacheKey,
+            logs: allRows.map((row) => normalizeMonitoringLog(row, centersList)),
+          });
+        }
         if (batch.length < PAGE_SIZE) break;
       }
 
       if (currentRequest !== requestId.current) return;
       const normalized = allRows.map((r) => normalizeMonitoringLog(r, centersList));
-      setLogs(normalized);
+      setLogState({ cacheKey, logs: normalized });
+      monitoringLogsCache.set(cacheKey, { logs: normalized, updatedAt: Date.now() });
       try {
         localStorage.setItem(cacheKey, JSON.stringify(normalized));
       } catch {
@@ -130,17 +170,19 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
         console.warn('Could not fetch monitoring_logs from Supabase, using cache/fallback:', err);
       }
     } finally {
-      if (currentRequest === requestId.current) setLoading(false);
+      if (currentRequest === requestId.current) {
+        setLoadingState({ cacheKey, loading: false });
+      }
     }
   }, [cacheKey, centerId, centersList, scopedCenterIds]);
 
   useEffect(() => {
     const initialFetch = window.setTimeout(fetchLogs, 0);
     let refreshTimeout;
-    const scheduleRefresh = () => {
+    const scheduleRefresh = (force = true) => {
       window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeout);
-      refreshTimeout = window.setTimeout(fetchLogs, 250);
+      refreshTimeout = window.setTimeout(() => fetchLogs(force), 250);
     };
 
     const logChangeConfig = {
@@ -153,29 +195,28 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
     const channel = supabase.channel('monitoring-logs-live');
     if (centerId) {
       logChangeConfig.filter = `center_id=eq.${centerId}`;
-      channel.on('postgres_changes', logChangeConfig, scheduleRefresh);
+      channel.on('postgres_changes', logChangeConfig, () => scheduleRefresh(true));
     } else if (scopedCenterIds) {
       const subscriptionCenterIds = centerIdsKey ? centerIdsKey.split('|') : [];
       subscriptionCenterIds.forEach((id) => {
-        channel.on('postgres_changes', { ...logChangeConfig, filter: `center_id=eq.${id}` }, scheduleRefresh);
+        channel.on('postgres_changes', { ...logChangeConfig, filter: `center_id=eq.${id}` }, () => scheduleRefresh(true));
       });
     } else {
-      channel.on('postgres_changes', logChangeConfig, scheduleRefresh);
+      channel.on('postgres_changes', logChangeConfig, () => scheduleRefresh(true));
     }
-    channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') scheduleRefresh();
-      });
+    channel.subscribe();
     const crossTabChannel = typeof BroadcastChannel === 'undefined'
       ? null
       : new BroadcastChannel('vinzons-monitoring-logs');
-    crossTabChannel?.addEventListener('message', scheduleRefresh);
+    const refreshFromOtherTab = () => scheduleRefresh(true);
+    crossTabChannel?.addEventListener('message', refreshFromOtherTab);
 
-    const refreshWhenOnline = () => scheduleRefresh();
+    const refreshWhenOnline = () => scheduleRefresh(true);
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') scheduleRefresh();
+      if (document.visibilityState === 'visible') scheduleRefresh(true);
     };
     const refreshInterval = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh();
+      if (document.visibilityState === 'visible' && navigator.onLine) scheduleRefresh(true);
     }, 30000);
 
     window.addEventListener('online', refreshWhenOnline);
@@ -191,18 +232,30 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
       window.removeEventListener('focus', refreshWhenOnline);
       window.removeEventListener('pageshow', refreshWhenOnline);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
-      crossTabChannel?.removeEventListener('message', scheduleRefresh);
+      crossTabChannel?.removeEventListener('message', refreshFromOtherTab);
       crossTabChannel?.close();
       supabase.removeChannel(channel);
     };
-  }, [fetchLogs, centerId, centerIdsKey, scopedCenterIds]);
+  }, [fetchLogs, cacheKey, centerId, centerIdsKey, scopedCenterIds]);
 
+  const setLogs = useCallback((nextLogs) => {
+    setLogState((previous) => {
+      const currentLogs = previous.cacheKey === cacheKey
+        ? previous.logs
+        : cachedLogsForKey?.logs || [];
+      return {
+        cacheKey,
+        logs: typeof nextLogs === 'function' ? nextLogs(currentLogs) : nextLogs,
+      };
+    });
+  }, [cacheKey, cachedLogsForKey]);
+  const refreshLogs = useCallback(() => fetchLogs(true), [fetchLogs]);
   const scopedLogs = centerId
     ? logs.filter((log) => log.centerId === centerId)
     : scopedCenterIds
       ? logs.filter((log) => scopedCenterIds.includes(log.centerId))
       : logs;
-  return { logs: scopedLogs, setLogs, loading, refresh: fetchLogs };
+  return { logs: scopedLogs, setLogs, loading, refresh: refreshLogs };
 }
 
 /**

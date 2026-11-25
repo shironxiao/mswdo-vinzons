@@ -3,6 +3,9 @@ import { supabase } from './supabase.js';
 
 
 const HOUSEHOLDS_CHANGED_EVENT = 'vinzons-households-changed';
+const ADMIN_DATA_CACHE_TTL_MS = 30_000;
+const householdRowsCache = new Map();
+const roomPlacementsCache = new Map();
 const householdSyncChannel = typeof BroadcastChannel === 'undefined'
   ? null
   : new BroadcastChannel('vinzons-households');
@@ -607,15 +610,37 @@ export async function searchHouseholdsFromDatabase(query, centersList = [], limi
  * Progressively streams all households in batches and accurately tracks the total count.
  */
 export function useHouseholds(centersList = [], { centerId = null, fetchAll = false } = {}) {
-  const [households, setHouseholds] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = centerId || (fetchAll ? 'all' : 'first-page');
+  const cachedHouseholds = householdRowsCache.get(cacheKey);
+  const [households, setHouseholds] = useState(() => (
+    cachedHouseholds
+      ? cachedHouseholds.rows.map((row) => normalizeHousehold(row, centersList)).filter(Boolean)
+      : []
+  ));
+  const [totalCount, setTotalCount] = useState(cachedHouseholds?.totalCount || 0);
+  const [loading, setLoading] = useState(!cachedHouseholds?.rows?.length);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const fetchSequence = useRef(0);
 
-  const fetchHouseholds = useCallback(async () => {
+  const fetchHouseholds = useCallback(async (force = false) => {
     const requestId = ++fetchSequence.current;
+    const cached = householdRowsCache.get(cacheKey);
+    if (
+      !force &&
+      cached?.complete &&
+      Date.now() - cached.updatedAt < ADMIN_DATA_CACHE_TTL_MS
+    ) {
+      setHouseholds(cached.rows.map((row) => normalizeHousehold(row, centersList)).filter(Boolean));
+      setTotalCount(cached.totalCount);
+      setLoading(false);
+      setIsLoadingMore(false);
+      setError(null);
+      return;
+    }
+
+    setLoading(!cached?.rows?.length);
+    setIsLoadingMore(Boolean(centerId || fetchAll));
     try {
       // 1. Fetch exact total count first (super fast HEAD count query)
       let countQuery = supabase
@@ -645,30 +670,64 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
       const firstChunk = await fetchHouseholdBatch(0);
       const householdRows = [...firstChunk];
 
+      const publishRows = (complete = false) => {
+        if (requestId !== fetchSequence.current) return;
+        householdRowsCache.set(cacheKey, {
+          rows: [...householdRows],
+          totalCount: typeof count === 'number' ? count : householdRows.length,
+          complete,
+          updatedAt: complete ? Date.now() : 0,
+        });
+        setHouseholds(householdRows.map((row) => normalizeHousehold(row, centersList)).filter(Boolean));
+      };
+
+      if (!cached?.rows?.length) publishRows();
+
       if (centerId || fetchAll) {
-        for (let offset = BATCH_SIZE, batch = firstChunk;
-          batch.length === BATCH_SIZE;
-          offset += BATCH_SIZE) {
-          if (requestId !== fetchSequence.current) return;
-          batch = await fetchHouseholdBatch(offset);
-          householdRows.push(...batch);
+        if (typeof count === 'number') {
+          const concurrency = 4;
+          for (let offset = BATCH_SIZE; offset < count; offset += BATCH_SIZE * concurrency) {
+            const offsets = Array.from(
+              { length: Math.min(concurrency, Math.ceil((count - offset) / BATCH_SIZE)) },
+              (_, index) => offset + index * BATCH_SIZE
+            );
+            const batches = await Promise.all(offsets.map(fetchHouseholdBatch));
+            if (requestId !== fetchSequence.current) return;
+            batches.forEach((batch) => householdRows.push(...batch));
+            if (!cached?.rows?.length) publishRows();
+          }
+        } else {
+          for (let offset = BATCH_SIZE; ; offset += BATCH_SIZE) {
+            if (requestId !== fetchSequence.current) return;
+            const batch = await fetchHouseholdBatch(offset);
+            householdRows.push(...batch);
+            if (!cached?.rows?.length) publishRows();
+            if (batch.length < BATCH_SIZE) break;
+          }
         }
       }
 
       if (requestId !== fetchSequence.current) return;
+
+      householdRowsCache.set(cacheKey, {
+        rows: householdRows,
+        totalCount: typeof count === 'number' ? count : householdRows.length,
+        complete: true,
+        updatedAt: Date.now(),
+      });
 
       const firstNormalized = householdRows
         .map((row) => normalizeHousehold(row, centersList))
         .filter(Boolean);
 
       setHouseholds(firstNormalized);
+      setTotalCount(typeof count === 'number' ? count : householdRows.length);
       setLoading(false);
       setIsLoadingMore(false);
       setError(null);
     } catch (err) {
       if (requestId !== fetchSequence.current) return;
       console.error('Could not fetch households from Supabase:', err?.message || err);
-      setHouseholds([]);
       setError(err?.message || 'Failed to fetch households');
     } finally {
       if (requestId === fetchSequence.current) {
@@ -676,7 +735,7 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
         setIsLoadingMore(false);
       }
     }
-  }, [centersList, centerId, fetchAll]);
+  }, [centersList, centerId, fetchAll, cacheKey]);
 
   useEffect(() => {
     let refreshTimeout;
@@ -684,7 +743,7 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
     const scheduleRefresh = () => {
       window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeout);
-      refreshTimeout = window.setTimeout(() => fetchHouseholds(), 250);
+      refreshTimeout = window.setTimeout(() => fetchHouseholds(true), 250);
     };
 
     const householdChangeConfig = {
@@ -705,9 +764,7 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
       .on('postgres_changes', { event: '*', schema: 'public', table: 'household_profiles' }, () => {
         scheduleRefresh();
       })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') scheduleRefresh();
-      });
+      .subscribe();
     householdSyncChannel?.addEventListener('message', scheduleRefresh);
 
     const refreshWhenOnline = () => scheduleRefresh();
@@ -725,6 +782,7 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
     document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
+      fetchSequence.current += 1;
       window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeout);
       window.clearInterval(refreshInterval);
@@ -738,29 +796,48 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
     };
   }, [fetchHouseholds, centerId]);
 
+  const refreshHouseholds = useCallback(() => fetchHouseholds(true), [fetchHouseholds]);
+
   return {
     households,
     totalCount,
     loading,
     isLoadingMore,
     error,
-    refresh: fetchHouseholds,
+    refresh: refreshHouseholds,
     setHouseholds,
   };
 }
 
 export function useEventRoomPlacements(eventId, { includeMemberAgeDetails = false, centerId = null } = {}) {
-  const [placements, setPlacements] = useState([]);
-  const refreshTimeoutRef = useRef(null);
-  const fetchSequence = useRef(0);
   const householdSelect = includeMemberAgeDetails
     ? HOUSEHOLD_DETAIL_SELECT
     : HOUSEHOLD_SUMMARY_SELECT;
+  const cacheKey = `${eventId || 'none'}:${centerId || 'all'}:${includeMemberAgeDetails ? 'details' : 'summary'}`;
+  const [placementState, setPlacementState] = useState(() => ({
+    cacheKey,
+    data: roomPlacementsCache.get(cacheKey)?.data || [],
+  }));
+  const placements = placementState.cacheKey === cacheKey
+    ? placementState.data
+    : roomPlacementsCache.get(cacheKey)?.data || [];
+  const refreshTimeoutRef = useRef(null);
+  const fetchSequence = useRef(0);
 
-  const fetchPlacements = useCallback(async () => {
+  const fetchPlacements = useCallback(async (force = false) => {
     const requestId = ++fetchSequence.current;
     if (!eventId || eventId === 'default-active-event') {
-      setPlacements([]);
+      setPlacementState({ cacheKey, data: [] });
+      return;
+    }
+
+    const cached = roomPlacementsCache.get(cacheKey);
+    if (
+      !force &&
+      cached?.complete &&
+      Date.now() - cached.updatedAt < ADMIN_DATA_CACHE_TTL_MS
+    ) {
+      setPlacementState({ cacheKey, data: cached.data });
       return;
     }
 
@@ -787,16 +864,23 @@ export function useEventRoomPlacements(eventId, { includeMemberAgeDetails = fals
         if (placementError) throw placementError;
         const batch = data || [];
         allPlacements.push(...batch);
+        if (!cached?.data?.length) {
+          roomPlacementsCache.set(cacheKey, { data: [...allPlacements], complete: false, updatedAt: 0 });
+          setPlacementState({ cacheKey, data: [...allPlacements] });
+        }
         if (batch.length < PAGE_SIZE) break;
       }
 
-      if (requestId === fetchSequence.current) setPlacements(allPlacements);
+      if (requestId === fetchSequence.current) {
+        roomPlacementsCache.set(cacheKey, { data: allPlacements, complete: true, updatedAt: Date.now() });
+        setPlacementState({ cacheKey, data: allPlacements });
+      }
     } catch (placementError) {
       if (requestId === fetchSequence.current) {
         console.error('Could not load evacuation placements:', placementError);
       }
     }
-  }, [eventId, centerId, householdSelect]);
+  }, [eventId, centerId, householdSelect, cacheKey]);
 
   useEffect(() => {
     const initialFetch = window.setTimeout(fetchPlacements, 0);
@@ -810,7 +894,7 @@ export function useEventRoomPlacements(eventId, { includeMemberAgeDetails = fals
     const scheduleRefresh = () => {
       window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeoutRef.current);
-      refreshTimeoutRef.current = window.setTimeout(fetchPlacements, 250);
+      refreshTimeoutRef.current = window.setTimeout(() => fetchPlacements(true), 250);
     };
 
     const placementChangeConfig = {
@@ -823,9 +907,7 @@ export function useEventRoomPlacements(eventId, { includeMemberAgeDetails = fals
     const channel = supabase
       .channel(`room-placements-${eventId}`)
       .on('postgres_changes', placementChangeConfig, scheduleRefresh)
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') scheduleRefresh();
-      });
+      .subscribe();
     householdSyncChannel?.addEventListener('message', scheduleRefresh);
 
     const refreshWhenOnline = () => scheduleRefresh();
@@ -853,9 +935,10 @@ export function useEventRoomPlacements(eventId, { includeMemberAgeDetails = fals
       householdSyncChannel?.removeEventListener('message', scheduleRefresh);
       supabase.removeChannel(channel);
     };
-  }, [eventId, centerId, fetchPlacements]);
+  }, [eventId, centerId, fetchPlacements, cacheKey]);
 
-  return { placements, refresh: fetchPlacements };
+  const refreshPlacements = useCallback(() => fetchPlacements(true), [fetchPlacements]);
+  return { placements, refresh: refreshPlacements };
 }
 
 /**
@@ -1159,18 +1242,37 @@ export async function getEventReliefStubRecords(eventId) {
   if (!eventId) return [];
 
   const PAGE_SIZE = 300;
-  const records = [];
-  for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data, error } = await supabase
+  const fetchPage = async (offset) => {
+    let query = supabase
       .from('relief_goods_stubs')
-      .select('household_id, event_id, stub_code, stub_issued, stub_issued_at')
+      .select('household_id, event_id, stub_code, stub_issued, stub_issued_at', { count: 'exact' })
       .eq('event_id', eventId)
+      .order('household_id', { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
-
+    const { data, error, count } = await query;
     if (error) throw error;
-    const batch = data || [];
-    records.push(...batch);
-    if (batch.length < PAGE_SIZE) return records;
+    return { rows: data || [], count };
+  };
+
+  const firstPage = await fetchPage(0);
+  const records = [...firstPage.rows];
+  if (typeof firstPage.count === 'number') {
+    const concurrency = 4;
+    for (let offset = PAGE_SIZE; offset < firstPage.count; offset += PAGE_SIZE * concurrency) {
+      const offsets = Array.from(
+        { length: Math.min(concurrency, Math.ceil((firstPage.count - offset) / PAGE_SIZE)) },
+        (_, index) => offset + index * PAGE_SIZE
+      );
+      const pages = await Promise.all(offsets.map((pageOffset) => fetchPage(pageOffset)));
+      pages.forEach(({ rows }) => records.push(...rows));
+    }
+    return records;
+  }
+
+  for (let offset = PAGE_SIZE; ; offset += PAGE_SIZE) {
+    const { rows } = await fetchPage(offset);
+    records.push(...rows);
+    if (rows.length < PAGE_SIZE) return records;
   }
 }
 
@@ -1180,16 +1282,36 @@ export async function getEventReliefStubRecords(eventId) {
 export async function getAllReliefStubs() {
   try {
     const PAGE_SIZE = 300;
-    const records = [];
-    for (let offset = 0; ; offset += PAGE_SIZE) {
-      const { data, error } = await supabase
+    const fetchPage = async (offset) => {
+      const { data, error, count } = await supabase
         .from('relief_goods_stubs')
-        .select('household_id, event_id, stub_code, stub_issued, stub_issued_at')
+        .select('household_id, event_id, stub_code, stub_issued, stub_issued_at', { count: 'exact' })
+        .order('household_id', { ascending: true })
+        .order('event_id', { ascending: true })
         .range(offset, offset + PAGE_SIZE - 1);
       if (error) throw error;
-      const batch = data || [];
-      records.push(...batch);
-      if (batch.length < PAGE_SIZE) return records;
+      return { rows: data || [], count };
+    };
+
+    const firstPage = await fetchPage(0);
+    const records = [...firstPage.rows];
+    if (typeof firstPage.count === 'number') {
+      const concurrency = 4;
+      for (let offset = PAGE_SIZE; offset < firstPage.count; offset += PAGE_SIZE * concurrency) {
+        const offsets = Array.from(
+          { length: Math.min(concurrency, Math.ceil((firstPage.count - offset) / PAGE_SIZE)) },
+          (_, index) => offset + index * PAGE_SIZE
+        );
+        const pages = await Promise.all(offsets.map((pageOffset) => fetchPage(pageOffset)));
+        pages.forEach(({ rows }) => records.push(...rows));
+      }
+      return records;
+    }
+
+    for (let offset = PAGE_SIZE; ; offset += PAGE_SIZE) {
+      const { rows } = await fetchPage(offset);
+      records.push(...rows);
+      if (rows.length < PAGE_SIZE) return records;
     }
   } catch (err) {
     console.warn('getAllReliefStubs error:', err);
