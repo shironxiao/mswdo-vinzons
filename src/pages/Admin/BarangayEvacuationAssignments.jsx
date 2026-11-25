@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Building2, ChevronDown, MapPin, Pencil, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
 import { supabase } from '../../lib/supabase.js';
@@ -45,6 +46,7 @@ export default function BarangayEvacuationAssignments() {
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
   const centerPickerRef = useRef(null);
+  const centerPanelRef = useRef(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -93,7 +95,12 @@ export default function BarangayEvacuationAssignments() {
     if (!showCentersPanel) return undefined;
 
     const closeOnOutsideClick = (event) => {
-      if (!centerPickerRef.current?.contains(event.target)) setShowCentersPanel(false);
+      if (
+        !centerPickerRef.current?.contains(event.target) &&
+        !centerPanelRef.current?.contains(event.target)
+      ) {
+        setShowCentersPanel(false);
+      }
     };
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') setShowCentersPanel(false);
@@ -324,52 +331,81 @@ export default function BarangayEvacuationAssignments() {
                 </span>
                 <ChevronDown size={16} />
               </button>
-              {showCentersPanel && (
-                <div className="vin-bga-center-panel" id="vin-bga-center-panel">
-                  <label className="vin-bga-center-search">
-                    <Search size={16} aria-hidden="true" />
-                    <span className="sr-only">Search evacuation centers</span>
-                    <input
-                      type="search"
-                      value={centerSearch}
-                      onChange={(event) => setCenterSearch(event.target.value)}
-                      placeholder="Search centers..."
-                      autoFocus
-                    />
-                  </label>
-                  <div className="vin-bga-center-options">
-                    {filteredCenters.length === 0 ? (
-                      <p className="vin-bga-center-empty">No centers match your search.</p>
-                    ) : filteredCenters.map((center) => (
-                      <label
-                        key={center.id}
-                        className={`vin-bga-center-option ${form.centerIds.includes(center.id) ? 'selected' : ''}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={form.centerIds.includes(center.id)}
-                          onChange={(event) => setForm((current) => ({
-                            ...current,
-                            centerIds: event.target.checked
-                              ? [...current.centerIds, center.id]
-                              : current.centerIds.filter((centerId) => centerId !== center.id),
-                          }))}
-                        />
-                        <span>
-                          <strong>{centerLabel(center)}</strong>
-                          <small>{center.location}</small>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="vin-bga-center-panel-footer">
-                    <span>{form.centerIds.length} selected</span>
-                    <button type="button" onClick={() => setShowCentersPanel(false)}>Done</button>
-                  </div>
-                </div>
-              )}
             </div>
           </fieldset>
+          {showCentersPanel && createPortal(
+            <div
+              className="vin-bga-center-overlay"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) setShowCentersPanel(false);
+              }}
+            >
+              <section
+                className="vin-bga-center-panel"
+                id="vin-bga-center-panel"
+                ref={centerPanelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="vin-bga-center-panel-title"
+              >
+                <header className="vin-bga-center-panel-heading">
+                  <div>
+                    <h3 id="vin-bga-center-panel-title">Select evacuation centers</h3>
+                    <p>Search, then check one or more centers.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="vin-bga-center-panel-close"
+                    onClick={() => setShowCentersPanel(false)}
+                    aria-label="Close center selector"
+                  >
+                    <X size={18} />
+                  </button>
+                </header>
+                <label className="vin-bga-center-search">
+                  <Search size={16} aria-hidden="true" />
+                  <span className="sr-only">Search evacuation centers</span>
+                  <input
+                    type="search"
+                    value={centerSearch}
+                    onChange={(event) => setCenterSearch(event.target.value)}
+                    placeholder="Search centers..."
+                    autoFocus
+                  />
+                </label>
+                <div className="vin-bga-center-options">
+                  {filteredCenters.length === 0 ? (
+                    <p className="vin-bga-center-empty">No centers match your search.</p>
+                  ) : filteredCenters.map((center) => (
+                    <label
+                      key={center.id}
+                      className={`vin-bga-center-option ${form.centerIds.includes(center.id) ? 'selected' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.centerIds.includes(center.id)}
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          centerIds: event.target.checked
+                            ? [...current.centerIds, center.id]
+                            : current.centerIds.filter((centerId) => centerId !== center.id),
+                        }))}
+                      />
+                      <span>
+                        <strong>{centerLabel(center)}</strong>
+                        <small>{center.location}</small>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="vin-bga-center-panel-footer">
+                  <span>{form.centerIds.length} selected</span>
+                  <button type="button" onClick={() => setShowCentersPanel(false)}>Done</button>
+                </div>
+              </section>
+            </div>,
+            document.body
+          )}
 
           {locationError && <p className="vin-bga-message error" role="alert">{locationError}</p>}
           {formError && <p className="vin-bga-message error" role="alert">{formError}</p>}
