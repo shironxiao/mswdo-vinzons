@@ -99,7 +99,7 @@ function personDromicRow(person, household, isHead) {
     row[26 + sexOffset] = 1;
   }
 
-  row[0] = `${person.name || 'Unnamed'}${isHead ? ' (HEAD)' : ''}`;
+  row[0] = person.name || 'Unnamed';
   return row;
 }
 
@@ -132,7 +132,9 @@ function buildDromicRows(households) {
     });
 
     return familyRow;
-  });
+  }).sort((a, b) =>
+    String(a[0] || '').localeCompare(String(b[0] || ''), undefined, { sensitivity: 'base', numeric: true })
+  );
 }
 
 function createDromicWorksheet({ barangay, disasterType, occurrenceDate, centerName, rows }) {
@@ -283,7 +285,7 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
 export default function Reports() {
   const { selectedEvent } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
-  const { households, totalCount: masterlistCount } = useHouseholds(centers);
+  const { households, totalCount: masterlistCount } = useHouseholds(centers, { fetchAll: true });
   const { placements } = useEventRoomPlacements(selectedEvent?.id, { includeMemberAgeDetails: true });
   const initialDisasterType = selectedEvent?.event_type || 'Typhoon';
   const [selectedCenterId, setSelectedCenterId] = useState('');
@@ -327,10 +329,35 @@ export default function Reports() {
 
   const selectedCenter = centers.find((center) => center.id === selectedCenterId) || centers[0];
   const centerBarangay = findCenterBarangay(selectedCenter?.location, barangayOptions);
-  const currentPlacements = useMemo(() => placements.filter((placement) => (
-    placement.event_id === selectedEvent?.id &&
-    (selectedEvent?.status === 'Active' ? placement.status === 'Evacuated' : true)
-  )), [placements, selectedEvent?.id, selectedEvent?.status]);
+  const currentPlacements = useMemo(() => {
+    const eventPlacements = placements.filter((placement) => (
+      placement.event_id === selectedEvent?.id &&
+      (selectedEvent?.status === 'Active' ? placement.status === 'Evacuated' : true)
+    ));
+    if (selectedEvent?.status !== 'Active') return eventPlacements;
+
+    const placedIds = new Set(eventPlacements.map((placement) => placement.household_id));
+    const directPlacements = households
+      .filter((household) => (
+        household.evacueeStatus === 'Active' &&
+        household.centerId &&
+        household.roomId &&
+        household.room &&
+        household.room.trim().toLowerCase() !== 'unassigned' &&
+        !placedIds.has(household.id)
+      ))
+      .map((household) => ({
+        household_id: household.id,
+        center_id: household.centerId,
+        room_id: household.roomId,
+        event_id: selectedEvent.id,
+        status: 'Evacuated',
+        check_in_at: household.createdAt,
+        check_out_at: null,
+      }));
+
+    return [...eventPlacements, ...directPlacements];
+  }, [placements, households, selectedEvent]);
   const eventHouseholds = useMemo(() => currentPlacements
     .map((placement) => {
       const joinedHousehold = Array.isArray(placement.household)

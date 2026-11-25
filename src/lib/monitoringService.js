@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from './supabase.js';
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_monitoring_logs';
@@ -45,10 +45,20 @@ export function normalizeMonitoringLog(row, centersList = []) {
 /**
  * Hook to consume live monitoring logs with Supabase realtime updates and offline cache
  */
-export function useMonitoringLogs(centersList = []) {
+export function useMonitoringLogs(centersList = [], centerId = null, centerIds = null) {
+  const scopedCenterIds = useMemo(
+    () => Array.isArray(centerIds) ? [...new Set(centerIds.filter(Boolean))].sort() : null,
+    [centerIds]
+  );
+  const centerIdsKey = scopedCenterIds ? scopedCenterIds.join('|') : null;
+  const cacheKey = centerId
+    ? `${LOCAL_STORAGE_KEY}:${centerId}`
+    : scopedCenterIds
+      ? `${LOCAL_STORAGE_KEY}:centers:${centerIdsKey || 'none'}`
+      : LOCAL_STORAGE_KEY;
   const [logs, setLogs] = useState(() => {
     try {
-      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) return parsed;
@@ -65,36 +75,53 @@ export function useMonitoringLogs(centersList = []) {
   const fetchLogs = useCallback(async () => {
     const currentRequest = ++requestId.current;
     try {
-      const { data, error } = await supabase
-        .from('monitoring_logs')
-        .select(`
-          id,
-          household_id,
-          center_id,
-          room_id,
-          monitoring_interval,
-          checked_by,
-          household_status,
-          members_attendance,
-          total_members,
-          present_count,
-          absent_count,
-          late_count,
-          remarks,
-          created_at,
-          household:households ( id, head_name, household_code ),
-          center:evacuation_centers ( id, name, location ),
-          room:rooms ( id, room_name )
-        `)
-        .order('created_at', { ascending: false });
+      if (scopedCenterIds && scopedCenterIds.length === 0) {
+        if (currentRequest === requestId.current) setLogs([]);
+        return;
+      }
 
-      if (error) throw error;
+      const PAGE_SIZE = 300;
+      const allRows = [];
+      for (let offset = 0; ; offset += PAGE_SIZE) {
+        if (currentRequest !== requestId.current) return;
+        let logsQuery = supabase
+          .from('monitoring_logs')
+          .select(`
+            id,
+            household_id,
+            center_id,
+            room_id,
+            monitoring_interval,
+            checked_by,
+            household_status,
+            members_attendance,
+            total_members,
+            present_count,
+            absent_count,
+            late_count,
+            remarks,
+            created_at,
+            household:households ( id, head_name, household_code ),
+            center:evacuation_centers ( id, name, location ),
+            room:rooms ( id, room_name )
+          `);
+        if (centerId) logsQuery = logsQuery.eq('center_id', centerId);
+        else if (scopedCenterIds) logsQuery = logsQuery.in('center_id', scopedCenterIds);
+        const { data, error } = await logsQuery
+          .order('created_at', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1);
+
+        if (error) throw error;
+        const batch = data || [];
+        allRows.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+      }
 
       if (currentRequest !== requestId.current) return;
-      const normalized = (data || []).map((r) => normalizeMonitoringLog(r, centersList));
+      const normalized = allRows.map((r) => normalizeMonitoringLog(r, centersList));
       setLogs(normalized);
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+        localStorage.setItem(cacheKey, JSON.stringify(normalized));
       } catch {
         // ignore
       }
@@ -105,7 +132,7 @@ export function useMonitoringLogs(centersList = []) {
     } finally {
       if (currentRequest === requestId.current) setLoading(false);
     }
-  }, [centersList]);
+  }, [cacheKey, centerId, centersList, scopedCenterIds]);
 
   useEffect(() => {
     const initialFetch = window.setTimeout(fetchLogs, 0);
@@ -116,10 +143,26 @@ export function useMonitoringLogs(centersList = []) {
       refreshTimeout = window.setTimeout(fetchLogs, 250);
     };
 
-    const channel = supabase
-      .channel('monitoring-logs-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitoring_logs' }, scheduleRefresh)
-      .subscribe((status) => {
+    const logChangeConfig = {
+      event: '*',
+      schema: 'public',
+      table: 'monitoring_logs',
+    };
+    if (centerId) logChangeConfig.filter = `center_id=eq.${centerId}`;
+
+    const channel = supabase.channel('monitoring-logs-live');
+    if (centerId) {
+      logChangeConfig.filter = `center_id=eq.${centerId}`;
+      channel.on('postgres_changes', logChangeConfig, scheduleRefresh);
+    } else if (scopedCenterIds) {
+      const subscriptionCenterIds = centerIdsKey ? centerIdsKey.split('|') : [];
+      subscriptionCenterIds.forEach((id) => {
+        channel.on('postgres_changes', { ...logChangeConfig, filter: `center_id=eq.${id}` }, scheduleRefresh);
+      });
+    } else {
+      channel.on('postgres_changes', logChangeConfig, scheduleRefresh);
+    }
+    channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') scheduleRefresh();
       });
     const crossTabChannel = typeof BroadcastChannel === 'undefined'
@@ -152,9 +195,14 @@ export function useMonitoringLogs(centersList = []) {
       crossTabChannel?.close();
       supabase.removeChannel(channel);
     };
-  }, [fetchLogs]);
+  }, [fetchLogs, centerId, centerIdsKey, scopedCenterIds]);
 
-  return { logs, setLogs, loading, refresh: fetchLogs };
+  const scopedLogs = centerId
+    ? logs.filter((log) => log.centerId === centerId)
+    : scopedCenterIds
+      ? logs.filter((log) => scopedCenterIds.includes(log.centerId))
+      : logs;
+  return { logs: scopedLogs, setLogs, loading, refresh: fetchLogs };
 }
 
 /**

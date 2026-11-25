@@ -17,7 +17,7 @@ const STATUSES = ['All Status', 'Active', 'Full'];
 export default function RoomPlacement() {
   const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
-  const { households, refresh: refreshHouseholds } = useHouseholds(centers);
+  const { households, refresh: refreshHouseholds } = useHouseholds(centers, { fetchAll: true });
   const { rooms: dbRooms } = useRooms(centers);
   const { placements, refresh: refreshPlacements } = useEventRoomPlacements(selectedEvent?.id);
   const [filterCenter, setFilterCenter] = useState('All Centers');
@@ -45,6 +45,35 @@ export default function RoomPlacement() {
     String(name || '')
       .replace(/\s*-\s*Capacity\s*\d+/i, '')
       .trim();
+
+  const currentEventPlacements = useMemo(() => {
+    const eventPlacements = placements.filter(
+      (placement) => placement.event_id === selectedEvent?.id
+    );
+    if (selectedEvent?.status !== 'Active') return eventPlacements;
+
+    const placedHouseholdIds = new Set(eventPlacements.map((placement) => placement.household_id));
+    const directPlacements = households
+      .filter((household) => (
+        household.evacueeStatus === 'Active' &&
+        household.centerId &&
+        household.roomId &&
+        household.room &&
+        household.room.trim().toLowerCase() !== 'unassigned' &&
+        !placedHouseholdIds.has(household.id)
+      ))
+      .map((household) => ({
+        household_id: household.id,
+        center_id: household.centerId,
+        room_id: household.roomId,
+        event_id: selectedEvent.id,
+        status: 'Evacuated',
+        check_in_at: household.createdAt,
+        check_out_at: null,
+      }));
+
+    return [...eventPlacements, ...directPlacements];
+  }, [placements, households, selectedEvent]);
 
   /* ── Calculations for Destination Center & Rooms in Transfer Modal ── */
   const targetCenterObj = useMemo(() => {
@@ -97,7 +126,7 @@ export default function RoomPlacement() {
             { id: 'Room 2', roomId: 'Room 2', name: 'Room 2', capacity: 25 },
           ];
 
-    const activePlacementsInCenter = placements.filter(
+    const activePlacementsInCenter = currentEventPlacements.filter(
       (p) => p.status === 'Evacuated' && p.center_id === targetCenterObj.id && p.event_id === selectedEvent?.id
     );
 
@@ -124,7 +153,7 @@ export default function RoomPlacement() {
         occupied,
       };
     });
-  }, [targetCenterObj, dbRooms, placements, selectedEvent?.id, households]);
+  }, [targetCenterObj, dbRooms, currentEventPlacements, selectedEvent?.id, households]);
 
   const handleOpenTransfer = (household, room) => {
     setTransferTarget(household);
@@ -230,9 +259,7 @@ export default function RoomPlacement() {
 
   // Calculate live room occupancies from Supabase database
   const allRooms = useMemo(() => {
-    const eventPlacements = placements.filter((placement) =>
-      placement.event_id === selectedEvent?.id && placement.status === 'Evacuated'
-    );
+    const eventPlacements = currentEventPlacements.filter((placement) => placement.status === 'Evacuated');
     const householdsById = new Map(households.map((household) => [household.id, household]));
     const householdsForRoom = (roomId, centerId) => eventPlacements
       .filter((placement) => placement.room_id === roomId && placement.center_id === centerId)
@@ -294,8 +321,11 @@ export default function RoomPlacement() {
       });
     });
 
-    return list;
-  }, [dbRooms, centers, households, placements, selectedEvent?.id]);
+    return list.sort((a, b) =>
+      (a.center || '').localeCompare(b.center || '', undefined, { sensitivity: 'base', numeric: true }) ||
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true })
+    );
+  }, [dbRooms, centers, households, currentEventPlacements]);
 
   const filtered = useMemo(() => {
     return allRooms.filter((r) => {
@@ -324,7 +354,10 @@ export default function RoomPlacement() {
         .some((value) => String(value || '').toLowerCase().includes(query));
 
       return matchSearch && matchCenter && matchStatus && matchRoom;
-    });
+    }).sort((a, b) =>
+      (a.center || '').localeCompare(b.center || '', undefined, { sensitivity: 'base', numeric: true }) ||
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true })
+    );
   }, [allRooms, filterCenter, filterStatus, filterRoom, centers, search]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;

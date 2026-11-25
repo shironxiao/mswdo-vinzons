@@ -38,7 +38,7 @@ export default function ReliefGoodsStubs() {
   const { selectedEvent, isReadOnly } = useContext(EventContext);
   const selectedEventId = selectedEvent?.id;
   const { centers } = useEvacuationCenters();
-  const { households, refresh: refreshHouseholds } = useHouseholds(centers);
+  const { households, refresh: refreshHouseholds } = useHouseholds(centers, { fetchAll: true });
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -130,16 +130,44 @@ export default function ReliefGoodsStubs() {
     };
   }, [selectedEventId]);
 
-  const eventHouseholds = useMemo(() => placements
-    .filter((placement) => (
-      placement.event_id === selectedEvent?.id &&
-      (selectedEvent?.status !== 'Active' || placement.status === 'Evacuated')
-    ))
-    .map((placement) => {
-      const household = households.find((item) => item.id === placement.household_id);
-      return household ? { ...household, placement } : null;
-    })
-    .filter(Boolean), [placements, selectedEvent?.id, selectedEvent?.status, households]);
+  const eventHouseholds = useMemo(() => {
+    const placedHouseholds = placements
+      .filter((placement) => (
+        placement.event_id === selectedEvent?.id &&
+        (selectedEvent?.status !== 'Active' || placement.status === 'Evacuated')
+      ))
+      .map((placement) => {
+        const household = households.find((item) => item.id === placement.household_id);
+        return household ? { ...household, placement } : null;
+      })
+      .filter(Boolean);
+
+    if (selectedEvent?.status !== 'Active') return placedHouseholds;
+
+    const placedIds = new Set(placedHouseholds.map((household) => household.id));
+    const directHouseholds = households
+      .filter((household) => (
+        household.evacueeStatus === 'Active' &&
+        household.centerId &&
+        household.roomId &&
+        household.room &&
+        household.room.trim().toLowerCase() !== 'unassigned' &&
+        !placedIds.has(household.id)
+      ))
+      .map((household) => ({
+        ...household,
+        placement: {
+          event_id: selectedEvent.id,
+          center_id: household.centerId,
+          room_id: household.roomId,
+          status: 'Evacuated',
+          check_in_at: household.createdAt,
+          check_out_at: null,
+        },
+      }));
+
+    return [...placedHouseholds, ...directHouseholds];
+  }, [placements, selectedEvent, households]);
 
   const reliefCountsByHousehold = useMemo(() => {
     const map = new Map();
@@ -199,7 +227,9 @@ export default function ReliefGoodsStubs() {
         .some((value) => String(value || '').toLowerCase().includes(query));
 
       return matchSearch && matchCenter && matchRoom && matchStatus;
-    });
+    }).sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true })
+    );
   }, [householdRows, filterCenter, filterRoom, filterStatus, centers, search]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;

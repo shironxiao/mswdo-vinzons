@@ -438,7 +438,7 @@ export default function Household() {
     error: householdFetchError,
     totalCount: dbTotalCount,
     isLoadingMore,
-  } = useHouseholds(centers);
+  } = useHouseholds(centers, { fetchAll: true });
   const { rooms: databaseRooms } = useRooms(centers);
   const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { placements, refresh: refreshPlacements } = useEventRoomPlacements(selectedEvent?.id);
@@ -748,7 +748,11 @@ export default function Household() {
         (h.room && h.room.toLowerCase().includes(filterRoom.toLowerCase())) ||
         (filterRoom.startsWith('Room') && h.room && h.room.includes(filterRoom.replace('Room', '').trim()));
       return matchSearch && matchStub && matchCenter && matchRoom;
-    });
+    }).sort((a, b) => (a.name || '').localeCompare(
+      b.name || '',
+      undefined,
+      { sensitivity: 'base', numeric: true }
+    ));
   }, [isReadOnly, eventHouseholds, activeEventHouseholds, search, filterStub, filterCenter, filterRoom, centers]);
 
   // Masterlist uses server-side pagination; Active tab uses client-side slicing of placed records
@@ -848,6 +852,7 @@ export default function Household() {
         roomId: roomId || undefined,
         roomName: roomName,
         eventId: selectedEvent.id,
+        stubCode: checkInTarget.stubCode,
       });
       setCheckInTarget(null);
       await Promise.all([refreshHouseholds(), refreshPlacements()]);

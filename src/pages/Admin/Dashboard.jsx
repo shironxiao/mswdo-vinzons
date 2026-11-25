@@ -34,10 +34,18 @@ function formatTime(date) {
 export default function Dashboard() {
   const { selectedEvent, isReadOnly } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
-  const { households } = useHouseholds(centers);
+  const { households } = useHouseholds(centers, { fetchAll: true });
   const { rooms } = useRooms(centers);
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
-  const { logs } = useMonitoringLogs(centers);
+  const eventCenterIds = useMemo(() => [...new Set([
+    ...placements
+      .filter((placement) => placement.event_id === selectedEvent?.id)
+      .map((placement) => placement.center_id),
+    ...(selectedEvent?.status === 'Active'
+      ? households.filter((household) => household.evacueeStatus === 'Active').map((household) => household.centerId)
+      : []),
+  ].filter(Boolean))].sort(), [placements, households, selectedEvent?.id, selectedEvent?.status]);
+  const { logs } = useMonitoringLogs(centers, null, eventCenterIds);
 
   const eventPlacements = useMemo(() => {
     const selectedPlacements = placements.filter((placement) => (
@@ -103,7 +111,9 @@ export default function Dashboard() {
         status: checkedHouseholds >= summary.households.length ? 'Complete' : 'In progress',
         latestLog,
       };
-    }).sort((a, b) => b.people - a.people);
+    }).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
+    );
   }, [eventHouseholds, centers, recentLogs]);
 
   const totalPeople = eventHouseholds.reduce((sum, household) => sum + (household.familyCount || 1), 0);

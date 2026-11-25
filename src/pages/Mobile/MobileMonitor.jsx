@@ -27,12 +27,27 @@ import { RoomSelectSheet } from '../../components/CenterSelectSheet';
 import QrScannerModal from '../../components/QrScannerModal';
 
 export default function MobileMonitor() {
-  const { centers } = useMobileCenter();
-  const { households, refresh: refreshHouseholds } = useHouseholds(centers);
+  const { centers, assignedCenter, assignedCenterId, assignedCenterObj } = useMobileCenter();
+  const activeCenterId = assignedCenterObj?.id || assignedCenterId ||
+    centers.find((center) =>
+      center.displayName === assignedCenter || center.name === assignedCenter
+    )?.id || null;
+  const { households, refresh: refreshHouseholds } = useHouseholds(centers, { centerId: activeCenterId });
   const { activeEvent } = useActiveEvent();
-  const { placements } = useEventRoomPlacements(activeEvent?.id);
-  const { logs, refresh: refreshLogs } = useMonitoringLogs(centers);
-  const { assignedCenter } = useMobileCenter();
+  const { placements } = useEventRoomPlacements(activeEvent?.id, { centerId: activeCenterId });
+  const { logs, refresh: refreshLogs } = useMonitoringLogs(centers, activeCenterId);
+  const centerLogs = useMemo(
+    () => activeCenterId ? logs.filter((log) => log.centerId === activeCenterId) : logs,
+    [logs, activeCenterId]
+  );
+  const centerHouseholds = useMemo(
+    () => activeCenterId ? households.filter((household) => household.centerId === activeCenterId) : households,
+    [households, activeCenterId]
+  );
+  const centerPlacements = useMemo(
+    () => activeCenterId ? placements.filter((placement) => placement.center_id === activeCenterId) : placements,
+    [placements, activeCenterId]
+  );
 
   const [attendanceOverrides, setAttendanceOverrides] = useState({});
   const [search, setSearch] = useState('');
@@ -108,7 +123,7 @@ export default function MobileMonitor() {
   // Only households assigned to an evacuation center room are included in the room monitor
   const records = useMemo(() => {
     // 1. Filter: exclude unassigned households and decamped evacuees
-    const assignedHouseholds = households.filter((h) => {
+    const assignedHouseholds = centerHouseholds.filter((h) => {
       if (h.evacueeStatus === 'Decamped') return false;
 
       // Check if room is directly assigned on the household
@@ -124,7 +139,7 @@ export default function MobileMonitor() {
       );
 
       // Check active room placement from room_placements table
-      const activePlacement = placements?.find(
+      const activePlacement = centerPlacements.find(
         (p) =>
           p.household_id === h.id &&
           p.status === 'Evacuated' &&
@@ -143,7 +158,7 @@ export default function MobileMonitor() {
       const total = allNames.length || 1;
 
       // Check if room/center can be resolved or augmented from active placement
-      const activePlacement = placements?.find(
+      const activePlacement = centerPlacements.find(
         (p) =>
           p.household_id === h.id &&
           p.status === 'Evacuated' &&
@@ -176,7 +191,7 @@ export default function MobileMonitor() {
       }
 
       // Find most recent monitoring log for this household
-      const latestLog = logs.find((l) => l.householdId === h.id);
+      const latestLog = centerLogs.find((l) => l.householdId === h.id);
 
       let status = 'Present';
       let ratio = `${total}/${total}`;
@@ -232,7 +247,7 @@ export default function MobileMonitor() {
         evacueeStatus: h.evacueeStatus || 'Active',
       };
     });
-  }, [households, placements, centers, logs, attendanceOverrides]);
+  }, [centerHouseholds, centerPlacements, centers, centerLogs, attendanceOverrides]);
 
   const activeFilters =
     (filterStatus !== 'All' ? 1 : 0) +
@@ -272,10 +287,10 @@ export default function MobileMonitor() {
 
   /* Selected family's historical monitoring logs */
   const historyFamilyLogs = useMemo(() => {
-    if (!historyFamily || !logs) return [];
+    if (!historyFamily) return [];
     const famId = historyFamily.householdId || historyFamily.id;
-    return logs.filter((l) => l.householdId === famId);
-  }, [historyFamily, logs]);
+    return centerLogs.filter((l) => l.householdId === famId);
+  }, [historyFamily, centerLogs]);
 
   const openMonitoringSheet = (family) => {
     setActiveFamily(family);
@@ -283,7 +298,7 @@ export default function MobileMonitor() {
     const currentTimeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
     // Look up previous log for this family if any
-    const prevLog = logs.find((l) => l.householdId === (family.householdId || family.id));
+    const prevLog = centerLogs.find((l) => l.householdId === (family.householdId || family.id));
     const initAttendance = {};
     const initTimes = {};
 
@@ -382,7 +397,7 @@ export default function MobileMonitor() {
     if (!trimmed) return;
 
     // 1. Check loaded households in memory
-    let found = households.find((h) =>
+    let found = centerHouseholds.find((h) =>
       (h.stubCode && h.stubCode.toLowerCase() === trimmed.toLowerCase()) ||
       String(h.id) === trimmed ||
       (h.householdCode && h.householdCode.toLowerCase() === trimmed.toLowerCase())
@@ -391,7 +406,7 @@ export default function MobileMonitor() {
     // 2. If not found in current memory chunk, search database directly across all 10k+ records
     if (!found) {
       try {
-        const dbMatches = await searchHouseholdsFromDatabase(trimmed, centers, 10);
+        const dbMatches = await searchHouseholdsFromDatabase(trimmed, centers, 10, activeCenterId);
         if (dbMatches && dbMatches.length > 0) {
           found = dbMatches.find((h) =>
             (h.stubCode && h.stubCode.toLowerCase() === trimmed.toLowerCase()) ||
@@ -477,7 +492,7 @@ export default function MobileMonitor() {
       history: [],
       nextWave: 1,
     });
-  }, [households, centers]);
+  }, [activeCenterId, centerHouseholds, centers]);
 
   /* ── Mark All Members Accounted For (Quick floor round helper) ── */
   const handleMarkAllAccounted = () => {

@@ -34,9 +34,19 @@ function getPaginationItems(currentPage, totalPages) {
 export default function EvacueeMonitoring() {
   const { selectedEvent } = useContext(EventContext);
   const { centers } = useEvacuationCenters();
-  const { households } = useHouseholds(centers);
+  const { households } = useHouseholds(centers, { fetchAll: true });
   const { placements } = useEventRoomPlacements(selectedEvent?.id);
-  const { logs } = useMonitoringLogs(centers);
+  const eventCenterIds = useMemo(() => [...new Set([
+    ...placements
+      .filter((placement) => placement.event_id === selectedEvent?.id)
+      .map((placement) => placement.center_id),
+    ...(selectedEvent?.status === 'Active'
+      ? households
+        .filter((household) => household.evacueeStatus === 'Active' && household.roomId)
+        .map((household) => household.centerId)
+      : []),
+  ].filter(Boolean))].sort(), [placements, households, selectedEvent?.id, selectedEvent?.status]);
+  const { logs } = useMonitoringLogs(centers, null, eventCenterIds);
 
   const [filterCenter, setFilterCenter] = useState('All Centers');
   const [filterRoom, setFilterRoom] = useState('All Rooms');
@@ -234,7 +244,9 @@ export default function EvacueeMonitoring() {
       ].some((value) => String(value || '').toLowerCase().includes(query));
 
       return matchSearch && matchCenter && matchRoom && matchStatus;
-    });
+    }).sort((a, b) =>
+      (a.householdHead || '').localeCompare(b.householdHead || '', undefined, { sensitivity: 'base', numeric: true })
+    );
   }, [monitoringRecords, filterCenter, filterRoom, filterStatus, centers, search]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;

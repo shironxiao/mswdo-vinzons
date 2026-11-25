@@ -192,6 +192,8 @@ function StubIssuancePanel({ household, households, onClose }) {
           <div className="vin-hh-stub-meta">
             <div><span className="vin-mob-field-label">ROOM</span><div>{household.room}</div></div>
             <div><span className="vin-mob-field-label">MEMBERS</span><div>{household.familyCount}</div></div>
+            <div><span className="vin-mob-field-label">BARANGAY</span><div>{household.barangay || 'Unassigned'}</div></div>
+            <div><span className="vin-mob-field-label">PUROK / SITIO</span><div>{household.purok || 'Unassigned'}</div></div>
             <div>
               <span className="vin-mob-field-label">CENTER</span>
               <div style={{ fontSize: '.8rem' }}>
@@ -398,16 +400,23 @@ function HHFilterSheet({ filterStatus, filterRoom, centerName, centersList = [],
    Room Assignment Sheet
    ────────────────────────────────────────────── */
 function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, onClose }) {
-  const [selectedCenter, setSelectedCenter] = useState(
-    household.center && household.center !== 'All Centers'
-      ? household.center
-      : (centersList[0]?.displayName || centersList[0]?.name || '')
-  );
+  const [selectedCenterId, setSelectedCenterId] = useState(() => {
+    const householdCenter = centersList.find((center) =>
+      (household.centerId && center.id === household.centerId) ||
+      center.displayName === household.center ||
+      center.name === household.center
+    );
+    return householdCenter?.id || household.centerId || '';
+  });
   const [feedback, setFeedback] = useState(null);
 
-  const matchedCenterObj = centersList.find(
-    (c) => c.displayName === selectedCenter || c.name === selectedCenter
-  );
+  const matchedCenterObj = centersList.find((center) => center.id === selectedCenterId) ||
+    centersList.find((center) =>
+      center.displayName === household.center || center.name === household.center
+    ) ||
+    centersList[0] ||
+    null;
+  const selectedCenter = matchedCenterObj?.displayName || matchedCenterObj?.name || '';
 
   const rooms = (centerRooms && centerRooms[selectedCenter]) || matchedCenterObj?.rooms || [];
   const neededSlots = household.familyCount || 1;
@@ -511,9 +520,9 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
           </label>
           <select
             className="vin-mob-select"
-            value={selectedCenter}
+            value={matchedCenterObj?.id || ''}
             onChange={(e) => {
-              setSelectedCenter(e.target.value);
+              setSelectedCenterId(e.target.value);
               setFeedback(null);
             }}
           >
@@ -528,9 +537,7 @@ function RoomAssignSheet({ household, centersList = [], centerRooms, onAssign, o
               )
               .map((c) => {
                 const val = c.displayName || c.name;
-                return (
-                  <option key={c.id || val} value={val}>{val}</option>
-                );
+                return <option key={c.id || val} value={c.id || ''}>{val}</option>;
               })}
           </select>
         </div>
