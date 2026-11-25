@@ -1,7 +1,7 @@
 import { createElement, useState, useEffect, useMemo } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2,
-  AlertTriangle, ChevronDown, Building,
+  AlertTriangle, ChevronDown, Building, Building2,
   ChevronLeft, ChevronRight, CheckCircle2, SlidersHorizontal, LogOut,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -37,8 +37,17 @@ import {
 import { fetchBarangayEvacuationAssignments } from '../../lib/barangayEvacuationAssignments.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
+import { supabase } from '../../lib/supabase.js';
 
 const MOBILE_HOUSEHOLD_DRAFT_KEY = 'mswdo.mobile.household-registration-draft';
+function assignmentMatchesHousehold(assignment, household) {
+  const barangayMatches = String(assignment.barangay || '').trim().toLowerCase() ===
+    String(household.barangay || '').trim().toLowerCase();
+  const assignedPurok = String(assignment.purok || '').trim().toLowerCase();
+  const householdPurok = String(household.purok || '').trim().toLowerCase();
+  return barangayMatches && (assignedPurok === 'all' || assignedPurok === householdPurok);
+}
+
 const REGISTRATION_YES_NO_FIELDS = [
   ['hasWorkedDole', 'Worked in DOLE before?'],
   ['hasReceivedGovernmentAssistance', 'Government assistance received?'],
@@ -183,7 +192,15 @@ function StubIssuancePanel({ household, households, onClose }) {
           <div className="vin-hh-stub-meta">
             <div><span className="vin-mob-field-label">ROOM</span><div>{household.room}</div></div>
             <div><span className="vin-mob-field-label">MEMBERS</span><div>{household.familyCount}</div></div>
-            <div><span className="vin-mob-field-label">CENTER</span><div style={{ fontSize: '.8rem' }}>{household.center}</div></div>
+            <div>
+              <span className="vin-mob-field-label">CENTER</span>
+              <div style={{ fontSize: '.8rem' }}>
+                {household.assignedCommunityCenter && (
+                  <Building2 size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: '-2px' }} />
+                )}
+                {household.assignedCommunityCenter || household.center}
+              </div>
+            </div>
             <div><span className="vin-mob-field-label">CATEGORY</span><div>
               {Array.isArray(household.vulnerabilities) && household.vulnerabilities.length > 0
                 ? household.vulnerabilities.join(', ')
@@ -650,6 +667,7 @@ export default function MobileHouseholds() {
   const [assigningHousehold, setAssigningHousehold] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [centerAssignments, setCenterAssignments] = useState([]);
+  const [assignmentsLoadedCenterId, setAssignmentsLoadedCenterId] = useState('');
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [assignmentsError, setAssignmentsError] = useState('');
   const [assignmentReload, setAssignmentReload] = useState(0);
@@ -665,11 +683,27 @@ export default function MobileHouseholds() {
 
   const queryCenterId = assignedCenterObj?.id || assignedCenterId || '';
   useEffect(() => {
+    const channel = supabase
+      .channel('mobile-household-assignment-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'barangay_evacuation_assignments' },
+        () => setAssignmentReload((value) => value + 1)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
     Promise.resolve().then(async () => {
       if (!queryCenterId) {
         if (active) {
           setCenterAssignments([]);
+          setAssignmentsLoadedCenterId('');
           setAssignmentsError('');
           setAssignmentsLoading(false);
           setCurrentPage(1);
@@ -687,12 +721,14 @@ export default function MobileHouseholds() {
           setCenterAssignments(assignments.filter((assignment) =>
             assignment.center_ids?.includes(queryCenterId)
           ));
+          setAssignmentsLoadedCenterId(queryCenterId);
           setCurrentPage(1);
         }
       } catch (error) {
         if (active) {
           console.error('Could not load evacuation center community assignments:', error);
           setCenterAssignments([]);
+          setAssignmentsLoadedCenterId(queryCenterId);
           setAssignmentsError(error.message || 'Could not load assigned barangays and puroks.');
         }
       } finally {
@@ -707,9 +743,11 @@ export default function MobileHouseholds() {
 
   const assignedLocations = useMemo(() => (
     queryCenterId
-      ? centerAssignments.map(({ barangay, purok }) => ({ barangay, purok }))
+      ? assignmentsLoadedCenterId === queryCenterId
+        ? centerAssignments.map(({ barangay, purok }) => ({ barangay, purok }))
+        : []
       : null
-  ), [queryCenterId, centerAssignments]);
+  ), [queryCenterId, assignmentsLoadedCenterId, centerAssignments]);
   const isSearchingGlobally = Boolean(debouncedSearch.trim());
 
   const {
@@ -726,11 +764,23 @@ export default function MobileHouseholds() {
     roomId: filterRoom === 'All Rooms' ? '' : filterRoom,
     evacueeStatus: filterStatus === 'All' ? '' : filterStatus,
     centersList: centers,
-    enabled: !queryCenterId || isSearchingGlobally || !assignmentsLoading,
+    enabled: !queryCenterId || isSearchingGlobally ||
+      (!assignmentsLoading && assignmentsLoadedCenterId === queryCenterId),
   });
   const masterlistLoading = listLoading || (assignmentsLoading && !isSearchingGlobally);
 
-  const displayedSelectedHousehold = selectedHousehold;
+  const displayedSelectedHousehold = useMemo(() => {
+    if (!selectedHousehold || !queryCenterId) return selectedHousehold;
+    const assignedToSelectedCenter = centerAssignments.some((assignment) =>
+      assignmentMatchesHousehold(assignment, selectedHousehold)
+    );
+    if (!assignedToSelectedCenter) return selectedHousehold;
+
+    return {
+      ...selectedHousehold,
+      assignedCommunityCenter: assignedCenterObj?.displayName || assignedCenterObj?.name || assignedCenter,
+    };
+  }, [selectedHousehold, queryCenterId, centerAssignments, assignedCenterObj, assignedCenter]);
   const displayedAssigningHousehold = assigningHousehold;
 
   const centerRooms = useMemo(() => Object.fromEntries(centers.map((center) => {
@@ -1376,7 +1426,15 @@ export default function MobileHouseholds() {
                   </td>
                 </tr>
               ) : (
-                paginatedHouseholds.map((item) => (
+                paginatedHouseholds.map((item) => {
+                  const assignedToSelectedCenter = Boolean(queryCenterId) && centerAssignments.some((assignment) =>
+                    assignmentMatchesHousehold(assignment, item)
+                  );
+                  const itemCenterName = assignedToSelectedCenter
+                    ? assignedCenterObj?.displayName || assignedCenterObj?.name || assignedCenter || item.center
+                    : item.center;
+
+                  return (
                   <tr
                     key={item.id}
                     onClick={() => handleSelectHousehold(item)}
@@ -1398,8 +1456,9 @@ export default function MobileHouseholds() {
                             <span className="vin-mob-sub-dot">•</span>
                             <span>{item.familyCount} pers.</span>
                             <span className="vin-mob-sub-dot">•</span>
-                            <span className={(item.center_id && item.center_id === assignedCenterObj?.id) || item.center === assignedCenter ? 'vin-mob-sub-current-station' : 'vin-mob-sub-other-center'}>
-                              {(item.center_id && item.center_id === assignedCenterObj?.id) || item.center === assignedCenter ? '📍 Station' : `🏢 ${item.center.split(' ').slice(0, 2).join(' ')}`}
+                            <span className={assignedToSelectedCenter ? 'vin-mob-sub-current-station' : 'vin-mob-sub-other-center'}>
+                              <Building2 size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: '-2px' }} />
+                              {itemCenterName.split(' ').slice(0, 2).join(' ')}
                             </span>
                           </div>
                           <div className="vin-mob-head-badges">
@@ -1444,7 +1503,8 @@ export default function MobileHouseholds() {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
