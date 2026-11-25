@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
 
 
-const LOCAL_STORAGE_KEY = 'vinzons_cached_households';
 const HOUSEHOLDS_CHANGED_EVENT = 'vinzons-households-changed';
 const householdSyncChannel = typeof BroadcastChannel === 'undefined'
   ? null
@@ -274,6 +273,7 @@ export async function fetchPaginatedHouseholds({
   barangay = '',
   purok = '',
   centerId = '',
+  assignedLocations = null,
   roomId = '',
   evacueeStatus = '',
   stubStatus = 'All',
@@ -285,6 +285,27 @@ export async function fetchPaginatedHouseholds({
   let query = supabase
     .from('households')
     .select(HOUSEHOLD_SUMMARY_SELECT, { count: 'exact' });
+
+  if (Array.isArray(assignedLocations)) {
+    const locations = assignedLocations
+      .filter((location) => location?.barangay && location?.purok)
+      .map((location) => ({
+        barangay: String(location.barangay).trim(),
+        purok: String(location.purok).trim(),
+      }));
+
+    if (locations.length === 0) {
+      return { data: [], totalCount: 0, page, pageSize, totalPages: 1 };
+    }
+
+    const quoteFilterValue = (value) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    const filters = locations.map(({ barangay: locationBarangay, purok: locationPurok }) => (
+      locationPurok.toLowerCase() === 'all'
+        ? `barangay.eq.${quoteFilterValue(locationBarangay)}`
+        : `and(barangay.eq.${quoteFilterValue(locationBarangay)},purok.eq.${quoteFilterValue(locationPurok)})`
+    ));
+    query = query.or(filters.join(','));
+  }
 
   const trimmed = search?.trim();
   if (trimmed) {
@@ -406,6 +427,7 @@ export function usePaginatedMasterlist({
   search = '',
   barangay = '',
   centerId = '',
+  assignedLocations = null,
   roomId = '',
   evacueeStatus = '',
   stubStatus = 'All',
@@ -419,18 +441,33 @@ export function usePaginatedMasterlist({
   const reqSequence = useRef(0);
 
   const loadPage = useCallback(async () => {
-    if (!enabled) return;
     const reqId = ++reqSequence.current;
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
 
     try {
+      if (search?.trim()) {
+        const matches = await searchHouseholdsFromDatabase(search, centersList);
+        if (reqId === reqSequence.current) {
+          const from = (page - 1) * pageSize;
+          setData(matches.slice(from, from + pageSize));
+          setTotalCount(matches.length);
+          setLoading(false);
+        }
+        return;
+      }
+
       const res = await fetchPaginatedHouseholds({
         page,
         pageSize,
         search,
         barangay,
         centerId,
+        assignedLocations,
         roomId,
         evacueeStatus,
         stubStatus,
@@ -449,10 +486,16 @@ export function usePaginatedMasterlist({
         setLoading(false);
       }
     }
-  }, [page, pageSize, search, barangay, centerId, roomId, evacueeStatus, stubStatus, centersList, enabled]);
+  }, [page, pageSize, search, barangay, centerId, assignedLocations, roomId, evacueeStatus, stubStatus, centersList, enabled]);
 
   useEffect(() => {
-    loadPage();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) loadPage();
+    });
+    return () => {
+      active = false;
+    };
   }, [loadPage]);
 
   // Realtime subscription for updates
@@ -482,7 +525,7 @@ export function usePaginatedMasterlist({
  * Dynamically queries Supabase across all households (head name, code, barangay, purok, stub code, member name)
  * Used for dynamic search that finds any record across the entire database in real-time.
  */
-export async function searchHouseholdsFromDatabase(query, centersList = [], limit = 150) {
+export async function searchHouseholdsFromDatabase(query, centersList = [], limit = 1000) {
   const rawTerm = query?.trim();
   if (!rawTerm) return [];
 
@@ -490,63 +533,38 @@ export async function searchHouseholdsFromDatabase(query, centersList = [], limi
   const clean = rawTerm.replace(/[,()]/g, ' ').trim();
   if (!clean) return [];
 
-  try {
-    // 1. Search households by head_name, household_code, barangay, purok, stub_code
-    const orFilter = `head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%,purok.ilike.%${clean}%,stub_code.ilike.%${clean}%`;
+  const orFilter = `head_name.ilike.%${clean}%,household_code.ilike.%${clean}%,barangay.ilike.%${clean}%,purok.ilike.%${clean}%,stub_code.ilike.%${clean}%`;
+  const { data: hhData, error: hhErr } = await supabase
+    .from('households')
+    .select(HOUSEHOLD_JOIN_SELECT)
+    .or(orFilter)
+    .limit(limit);
+  if (hhErr) throw hhErr;
 
-    const { data: hhData, error: hhErr } = await supabase
+  const { data: memberRows, error: memberError } = await supabase
+    .from('household_members')
+    .select('household_id')
+    .ilike('full_name', `%${clean}%`)
+    .limit(limit);
+  if (memberError) throw memberError;
+
+  const existingIds = new Set((hhData || []).map((household) => household.id));
+  const neededIds = [...new Set((memberRows || []).map((member) => member.household_id))]
+    .filter((id) => Boolean(id) && !existingIds.has(id));
+  const memberHouseholds = [];
+
+  for (let index = 0; index < neededIds.length; index += 100) {
+    const { data, error } = await supabase
       .from('households')
       .select(HOUSEHOLD_JOIN_SELECT)
-      .or(orFilter)
-      .limit(limit);
-
-    if (hhErr) {
-      console.warn('Supabase household search warning:', hhErr.message);
-    }
-
-    // 2. Also search members by name so matching family members show their household
-    let memberHouseholds = [];
-    try {
-      const { data: memberRows } = await supabase
-        .from('household_members')
-        .select('household_id')
-        .ilike('full_name', `%${clean}%`)
-        .limit(limit);
-
-      if (memberRows && memberRows.length > 0) {
-        const existingIds = new Set((hhData || []).map((h) => h.id));
-        const neededIds = [...new Set(memberRows.map((m) => m.household_id))].filter(
-          (id) => Boolean(id) && !existingIds.has(id)
-        );
-
-        if (neededIds.length > 0) {
-          const { data: moreHh } = await supabase
-            .from('households')
-            .select(HOUSEHOLD_JOIN_SELECT)
-            .in('id', neededIds.slice(0, 50));
-          memberHouseholds = moreHh || [];
-        }
-      }
-    } catch (mErr) {
-      console.warn('Member search error:', mErr);
-    }
-
-    const combined = [...(hhData || []), ...memberHouseholds];
-    // Deduplicate by ID
-    const seen = new Set();
-    const unique = [];
-    for (const row of combined) {
-      if (!seen.has(row.id)) {
-        seen.add(row.id);
-        unique.push(row);
-      }
-    }
-
-    return unique.map((row) => normalizeHousehold(row, centersList)).filter(Boolean);
-  } catch (error) {
-    console.error('Error executing dynamic household search:', error);
-    return [];
+      .in('id', neededIds.slice(index, index + 100));
+    if (error) throw error;
+    memberHouseholds.push(...(data || []));
   }
+
+  const unique = new Map();
+  [...(hhData || []), ...memberHouseholds].forEach((row) => unique.set(row.id, row));
+  return [...unique.values()].map((row) => normalizeHousehold(row, centersList)).filter(Boolean);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { createElement, useState, useEffect, useMemo, useRef } from 'react';
+import { createElement, useState, useEffect, useMemo } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2,
   AlertTriangle, ChevronDown, Building,
@@ -32,9 +32,9 @@ import {
   updateHousehold,
   useEventRoomPlacements,
   transferHouseholdRoom,
-  searchHouseholdsFromDatabase,
   fetchHouseholdDetails,
 } from '../../lib/householdService.js';
+import { fetchBarangayEvacuationAssignments } from '../../lib/barangayEvacuationAssignments.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 
@@ -630,7 +630,6 @@ export default function MobileHouseholds() {
     refresh: refreshHouseholds,
     error: householdFetchError,
     totalCount: dbTotalCount,
-    isLoadingMore,
   } = useHouseholds(centers);
   const { activeEvent } = useActiveEvent();
   const { placements = [], refresh: refreshPlacements } = useEventRoomPlacements(activeEvent?.id);
@@ -650,6 +649,10 @@ export default function MobileHouseholds() {
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [assigningHousehold, setAssigningHousehold] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [centerAssignments, setCenterAssignments] = useState([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsError, setAssignmentsError] = useState('');
+  const [assignmentReload, setAssignmentReload] = useState(0);
   const pageSize = 10;
 
   useEffect(() => {
@@ -661,21 +664,71 @@ export default function MobileHouseholds() {
   }, [search]);
 
   const queryCenterId = assignedCenterObj?.id || assignedCenterId || '';
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(async () => {
+      if (!queryCenterId) {
+        if (active) {
+          setCenterAssignments([]);
+          setAssignmentsError('');
+          setAssignmentsLoading(false);
+          setCurrentPage(1);
+        }
+        return;
+      }
+
+      if (active) {
+        setAssignmentsLoading(true);
+        setAssignmentsError('');
+      }
+      try {
+        const assignments = await fetchBarangayEvacuationAssignments();
+        if (active) {
+          setCenterAssignments(assignments.filter((assignment) =>
+            assignment.center_ids?.includes(queryCenterId)
+          ));
+          setCurrentPage(1);
+        }
+      } catch (error) {
+        if (active) {
+          console.error('Could not load evacuation center community assignments:', error);
+          setCenterAssignments([]);
+          setAssignmentsError(error.message || 'Could not load assigned barangays and puroks.');
+        }
+      } finally {
+        if (active) setAssignmentsLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [queryCenterId, assignmentReload]);
+
+  const assignedLocations = useMemo(() => (
+    queryCenterId
+      ? centerAssignments.map(({ barangay, purok }) => ({ barangay, purok }))
+      : null
+  ), [queryCenterId, centerAssignments]);
+  const isSearchingGlobally = Boolean(debouncedSearch.trim());
 
   const {
     data: masterlistHouseholds,
     totalCount: masterlistTotalCount,
-    loading: masterlistLoading,
+    loading: listLoading,
+    error: masterlistError,
     refresh: refreshMasterlist,
   } = usePaginatedMasterlist({
     page: currentPage,
     pageSize,
     search: debouncedSearch,
-    centerId: queryCenterId,
+    assignedLocations,
     roomId: filterRoom === 'All Rooms' ? '' : filterRoom,
     evacueeStatus: filterStatus === 'All' ? '' : filterStatus,
     centersList: centers,
+    enabled: !queryCenterId || isSearchingGlobally || !assignmentsLoading,
   });
+  const masterlistLoading = listLoading || (assignmentsLoading && !isSearchingGlobally);
 
   const displayedSelectedHousehold = selectedHousehold;
   const displayedAssigningHousehold = assigningHousehold;
@@ -1199,6 +1252,22 @@ export default function MobileHouseholds() {
         <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>
           Could not load households from the database: {householdFetchError}
           <button type="button" onClick={refreshHouseholds} style={{ marginLeft: 8 }}>
+            Retry
+          </button>
+        </div>
+      )}
+      {assignmentsError && !isSearchingGlobally && (
+        <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>
+          Could not load this station's barangay and purok assignments: {assignmentsError}
+          <button type="button" onClick={() => setAssignmentReload((value) => value + 1)} style={{ marginLeft: 8 }}>
+            Retry
+          </button>
+        </div>
+      )}
+      {masterlistError && (
+        <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>
+          Could not search households: {masterlistError}
+          <button type="button" onClick={refreshMasterlist} style={{ marginLeft: 8 }}>
             Retry
           </button>
         </div>
