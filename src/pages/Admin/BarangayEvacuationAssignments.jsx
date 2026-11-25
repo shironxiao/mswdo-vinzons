@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Building2, MapPin, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Building2, ChevronDown, MapPin, Pencil, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
 import { supabase } from '../../lib/supabase.js';
 import {
@@ -34,6 +34,8 @@ export default function BarangayEvacuationAssignments() {
   const [barangayOptions, setBarangayOptions] = useState([]);
   const [purokOptions, setPurokOptions] = useState([]);
   const [locationError, setLocationError] = useState('');
+  const [showCentersPanel, setShowCentersPanel] = useState(false);
+  const [centerSearch, setCenterSearch] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +44,7 @@ export default function BarangayEvacuationAssignments() {
   const [loadError, setLoadError] = useState('');
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
+  const centerPickerRef = useRef(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -86,6 +89,24 @@ export default function BarangayEvacuationAssignments() {
     };
   }, [form.barangay]);
 
+  useEffect(() => {
+    if (!showCentersPanel) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!centerPickerRef.current?.contains(event.target)) setShowCentersPanel(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setShowCentersPanel(false);
+    };
+
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showCentersPanel]);
+
   const loadAssignments = useCallback(async () => {
     setIsLoading(true);
     setLoadError('');
@@ -126,6 +147,12 @@ export default function BarangayEvacuationAssignments() {
     () => new Map(centers.map((center) => [center.id, center])),
     [centers]
   );
+  const filteredCenters = useMemo(() => {
+    const query = centerSearch.trim().toLowerCase();
+    return centers.filter((center) => (
+      !query || `${centerLabel(center)} ${center.location || ''}`.toLowerCase().includes(query)
+    ));
+  }, [centers, centerSearch]);
   const filteredAssignments = useMemo(() => {
     const query = search.trim().toLowerCase();
     return assignments.filter((item) => {
@@ -138,6 +165,8 @@ export default function BarangayEvacuationAssignments() {
   }, [assignments, centersById, search]);
 
   const editAssignment = (assignment) => {
+    setShowCentersPanel(false);
+    setCenterSearch('');
     setForm({
       id: assignment.id,
       barangay: assignment.barangay,
@@ -150,6 +179,8 @@ export default function BarangayEvacuationAssignments() {
   };
 
   const resetForm = () => {
+    setShowCentersPanel(false);
+    setCenterSearch('');
     setForm(EMPTY_FORM);
     setPurokOptions([]);
     setFormError('');
@@ -169,6 +200,7 @@ export default function BarangayEvacuationAssignments() {
       });
       resetForm();
       setNotice('Evacuation center assignment saved.');
+      setShowCentersPanel(false);
       await loadAssignments();
     } catch (error) {
       console.error('Could not save barangay evacuation assignment:', error);
@@ -276,28 +308,66 @@ export default function BarangayEvacuationAssignments() {
 
           <fieldset className="vin-bga-center-field">
             <legend>Evacuation centers <small>(select one or more)</small></legend>
-            <div className="vin-bga-center-options">
-              {centers.map((center) => (
-                <label
-                  key={center.id}
-                  className={`vin-bga-center-option ${form.centerIds.includes(center.id) ? 'selected' : ''}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.centerIds.includes(center.id)}
-                    onChange={(event) => setForm((current) => ({
-                      ...current,
-                      centerIds: event.target.checked
-                        ? [...current.centerIds, center.id]
-                        : current.centerIds.filter((centerId) => centerId !== center.id),
-                    }))}
-                  />
-                  <span>
-                    <strong>{centerLabel(center)}</strong>
-                    <small>{center.location}</small>
-                  </span>
-                </label>
-              ))}
+            <div className="vin-bga-center-picker" ref={centerPickerRef}>
+              <button
+                type="button"
+                className="vin-bga-center-picker-trigger"
+                onClick={() => setShowCentersPanel((open) => !open)}
+                aria-expanded={showCentersPanel}
+                aria-controls="vin-bga-center-panel"
+                disabled={centers.length === 0}
+              >
+                <span>
+                  {form.centerIds.length
+                    ? `${form.centerIds.length} center${form.centerIds.length === 1 ? '' : 's'} selected`
+                    : 'Choose evacuation centers'}
+                </span>
+                <ChevronDown size={16} />
+              </button>
+              {showCentersPanel && (
+                <div className="vin-bga-center-panel" id="vin-bga-center-panel">
+                  <label className="vin-bga-center-search">
+                    <Search size={16} aria-hidden="true" />
+                    <span className="sr-only">Search evacuation centers</span>
+                    <input
+                      type="search"
+                      value={centerSearch}
+                      onChange={(event) => setCenterSearch(event.target.value)}
+                      placeholder="Search centers..."
+                      autoFocus
+                    />
+                  </label>
+                  <div className="vin-bga-center-options">
+                    {filteredCenters.length === 0 ? (
+                      <p className="vin-bga-center-empty">No centers match your search.</p>
+                    ) : filteredCenters.map((center) => (
+                      <label
+                        key={center.id}
+                        className={`vin-bga-center-option ${form.centerIds.includes(center.id) ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.centerIds.includes(center.id)}
+                          onChange={(event) => setForm((current) => ({
+                            ...current,
+                            centerIds: event.target.checked
+                              ? [...current.centerIds, center.id]
+                              : current.centerIds.filter((centerId) => centerId !== center.id),
+                          }))}
+                        />
+                        <span>
+                          <strong>{centerLabel(center)}</strong>
+                          <small>{center.location}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="vin-bga-center-panel-footer">
+                    <span>{form.centerIds.length} selected</span>
+                    <button type="button" onClick={() => setShowCentersPanel(false)}>Done</button>
+                  </div>
+                </div>
+              )}
             </div>
           </fieldset>
 
