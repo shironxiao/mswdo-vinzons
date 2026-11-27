@@ -1458,11 +1458,6 @@ export default function Household() {
               <Clock size={13} className="animate-spin" /> Searching full database...
             </span>
           )}
-          {isLoadingMore && !search && (
-            <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: '#f8fafc', borderRadius: 6 }}>
-              Streaming database: {households.length.toLocaleString()} / {totalCount.toLocaleString()} loaded...
-            </span>
-          )}
           <AdminFilterBar
             hasActiveFilters={filterStub !== 'All' || filterCenter !== 'All Centers' || filterRoom !== 'All Rooms'}
             onOpenFilters={() => setShowFilterModal(true)}
@@ -1496,19 +1491,6 @@ export default function Household() {
               },
             ]}
           >
-            {/* Print Stubs Button with Center/Barangay/Purok Options */}
-            <button
-              type="button"
-              className="vin-admin-print-all-btn"
-              onClick={() => {
-                setPrintModalInitialHh(null);
-                setIsPrintModalOpen(true);
-              }}
-              title="Print relief goods QR stubs from database with Center, Barangay, and Purok options"
-            >
-              <Printer size={16} />
-              <span>Print Stubs</span>
-            </button>
           </AdminFilterBar>
         </div>
 

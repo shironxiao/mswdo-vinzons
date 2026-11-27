@@ -144,8 +144,56 @@
 
 .dromic-form-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
   gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .dromic-form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+}
+
+.dromic-clear-dates-btn {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+.dromic-clear-dates-btn:hover {
+  color: #5b21b6;
+}
+
+.dromic-date-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ede9fe;
+  color: #5b21b6;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.dromic-date-filter-badge button {
+  background: none;
+  border: none;
+  color: #6d28d9;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0;
+  line-height: 1;
+}
+
+.dromic-date-filter-badge button:hover {
+  color: #4c1d95;
 }
 
 .dromic-form-grid label {
@@ -249,11 +297,22 @@
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   white-space: normal;
+  background: #ffe699 !important;
 }
 
 .dromic-table thead th.age-band {
   height: 34px;
-  background: #fff2cc;
+  background: #fff2cc !important;
+}
+
+.dromic-table thead th.age-group,
+.dromic-table thead th.age-sex {
+  background: #fff2cc !important;
+}
+
+.dromic-table thead th.vulnerability-header,
+.dromic-table thead th.vulnerability-sex {
+  background: #ffe699 !important;
 }
 
 .dromic-table thead tr:nth-child(2) th:not([colspan="2"]) {
@@ -267,26 +326,34 @@
   left: 0;
   z-index: 3;
   min-width: 220px;
-  background: #c6e0b4;
+  background: #c6e0b4 !important;
   vertical-align: middle;
 }
 
 .dromic-table tbody td {
   background: #fff;
+  text-align: center;
 }
 
-.dromic-table tbody td:nth-child(2n + 1):not(:first-child) {
-  background: #ddebf7;
-}
-
-.dromic-table tbody td:first-child {
+.dromic-table tbody td.person-name {
   position: sticky;
   left: 0;
   z-index: 1;
   min-width: 220px;
-  background: #fff;
+  background: #fff !important;
   text-align: left;
   font-weight: 600;
+  padding-left: 6px;
+}
+
+.dromic-table tbody td.male-cell {
+  background: #ddebf7 !important;
+  text-align: center;
+}
+
+.dromic-table tbody td.female-cell {
+  background: #fff !important;
+  text-align: center;
 }
 
 .dromic-expand-btn {

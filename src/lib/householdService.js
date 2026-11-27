@@ -401,6 +401,21 @@ export async function fetchPaginatedHouseholds({
   };
 }
 
+function isAllFilterValue(val) {
+  if (!val) return true;
+  const s = String(val).trim().toLowerCase();
+  return (
+    s === 'all' ||
+    s === 'all barangays' ||
+    s === 'all barangay' ||
+    s === 'all puroks' ||
+    s === 'all purok' ||
+    s === 'all assigned puroks' ||
+    s === 'all centers' ||
+    s === 'all center'
+  );
+}
+
 /**
  * Fetches households for batch printing with range/batching
  */
@@ -416,13 +431,13 @@ export async function fetchHouseholdsForPrint({
     .from('households')
     .select(HOUSEHOLD_SUMMARY_SELECT);
 
-  if (barangay && barangay !== 'All' && barangay !== 'All Barangays') {
+  if (barangay && !isAllFilterValue(barangay)) {
     query = query.eq('barangay', barangay);
   }
-  if (purok && purok !== 'All' && purok !== 'All Puroks') {
+  if (purok && !isAllFilterValue(purok)) {
     query = query.eq('purok', purok);
   }
-  if (centerId && centerId !== 'All Centers' && centerId !== 'All') {
+  if (centerId && !isAllFilterValue(centerId)) {
     query = query.eq('center_id', centerId);
   }
 
@@ -450,13 +465,13 @@ export async function countHouseholdsForPrint({
     .from('households')
     .select('*', { count: 'exact', head: true });
 
-  if (barangay && barangay !== 'All' && barangay !== 'All Barangays') {
+  if (barangay && !isAllFilterValue(barangay)) {
     query = query.eq('barangay', barangay);
   }
-  if (purok && purok !== 'All' && purok !== 'All Puroks') {
+  if (purok && !isAllFilterValue(purok)) {
     query = query.eq('purok', purok);
   }
-  if (centerId && centerId !== 'All Centers' && centerId !== 'All') {
+  if (centerId && !isAllFilterValue(centerId)) {
     query = query.eq('center_id', centerId);
   }
 

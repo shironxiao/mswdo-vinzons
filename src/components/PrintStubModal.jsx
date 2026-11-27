@@ -28,6 +28,7 @@ import {
   countHouseholdsForPrint,
   VINZONS_BARANGAYS,
 } from '../lib/householdService.js';
+import { fetchBarangayEvacuationAssignments } from '../lib/barangayEvacuationAssignments.js';
 import './PrintStubModal.css';
 
 const STANDARD_PUROKS = [
@@ -47,20 +48,24 @@ export function PrintStubModal({
   onClose,
   selectedEvent,
   centers = [],
-  initialCenter = 'All Centers',
-  initialBarangay = 'All Barangays',
+  initialCenter = '',
+  initialBarangay = '',
   initialHousehold = null,
 }) {
   const [mode, setMode] = useState(initialHousehold ? 'single' : 'batch');
-  const [selectedCenter, setSelectedCenter] = useState(initialCenter);
-  const [selectedBarangay, setSelectedBarangay] = useState(initialBarangay);
-  const [selectedPurok, setSelectedPurok] = useState('All Puroks');
+
+  // Default center to first center in list if none provided
+  const defaultCenter = initialCenter || (centers.length > 0 ? (centers[0].displayName || centers[0].name) : '');
+  const [selectedCenter, setSelectedCenter] = useState(defaultCenter);
+  const [selectedBarangay, setSelectedBarangay] = useState(initialBarangay || '');
+  const [selectedPurok, setSelectedPurok] = useState('');
 
   // Batch Printing Database States
   const [batchDbCount, setBatchDbCount] = useState(0);
   const [loadingBatchCount, setLoadingBatchCount] = useState(false);
   const [batchChunkSize, setBatchChunkSize] = useState(90); // 90 households = 10 pages of 3x3
   const [selectedBatchPage, setSelectedBatchPage] = useState(1);
+  const [centerAssignments, setCenterAssignments] = useState([]);
   const [isGeneratingPrint, setIsGeneratingPrint] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
 
@@ -86,10 +91,8 @@ export function PrintStubModal({
       } else {
         setMode('batch');
       }
-      if (initialCenter) setSelectedCenter(initialCenter);
-      if (initialBarangay) setSelectedBarangay(initialBarangay);
     }
-  }, [isOpen, initialHousehold, initialCenter, initialBarangay]);
+  }, [isOpen, initialHousehold]);
 
   // Debounce search input for Single Household Mode
   useEffect(() => {
@@ -101,19 +104,100 @@ export function PrintStubModal({
     return () => clearTimeout(searchTimerRef.current);
   }, [searchHousehold]);
 
-  // Query live database count for Batch Mode whenever filters change
   useEffect(() => {
     if (!isOpen) return;
     let isCancelled = false;
-    setLoadingBatchCount(true);
+    fetchBarangayEvacuationAssignments()
+      .then((rows) => {
+        if (!isCancelled) setCenterAssignments(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!isCancelled) setCenterAssignments([]);
+      });
+    return () => { isCancelled = true; };
+  }, [isOpen]);
 
-    const centerObj = centers.find((c) => c.displayName === selectedCenter || c.name === selectedCenter);
-    const centerParam = centerObj ? centerObj.id : (selectedCenter !== 'All Centers' ? selectedCenter : '');
+  const selectedCenterObj = useMemo(
+    () => centers.find((c) => c.displayName === selectedCenter || c.name === selectedCenter) || null,
+    [centers, selectedCenter]
+  );
+
+  const assignedForSelectedCenter = useMemo(() => {
+    if (selectedCenter === 'All Centers' || !selectedCenterObj?.id) return [];
+    return centerAssignments.filter((a) => {
+      const ids = Array.isArray(a.center_ids) && a.center_ids.length
+        ? a.center_ids
+        : Array.isArray(a.centerIds) && a.centerIds.length
+          ? a.centerIds
+          : [a.center_id].filter(Boolean);
+      return ids.includes(selectedCenterObj.id);
+    });
+  }, [selectedCenter, selectedCenterObj, centerAssignments]);
+
+  const availableBarangays = useMemo(() => {
+    return Array.from(new Set(assignedForSelectedCenter.map((a) => a.barangay).filter(Boolean))).sort();
+  }, [assignedForSelectedCenter]);
+
+  // Auto-select first barangay when center changes and assigned barangays change
+  useEffect(() => {
+    if (availableBarangays.length > 0) {
+      if (!availableBarangays.includes(selectedBarangay)) {
+        setSelectedBarangay(availableBarangays[0]);
+      }
+    } else {
+      setSelectedBarangay('');
+      setSelectedPurok('');
+    }
+  }, [availableBarangays, selectedBarangay]);
+
+  const availablePuroks = useMemo(() => {
+    if (!selectedBarangay) return [];
+    const matching = assignedForSelectedCenter.filter((a) => a.barangay === selectedBarangay);
+    if (matching.length === 0) return [];
+
+    const isAllPuroksAssigned = matching.some((a) => {
+      const p = String(a.purok || '').trim().toUpperCase();
+      return a.allPuroks || p === 'ALL' || p === 'ALL PUROKS' || p === 'ALL PUROK';
+    });
+
+    if (isAllPuroksAssigned) {
+      return ['All Puroks', 'Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7', 'Purok 8'];
+    }
+
+    const specificPuroks = Array.from(new Set(matching.map((a) => a.purok).filter(Boolean)));
+    if (specificPuroks.length > 1) {
+      return ['All Assigned Puroks', ...specificPuroks];
+    }
+    return specificPuroks;
+  }, [selectedBarangay, assignedForSelectedCenter]);
+
+  // Auto-select first purok when barangay changes
+  useEffect(() => {
+    if (availablePuroks.length > 0) {
+      if (!availablePuroks.includes(selectedPurok)) {
+        setSelectedPurok(availablePuroks[0]);
+      }
+    } else {
+      setSelectedPurok('');
+    }
+  }, [availablePuroks, selectedPurok]);
+
+  // Query live database count for Batch Mode whenever filters change
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!selectedBarangay) {
+      setBatchDbCount(0);
+      setSelectedBatchPage(1);
+      setLoadingBatchCount(false);
+      return;
+    }
+    let isCancelled = false;
+    setLoadingBatchCount(true);
 
     countHouseholdsForPrint({
       barangay: selectedBarangay,
       purok: selectedPurok,
-      centerId: centerParam,
+      centerId: '',
     })
       .then((count) => {
         if (!isCancelled) {
@@ -174,16 +258,13 @@ export function PrintStubModal({
     setGenerationProgress(`Fetching households from database...`);
 
     try {
-      const centerObj = centers.find((c) => c.displayName === selectedCenter || c.name === selectedCenter);
-      const centerParam = centerObj ? centerObj.id : (selectedCenter !== 'All Centers' ? selectedCenter : '');
-
       const offset = (selectedBatchPage - 1) * batchChunkSize;
       const limit = batchChunkSize === 'all' ? batchDbCount : batchChunkSize;
 
       const householdsToPrint = await fetchHouseholdsForPrint({
         barangay: selectedBarangay,
         purok: selectedPurok,
-        centerId: centerParam,
+        centerId: '',
         offset,
         limit,
         centersList: centers,
@@ -301,9 +382,12 @@ export function PrintStubModal({
                   <select
                     className="vin-print-select"
                     value={selectedCenter}
-                    onChange={(e) => setSelectedCenter(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedCenter(e.target.value);
+                      setSelectedBarangay('');
+                      setSelectedPurok('');
+                    }}
                   >
-                    <option value="All Centers">All Centers (Masterlist)</option>
                     {centers.map((c) => (
                       <option key={c.id || c.displayName} value={c.displayName || c.name}>
                         {c.displayName || c.name}
@@ -321,17 +405,21 @@ export function PrintStubModal({
                   <select
                     className="vin-print-select"
                     value={selectedBarangay}
+                    disabled={availableBarangays.length === 0}
                     onChange={(e) => {
                       setSelectedBarangay(e.target.value);
-                      setSelectedPurok('All Puroks');
+                      setSelectedPurok('');
                     }}
                   >
-                    <option value="All Barangays">All Barangays</option>
-                    {VINZONS_BARANGAYS.map((b) => (
-                      <option key={b} value={b}>
-                        Barangay {b}
-                      </option>
-                    ))}
+                    {availableBarangays.length === 0 ? (
+                      <option value="">No assigned barangay</option>
+                    ) : (
+                      availableBarangays.map((b) => (
+                        <option key={b} value={b}>
+                          Barangay {b}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -344,14 +432,18 @@ export function PrintStubModal({
                   <select
                     className="vin-print-select"
                     value={selectedPurok}
-                    disabled={selectedBarangay === 'All Barangays'}
+                    disabled={!selectedBarangay || availablePuroks.length === 0}
                     onChange={(e) => setSelectedPurok(e.target.value)}
                   >
-                    {STANDARD_PUROKS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
+                    {!selectedBarangay || availablePuroks.length === 0 ? (
+                      <option value="">No assigned purok</option>
+                    ) : (
+                      availablePuroks.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>
@@ -360,9 +452,9 @@ export function PrintStubModal({
               <div className="vin-print-summary-box">
                 <div className="vin-print-summary-left">
                   <div className="vin-print-summary-title">
-                    {selectedBarangay === 'All Barangays'
-                      ? `All Barangays in ${selectedCenter}`
-                      : `Barangay ${selectedBarangay} (${selectedPurok})`}
+                    {selectedBarangay
+                      ? `${selectedCenter} • Barangay ${selectedBarangay} (${selectedPurok || 'All Puroks'})`
+                      : `${selectedCenter} • No assigned barangay`}
                   </div>
                   <div className="vin-print-summary-meta">
                     Masterlist Database Query • Standard <strong>3×3 Grid (9 Stubs per A4 Page)</strong>
@@ -373,11 +465,13 @@ export function PrintStubModal({
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <Loader2 size={13} className="vin-spin" /> Counting...
                     </span>
-                  ) : (
+                  ) : batchDbCount > 0 ? (
                     <>
                       <Users size={14} style={{ display: 'inline', marginRight: 5, verticalAlign: 'middle' }} />
                       {batchDbCount.toLocaleString()} Households Found
                     </>
+                  ) : (
+                    <span style={{ color: '#ffffff', fontWeight: 700 }}>No available households</span>
                   )}
                 </div>
               </div>
@@ -586,7 +680,7 @@ export function PrintStubModal({
               >
                 <FileDown size={16} />
                 <span>
-                  {selectedBarangay !== 'All Barangays'
+                  {selectedBarangay
                     ? `Download ${selectedBarangay} PDF`
                     : 'Download PDF'}
                 </span>

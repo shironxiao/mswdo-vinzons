@@ -7,12 +7,12 @@ import {
   FileSpreadsheet,
   Printer,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import './Reports.css';
 import { EventContext } from '../../context/eventContext.js';
-import { useEvacuationCenters } from '../../lib/evacuationCenters.js';
+import { useEvacuationCenters, isCenterMatch } from '../../lib/evacuationCenters.js';
+import { fetchBarangayEvacuationAssignments } from '../../lib/barangayEvacuationAssignments.js';
 import {
-  fetchHouseholdBarangays,
   normalizeHousehold,
   useEventRoomPlacements,
   useHouseholds,
@@ -29,6 +29,103 @@ const AGE_GROUPS = [
 ];
 
 const DROMIC_COLUMN_COUNT = 28;
+const MALE_COLUMNS = new Set([1, 3, 5, 7, 9, 11, 13, 17, 19, 22, 24, 26]);
+
+const BORDER_THIN = {
+  top: { style: 'thin', color: { rgb: '000000' } },
+  bottom: { style: 'thin', color: { rgb: '000000' } },
+  left: { style: 'thin', color: { rgb: '000000' } },
+  right: { style: 'thin', color: { rgb: '000000' } },
+};
+
+function setWorksheetCellStyle(ws, r, c, style) {
+  const ref = XLSX.utils.encode_cell({ r, c });
+  if (!ws[ref]) {
+    ws[ref] = { t: 's', v: '' };
+  }
+  ws[ref].s = style;
+}
+
+const STYLE_META_LABEL = {
+  font: { bold: true, name: 'Arial', sz: 9 },
+  alignment: { horizontal: 'left', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_META_VALUE = {
+  font: { name: 'Arial', sz: 9 },
+  alignment: { horizontal: 'left', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_META_TITLE = {
+  font: { bold: true, name: 'Arial', sz: 12 },
+  alignment: { horizontal: 'center', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_HEAD_COL = {
+  fill: { fgColor: { rgb: 'C6E0B4' } },
+  font: { bold: true, name: 'Arial', sz: 9 },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+  border: BORDER_THIN,
+};
+
+const STYLE_AGE_BANNER = {
+  fill: { fgColor: { rgb: 'FFF2CC' } },
+  font: { bold: true, name: 'Arial', sz: 9 },
+  alignment: { horizontal: 'center', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_AGE_HEADER = {
+  fill: { fgColor: { rgb: 'FFF2CC' } },
+  font: { bold: true, name: 'Arial', sz: 8 },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+  border: BORDER_THIN,
+};
+
+const STYLE_AGE_SEX = {
+  fill: { fgColor: { rgb: 'FFF2CC' } },
+  font: { bold: true, name: 'Arial', sz: 8 },
+  alignment: { horizontal: 'center', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_VULN_HEADER = {
+  fill: { fgColor: { rgb: 'FFE699' } },
+  font: { bold: true, name: 'Arial', sz: 8 },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true, textRotation: 90 },
+  border: BORDER_THIN,
+};
+
+const STYLE_VULN_SEX = {
+  fill: { fgColor: { rgb: 'FFE699' } },
+  font: { bold: true, name: 'Arial', sz: 8 },
+  alignment: { horizontal: 'center', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_DATA_NAME = {
+  fill: { fgColor: { rgb: 'FFFFFF' } },
+  font: { bold: true, name: 'Arial', sz: 9 },
+  alignment: { horizontal: 'left', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_DATA_MALE = {
+  fill: { fgColor: { rgb: 'DDEBF7' } },
+  font: { name: 'Arial', sz: 9 },
+  alignment: { horizontal: 'center', vertical: 'center' },
+  border: BORDER_THIN,
+};
+
+const STYLE_DATA_FEMALE = {
+  fill: { fgColor: { rgb: 'FFFFFF' } },
+  font: { name: 'Arial', sz: 9 },
+  alignment: { horizontal: 'center', vertical: 'center' },
+  border: BORDER_THIN,
+};
 const DISASTER_TYPES = [
   'Typhoon',
   'Flood',
@@ -99,26 +196,38 @@ function personDromicRow(person, household, isHead) {
     row[26 + sexOffset] = 1;
   }
 
-  row[0] = person.name || 'Unnamed';
+  row[0] = person.name || person.head_name || person.full_name || household.name || household.head_name || 'Unnamed';
   return row;
 }
 
 function buildDromicRows(households) {
   return households.map((household) => {
+    const headName = household.name || household.head_name || household.householdHead || '';
     const head = {
-      name: household.name,
-      age: household.age,
-      ageValue: household.age,
-      ageUnit: 'Years',
-      sex: household.sex,
+      name: headName,
+      age: household.age || household.head_age || 0,
+      ageValue: household.ageValue ?? household.age ?? household.head_age ?? 0,
+      ageUnit: household.ageUnit || 'Years',
+      sex: household.sex || household.head_sex || '',
       vulnerabilities: household.vulnerabilities || [],
     };
-    const headName = String(household.name || '').trim().toLowerCase();
-    const members = (household.members || []).filter((member) => (
-      !member.isHead &&
-      String(member.relationship || '').trim().toLowerCase() !== 'head' &&
-      String(member.name || '').trim().toLowerCase() !== headName
-    ));
+    const headNameClean = String(headName).trim().toLowerCase();
+    const members = (household.members || []).filter((member) => {
+      const memberName = String(member.name || member.full_name || '').trim().toLowerCase();
+      return (
+        !member.isHead &&
+        String(member.relationship || member.relationship_to_head || '').trim().toLowerCase() !== 'head' &&
+        (!headNameClean || memberName !== headNameClean)
+      );
+    }).map((member) => ({
+      ...member,
+      name: member.name || member.full_name || '',
+      age: member.age ?? 0,
+      ageValue: member.ageValue ?? member.age_value ?? member.age ?? 0,
+      ageUnit: member.ageUnit || member.age_unit || 'Years',
+      sex: member.sex || '',
+      vulnerabilities: member.vulnerabilities || [],
+    }));
     const personRows = [
       personDromicRow(head, household, true),
       ...members.map((member) => personDromicRow(member, household, false)),
@@ -144,7 +253,7 @@ function createDromicWorksheet({ barangay, disasterType, occurrenceDate, centerN
   worksheetData[0][22] = 'DROMIC REPORT';
   worksheetData[1][0] = 'TYPE OF DISASTER:';
   worksheetData[1][1] = disasterType;
-  worksheetData[2][0] = 'DATE OF OCCURRENCE:';
+  worksheetData[2][0] = 'DATE OF OCCURRENCE / PERIOD:';
   worksheetData[2][1] = occurrenceDate;
   worksheetData[3][0] = 'NAME OF EVACUATION CENTER:';
   worksheetData[3][1] = centerName;
@@ -202,13 +311,63 @@ function createDromicWorksheet({ barangay, disasterType, occurrenceDate, centerN
   );
   const worksheet = XLSX.utils.aoa_to_sheet(data);
   worksheet['!merges'] = merges;
-  worksheet['!cols'] = [{ wch: 36 }, ...Array.from({ length: DROMIC_COLUMN_COUNT - 1 }, () => ({ wch: 6 }))];
+  worksheet['!cols'] = [{ wch: 34 }, ...Array.from({ length: DROMIC_COLUMN_COUNT - 1 }, () => ({ wch: 6 }))];
   worksheet['!rows'] = [
-    { hpt: 24 }, { hpt: 24 }, { hpt: 24 }, { hpt: 24 },
-    { hpt: 44 }, { hpt: 58 }, { hpt: 24 },
+    { hpt: 22 }, { hpt: 22 }, { hpt: 22 }, { hpt: 22 },
+    { hpt: 35 }, { hpt: 55 }, { hpt: 22 },
     ...rows.map(() => ({ hpt: 22 })),
   ];
   worksheet['!margins'] = { left: 0.2, right: 0.2, top: 0.3, bottom: 0.3, header: 0.1, footer: 0.1 };
+
+  const totalRows = data.length;
+  for (let r = 0; r < totalRows; r += 1) {
+    for (let c = 0; c < DROMIC_COLUMN_COUNT; c += 1) {
+      if (r < 4) {
+        if (r === 0 && c >= 22) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_META_TITLE);
+        } else if (c === 0) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_META_LABEL);
+        } else {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_META_VALUE);
+        }
+      } else if (r === 4) {
+        if (c === 0) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_HEAD_COL);
+        } else if (c <= 14) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_AGE_BANNER);
+        } else {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_VULN_HEADER);
+        }
+      } else if (r === 5) {
+        if (c === 0) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_HEAD_COL);
+        } else if (c <= 14) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_AGE_HEADER);
+        } else {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_VULN_HEADER);
+        }
+      } else if (r === 6) {
+        if (c === 0) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_HEAD_COL);
+        } else if (c <= 14) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_AGE_SEX);
+        } else if ([15, 16, 21].includes(c)) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_VULN_HEADER);
+        } else {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_VULN_SEX);
+        }
+      } else {
+        if (c === 0) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_DATA_NAME);
+        } else if (MALE_COLUMNS.has(c)) {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_DATA_MALE);
+        } else {
+          setWorksheetCellStyle(worksheet, r, c, STYLE_DATA_FEMALE);
+        }
+      }
+    }
+  }
+
   return worksheet;
 }
 
@@ -218,16 +377,9 @@ function escapeHtml(value) {
   }[character]));
 }
 
-function findCenterBarangay(location, barangayOptions) {
-  const normalizedLocation = String(location || '').trim().toLowerCase();
-  return barangayOptions.find((barangay) => (
-    normalizedLocation.includes(barangay.toLowerCase())
-  )) || '';
-}
-
 function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerName, rows }) {
-  const ageHeaders = AGE_GROUPS.map((group) => `<th colspan="2">${escapeHtml(group.label)}</th>`).join('');
-  const ageSexHeaders = AGE_GROUPS.map(() => '<th>M</th><th>F</th>').join('');
+  const ageHeaders = AGE_GROUPS.map((group) => `<th class="age-band" colspan="2">${escapeHtml(group.label)}</th>`).join('');
+  const ageSexHeaders = AGE_GROUPS.map(() => '<th class="age-sex">M</th><th class="age-sex">F</th>').join('');
   const specialGroups = [
     'CHILD HEADED FAMILY',
     'SINGLE HEADED FAMILY',
@@ -235,51 +387,95 @@ function buildDromicPrintHtml({ barangay, disasterType, occurrenceDate, centerNa
     'INDIGENOUS PEOPLE (IPs)',
     '4Ps BENEFICIARIES',
   ];
-  const specialHeaders = specialGroups.map((label) => `<th colspan="2">${label}</th>`);
-  const specialSexHeaders = specialGroups.map(() => '<th>M</th><th>F</th>').join('');
-  const body = rows.map((row) => `<tr>${row.map((cell, index) =>
-    `<td class="${index === 0 ? 'person-name' : 'count'}">${escapeHtml(cell || '')}</td>`
-  ).join('')}</tr>`).join('');
+  const specialHeaders = specialGroups.map((label) => `<th class="vulnerability-header vertical-text" colspan="2">${label}</th>`);
+  const specialSexHeaders = specialGroups.map(() => '<th class="vulnerability-sex">M</th><th class="vulnerability-sex">F</th>').join('');
+  const body = rows.map((row) => `<tr>${row.map((cell, index) => {
+    let cellClass = 'female-cell';
+    if (index === 0) cellClass = 'person-name';
+    else if (MALE_COLUMNS.has(index)) cellClass = 'male-cell';
+    return `<td class="${cellClass}">${escapeHtml(index > 0 && cell === 0 ? '' : cell || '')}</td>`;
+  }).join('')}</tr>`).join('');
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>DROMIC Report</title>
     <style>
       @page { size: landscape; margin: 8mm; }
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { font-family: Arial, sans-serif; color: #111; margin: 0; }
-      .report-title { text-align: right; font-weight: 800; font-size: 15px; }
+      .report-title { text-align: right; font-weight: 800; font-size: 14px; }
       .meta { border-collapse: collapse; width: 100%; margin-bottom: 4px; }
-      .meta td { border: 1px solid #bbb; height: 25px; padding: 3px 6px; font-size: 11px; }
+      .meta td { border: 1px solid #111; height: 24px; padding: 3px 6px; font-size: 10px; }
       .meta td:first-child { width: 220px; font-weight: 800; }
       .dromic { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      .dromic th, .dromic td { border: 1px solid #111; padding: 3px 2px; text-align: center; font-size: 8px; }
+      .dromic th, .dromic td { border: 1px solid #111; padding: 2px 1px; text-align: center; font-size: 8px; }
       .dromic thead th { background: #ffe699; font-weight: 800; }
-      .dromic thead .age-band { background: #fff2cc; }
-      .dromic thead .family-name { background: #c6e0b4; width: 210px; }
-      .dromic tbody tr { height: 22px; }
+      .dromic thead .family-name { background: #c6e0b4 !important; width: 210px; vertical-align: middle; }
+      .dromic thead .age-band { background: #fff2cc !important; }
+      .dromic thead .age-sex { background: #fff2cc !important; }
+      .dromic thead .vulnerability-header { background: #ffe699 !important; }
+      .dromic thead .vulnerability-sex { background: #ffe699 !important; }
+      .dromic thead .vertical-text {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        white-space: normal;
+        height: 120px;
+        vertical-align: bottom;
+        padding-bottom: 4px;
+      }
+      .dromic tbody tr { height: 20px; }
       .dromic thead { display: table-header-group; }
       .dromic tbody tr { break-inside: avoid; page-break-inside: avoid; }
-      .dromic tbody td:nth-child(odd) { background: #ddebf7; }
-      .dromic tbody .person-name { text-align: left; font-weight: 600; padding-left: 5px; background: #fff; }
-      .dromic tbody .count { min-width: 20px; }
+      .dromic tbody .person-name { text-align: left; font-weight: 600; padding-left: 5px; background: #ffffff !important; }
+      .dromic tbody .male-cell { background: #ddebf7 !important; text-align: center; }
+      .dromic tbody .female-cell { background: #ffffff !important; text-align: center; }
       .scroll { overflow-x: auto; }
       @media print { .scroll { overflow: visible; } }
     </style></head><body>
     <table class="meta"><tbody>
       <tr><td>NAME OF BARANGAY:</td><td>${escapeHtml(barangay)}</td><td class="report-title" colspan="8">DROMIC REPORT</td></tr>
       <tr><td>TYPE OF DISASTER:</td><td colspan="9">${escapeHtml(disasterType)}</td></tr>
-      <tr><td>DATE OF OCCURRENCE:</td><td colspan="9">${escapeHtml(occurrenceDate)}</td></tr>
+      <tr><td>DATE OF OCCURRENCE / PERIOD:</td><td colspan="9">${escapeHtml(occurrenceDate)}</td></tr>
       <tr><td>NAME OF EVACUATION CENTER:</td><td colspan="9">${escapeHtml(centerName)}</td></tr>
     </tbody></table>
     <div class="scroll"><table class="dromic"><thead>
       <tr><th class="family-name" rowspan="3">NAME OF FAMILY<br>HEAD/DEPENDENT</th>
         <th class="age-band" colspan="14">SEX &amp; AGE DISTRIBUTION OF IDPs INSIDE ECS</th>
-        <th rowspan="3">PREGNANT</th><th rowspan="3">LACTATING MOTHERS</th>
-        ${specialHeaders.slice(0, 2).join('')}<th rowspan="3">SOLO PARENT</th>${specialHeaders.slice(2).join('')}</tr>
-      <tr>${ageHeaders}${specialHeaders.map(() => '<th colspan="2"></th>').join('')}</tr>
+        <th class="vulnerability-header vertical-text" rowspan="3">PREGNANT</th>
+        <th class="vulnerability-header vertical-text" rowspan="3">LACTATING MOTHERS</th>
+        ${specialHeaders.slice(0, 2).join('')}
+        <th class="vulnerability-header vertical-text" rowspan="3">SOLO PARENT</th>
+        ${specialHeaders.slice(2).join('')}
+      </tr>
+      <tr>${ageHeaders}${specialGroups.map(() => '<th class="vulnerability-header" colspan="2"></th>').join('')}</tr>
       <tr>${ageSexHeaders}${specialSexHeaders}</tr>
     </thead><tbody>${body}</tbody></table></div>
     <script>window.addEventListener('load', () => window.print());</script>
     </body></html>`;
+}
+
+function filterByDateRange(dateValue, startDate, endDate) {
+  if (!startDate && !endDate) return true;
+  if (!dateValue) return false;
+
+  const itemDate = new Date(dateValue);
+  if (isNaN(itemDate.getTime())) return false;
+
+  const y = itemDate.getFullYear();
+  const m = String(itemDate.getMonth() + 1).padStart(2, '0');
+  const d = String(itemDate.getDate()).padStart(2, '0');
+  const itemYmd = `${y}-${m}-${d}`;
+
+  if (startDate && endDate) {
+    const min = startDate <= endDate ? startDate : endDate;
+    const max = startDate <= endDate ? endDate : startDate;
+    return itemYmd >= min && itemYmd <= max;
+  }
+  if (startDate && !endDate) {
+    return itemYmd === startDate;
+  }
+  if (!startDate && endDate) {
+    return itemYmd <= endDate;
+  }
+  return true;
 }
 
 export default function Reports() {
@@ -290,9 +486,8 @@ export default function Reports() {
   const initialDisasterType = selectedEvent?.event_type || 'Typhoon';
   const [selectedCenterId, setSelectedCenterId] = useState('');
   const [barangayName, setBarangayName] = useState('');
-  const [barangayOptions, setBarangayOptions] = useState([]);
-  const [barangayOptionsLoading, setBarangayOptionsLoading] = useState(true);
-  const [barangayOptionsError, setBarangayOptionsError] = useState('');
+  const [centerAssignments, setCenterAssignments] = useState([]);
+  const [centerAssignmentsLoading, setCenterAssignmentsLoading] = useState(true);
   const [disasterType, setDisasterType] = useState(() => (
     DISASTER_TYPES.includes(initialDisasterType) ? initialDisasterType : 'Other'
   ));
@@ -301,77 +496,153 @@ export default function Reports() {
       ? initialDisasterType
       : ''
   ));
-  const [occurrenceDate, setOccurrenceDate] = useState(
-    selectedEvent?.declared_at ? new Date(selectedEvent.declared_at).toISOString().slice(0, 10) : ''
-  );
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const todayString = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [reportPage, setReportPage] = useState(1);
   const [reportPageSize, setReportPageSize] = useState(25);
 
   useEffect(() => {
     let isCurrent = true;
-    fetchHouseholdBarangays()
-      .then((options) => {
-        if (isCurrent) setBarangayOptions(options);
+    fetchBarangayEvacuationAssignments()
+      .then((rows) => {
+        if (isCurrent) setCenterAssignments(Array.isArray(rows) ? rows : []);
       })
-      .catch((error) => {
-        console.error('Could not load barangay options for the DROMIC report:', error);
-        if (isCurrent) setBarangayOptionsError(error.message || 'Could not load barangays from the database.');
+      .catch((err) => {
+        console.warn('Could not load barangay assignments in Reports:', err);
       })
       .finally(() => {
-        if (isCurrent) setBarangayOptionsLoading(false);
+        if (isCurrent) setCenterAssignmentsLoading(false);
       });
-
     return () => {
       isCurrent = false;
     };
   }, []);
 
   const selectedCenter = centers.find((center) => center.id === selectedCenterId) || centers[0];
-  const centerBarangay = findCenterBarangay(selectedCenter?.location, barangayOptions);
-  const currentPlacements = useMemo(() => {
-    const eventPlacements = placements.filter((placement) => (
-      placement.event_id === selectedEvent?.id &&
-      (selectedEvent?.status === 'Active' ? placement.status === 'Evacuated' : true)
-    ));
-    if (selectedEvent?.status !== 'Active') return eventPlacements;
 
-    const placedIds = new Set(eventPlacements.map((placement) => placement.household_id));
-    const directPlacements = households
+  // Derive all active evacuee households for the current operation (matching EvacueeMonitoring)
+  const eventHouseholds = useMemo(() => {
+    const activePlacements = placements
+      .filter((placement) => (
+        placement.event_id === selectedEvent?.id &&
+        (selectedEvent?.status === 'Active' ? placement.status === 'Evacuated' : true)
+      ))
+      .map((placement) => {
+        const found = households.find((item) => item.id === placement.household_id);
+        const household = found
+          ? found
+          : (placement.household ? normalizeHousehold(placement.household, centers) : null);
+        if (!household) return null;
+        const center = centers.find((item) => item.id === placement.center_id);
+        return {
+          ...household,
+          center: center?.displayName || center?.name || household.center,
+          centerId: placement.center_id || household.centerId,
+          eventPlacement: placement,
+        };
+      })
+      .filter(Boolean);
+
+    if (selectedEvent?.status !== 'Active') return activePlacements;
+
+    const placedIds = new Set(activePlacements.map((household) => household.id));
+    const unplacedActiveHouseholds = households
       .filter((household) => (
         household.evacueeStatus === 'Active' &&
         household.centerId &&
         household.roomId &&
         household.room &&
+        household.room !== 'Unassigned' &&
         household.room.trim().toLowerCase() !== 'unassigned' &&
         !placedIds.has(household.id)
       ))
       .map((household) => ({
-        household_id: household.id,
-        center_id: household.centerId,
-        room_id: household.roomId,
-        event_id: selectedEvent.id,
-        status: 'Evacuated',
-        check_in_at: household.createdAt,
-        check_out_at: null,
+        ...household,
+        eventPlacement: {
+          event_id: selectedEvent.id,
+          center_id: household.centerId,
+          room_id: household.roomId,
+          status: 'Evacuated',
+          check_in_at: household.createdAt,
+          check_out_at: null,
+        },
       }));
 
-    return [...eventPlacements, ...directPlacements];
-  }, [placements, households, selectedEvent]);
-  const eventHouseholds = useMemo(() => currentPlacements
-    .map((placement) => {
-      const joinedHousehold = Array.isArray(placement.household)
-        ? placement.household[0]
-        : placement.household;
-      const household = joinedHousehold
-        ? normalizeHousehold(joinedHousehold, centers)
-        : households.find((item) => item.id === placement.household_id);
-      return household ? { ...household, placement } : null;
-    })
-    .filter(Boolean), [currentPlacements, households, centers]);
-  const centerHouseholds = eventHouseholds.filter((household) =>
-    household.placement.center_id === selectedCenter?.id
-  );
+    return [...activePlacements, ...unplacedActiveHouseholds];
+  }, [placements, selectedEvent, households, centers]);
+
+  // All evacuees placed in the selected evacuation center for the current operation
+  const centerEvacueesAll = useMemo(() => {
+    if (!selectedCenter?.id) return [];
+    return eventHouseholds.filter((household) => {
+      const placement = household.eventPlacement;
+      if (placement && placement.center_id === selectedCenter.id) return true;
+      if (household.centerId === selectedCenter.id) return true;
+      if (isCenterMatch(household.center, selectedCenter.displayName, centers)) return true;
+      return false;
+    });
+  }, [eventHouseholds, selectedCenter, centers]);
+
+  // Assigned barangays configured in barangay_evacuation_assignments for this center
+  const assignedBarangaysForCenter = useMemo(() => {
+    if (!selectedCenter?.id) return [];
+    const assigned = centerAssignments.filter((a) => {
+      const ids = Array.isArray(a.center_ids) && a.center_ids.length
+        ? a.center_ids
+        : Array.isArray(a.centerIds) && a.centerIds.length
+          ? a.centerIds
+          : [a.center_id].filter(Boolean);
+      return ids.includes(selectedCenter.id);
+    });
+    return Array.from(new Set(assigned.map((a) => a.barangay).filter(Boolean))).sort();
+  }, [selectedCenter, centerAssignments]);
+
+  // Derived effective selected barangay (strictly from assigned barangays)
+  const selectedBarangay = useMemo(() => {
+    if (barangayName && assignedBarangaysForCenter.includes(barangayName)) {
+      return barangayName;
+    }
+    return assignedBarangaysForCenter[0] || '';
+  }, [barangayName, assignedBarangaysForCenter]);
+
+  // Filtered evacuee households for the selected center, assigned barangay, and date range
+  const centerHouseholds = useMemo(() => {
+    if (!selectedCenter?.id) return [];
+
+    return centerEvacueesAll.filter((household) => {
+      // 1. Strictly filter to the assigned barangay of this center
+      const targetBarangay = selectedBarangay || assignedBarangaysForCenter[0];
+      if (targetBarangay) {
+        if (household.barangay !== targetBarangay) return false;
+      } else if (assignedBarangaysForCenter.length > 0) {
+        if (!assignedBarangaysForCenter.includes(household.barangay)) return false;
+      }
+
+      // 2. Date range filter
+      if (startDate || endDate) {
+        const placement = household.eventPlacement;
+        const dateVal =
+          placement?.check_in_at ||
+          placement?.created_at ||
+          household.evacuatedAt ||
+          household.createdAt;
+        if (!filterByDateRange(dateVal, startDate, endDate)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [selectedCenter, centerEvacueesAll, selectedBarangay, assignedBarangaysForCenter, startDate, endDate]);
+
   const dromicRows = useMemo(() => buildDromicRows(centerHouseholds), [centerHouseholds]);
   const centerEvacueesCount = centerHouseholds.reduce(
     (total, household) => total + (household.familyCount || 1),
@@ -381,16 +652,52 @@ export default function Reports() {
   const currentReportPage = Math.min(reportPage, reportTotalPages);
   const reportStartIndex = (currentReportPage - 1) * reportPageSize;
   const paginatedDromicRows = dromicRows.slice(reportStartIndex, reportStartIndex + reportPageSize);
-  const headerBarangay = barangayName || centerBarangay;
+
+  const headerBarangay = useMemo(() => {
+    if (selectedBarangay && selectedBarangay !== 'ALL') return selectedBarangay;
+    if (assignedBarangaysForCenter.length === 1) return assignedBarangaysForCenter[0];
+    if (assignedBarangaysForCenter.length > 1) return assignedBarangaysForCenter.join(', ');
+    return 'All Barangays';
+  }, [selectedBarangay, assignedBarangaysForCenter]);
+
   const headerDisaster = disasterType === 'Other'
     ? customDisasterType.trim() || 'Other'
     : disasterType || selectedEvent?.event_type || 'Disaster';
-  const headerDate = occurrenceDate || (
-    selectedEvent?.declared_at ? new Date(selectedEvent.declared_at).toLocaleDateString() : ''
-  );
-  const totalEvacuees = eventHouseholds.reduce((sum, household) => sum + (household.familyCount || 1), 0);
-  const activeCenterCount = new Set(eventHouseholds.map((household) => household.placement.center_id)).size;
-  const issuedStubCount = eventHouseholds.filter((household) => household.stubIssued).length;
+
+  const headerDate = useMemo(() => {
+    if (startDate && endDate) {
+      if (startDate === endDate) return startDate;
+      return `${startDate} to ${endDate}`;
+    }
+    if (startDate) return startDate;
+    if (endDate) return `Up to ${endDate}`;
+    if (selectedEvent?.declared_at) {
+      return new Date(selectedEvent.declared_at).toISOString().slice(0, 10);
+    }
+    return 'All Dates';
+  }, [startDate, endDate, selectedEvent]);
+
+  // Overall operation KPI metrics
+  const totalEvacuees = useMemo(() => {
+    return eventHouseholds.reduce((sum, household) => sum + (household.familyCount || 1), 0);
+  }, [eventHouseholds]);
+
+  const activeCenterCount = useMemo(() => {
+    const centersWithEvacuees = new Set();
+    eventHouseholds.forEach((h) => {
+      if (h.centerId) {
+        centersWithEvacuees.add(h.centerId);
+      } else if (h.center) {
+        const match = centers.find((c) => isCenterMatch(h.center, c.displayName, centers));
+        if (match) centersWithEvacuees.add(match.id);
+      }
+    });
+    return centersWithEvacuees.size;
+  }, [eventHouseholds, centers]);
+
+  const issuedStubCount = useMemo(() => {
+    return eventHouseholds.filter((household) => household.stubIssued).length;
+  }, [eventHouseholds]);
 
   const handleDownloadDromic = () => {
     if (!selectedCenter) return;
@@ -481,9 +788,9 @@ export default function Reports() {
             <select
               value={selectedCenter?.id || ''}
               onChange={(event) => {
-                const center = centers.find((item) => item.id === event.target.value);
                 setSelectedCenterId(event.target.value);
-                setBarangayName(findCenterBarangay(center?.location, barangayOptions));
+                setBarangayName('');
+                setReportPage(1);
               }}
             >
               {centers.map((center) => (
@@ -494,22 +801,23 @@ export default function Reports() {
           <label>
             Name of barangay
             <select
-              value={headerBarangay}
-              onChange={(event) => setBarangayName(event.target.value)}
-              disabled={barangayOptionsLoading || barangayOptions.length === 0}
+              value={selectedBarangay}
+              onChange={(event) => {
+                setBarangayName(event.target.value);
+                setReportPage(1);
+              }}
+              disabled={centerAssignmentsLoading || assignedBarangaysForCenter.length <= 1}
             >
-              <option value="">
-                {barangayOptionsLoading
-                  ? 'Loading barangays...'
-                  : barangayOptionsError || (barangayOptions.length ? 'Select a barangay' : 'No barangays found')}
-              </option>
-              {barangayOptions.map((barangay) => (
-                <option key={barangay} value={barangay}>{barangay}</option>
-              ))}
+              {centerAssignmentsLoading ? (
+                <option value="">Loading assigned barangays...</option>
+              ) : assignedBarangaysForCenter.length === 0 ? (
+                <option value="">No assigned barangay</option>
+              ) : (
+                assignedBarangaysForCenter.map((barangay) => (
+                  <option key={barangay} value={barangay}>{barangay}</option>
+                ))
+              )}
             </select>
-            {barangayOptionsError && (
-              <span className="dromic-field-error" role="alert">{barangayOptionsError}</span>
-            )}
           </label>
           <label>
             Type of disaster
@@ -534,17 +842,70 @@ export default function Reports() {
             </div>
           </label>
           <label>
-            Date of occurrence
+            Date from
             <input
               type="date"
-              value={occurrenceDate || (selectedEvent?.declared_at ? new Date(selectedEvent.declared_at).toISOString().slice(0, 10) : '')}
-              onChange={(event) => setOccurrenceDate(event.target.value)}
+              value={startDate}
+              max={endDate || todayString}
+              onChange={(event) => {
+                const val = event.target.value;
+                if (val && val > todayString) return;
+                setStartDate(val);
+                setReportPage(1);
+              }}
+              aria-label="Filter evacuees from date"
+            />
+          </label>
+          <label>
+            <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Date to</span>
+              {(startDate || endDate) && (
+                <button
+                  type="button"
+                  className="dromic-clear-dates-btn"
+                  onClick={() => {
+                    setStartDate('');
+                    setEndDate('');
+                    setReportPage(1);
+                  }}
+                >
+                  Clear dates
+                </button>
+              )}
+            </span>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              max={todayString}
+              onChange={(event) => {
+                const val = event.target.value;
+                if (val && val > todayString) return;
+                setEndDate(val);
+                setReportPage(1);
+              }}
+              aria-label="Filter evacuees to date"
             />
           </label>
         </div>
 
         <div className="dromic-preview-summary">
-          <span>{selectedCenter?.displayName || selectedCenter?.name || 'No center selected'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>{selectedCenter?.displayName || selectedCenter?.name || 'No center selected'}</span>
+            {(startDate || endDate) && (
+              <span className="dromic-date-filter-badge">
+                {startDate && endDate ? `${startDate} to ${endDate}` : startDate ? `${startDate}` : `Up to ${endDate}`}
+                <button
+                  type="button"
+                  onClick={() => { setStartDate(''); setEndDate(''); setReportPage(1); }}
+                  title="Clear date filter"
+                  aria-label="Clear date filter"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
+          </div>
           <span>
             {centerHouseholds.length} {centerHouseholds.length === 1 ? 'family' : 'families'} • {centerEvacueesCount} people
           </span>
@@ -553,7 +914,7 @@ export default function Reports() {
           <strong>NAME OF BARANGAY:</strong><span>{headerBarangay || '—'}</span>
           <strong>DROMIC REPORT</strong>
           <strong>TYPE OF DISASTER:</strong><span>{headerDisaster}</span><span />
-          <strong>DATE OF OCCURRENCE:</strong><span>{headerDate || '—'}</span><span />
+          <strong>DATE / PERIOD:</strong><span>{headerDate || '—'}</span><span />
           <strong>NAME OF EVACUATION CENTER:</strong><span>{selectedCenter?.displayName || selectedCenter?.name || '—'}</span><span />
         </div>
         <div className={`dromic-table-wrap ${isPreviewOpen ? 'is-open' : ''}`}>
@@ -562,32 +923,49 @@ export default function Reports() {
               <tr>
                 <th className="family-name" rowSpan={3}>NAME OF FAMILY<br />HEAD/DEPENDENT</th>
                 <th className="age-band" colSpan={14}>SEX &amp; AGE DISTRIBUTION OF IDPs INSIDE ECS</th>
-                <th rowSpan={3}>PREGNANT</th>
-                <th rowSpan={3}>LACTATING MOTHERS</th>
-                <th colSpan={2}>CHILD HEADED FAMILY</th>
-                <th colSpan={2}>SINGLE HEADED FAMILY</th>
-                <th rowSpan={3}>SOLO PARENT</th>
-                <th colSpan={2}>PERSONS W/ DISABILITY</th>
-                <th colSpan={2}>INDIGENOUS PEOPLE (IPs)</th>
-                <th colSpan={2}>4Ps BENEFICIARIES</th>
+                <th className="vulnerability-header" rowSpan={3}>PREGNANT</th>
+                <th className="vulnerability-header" rowSpan={3}>LACTATING MOTHERS</th>
+                <th className="vulnerability-header" colSpan={2}>CHILD HEADED FAMILY</th>
+                <th className="vulnerability-header" colSpan={2}>SINGLE HEADED FAMILY</th>
+                <th className="vulnerability-header" rowSpan={3}>SOLO PARENT</th>
+                <th className="vulnerability-header" colSpan={2}>PERSONS W/ DISABILITY</th>
+                <th className="vulnerability-header" colSpan={2}>INDIGENOUS PEOPLE (IPs)</th>
+                <th className="vulnerability-header" colSpan={2}>4Ps BENEFICIARIES</th>
               </tr>
               <tr>
-                {AGE_GROUPS.map((group) => <th key={group.label} colSpan={2}>{group.label}</th>)}
-                {[0, 1, 2, 3, 4].map((group) => <th key={`sex-${group}`} colSpan={2} />)}
+                {AGE_GROUPS.map((group) => <th key={group.label} className="age-group" colSpan={2}>{group.label}</th>)}
+                {[0, 1, 2, 3, 4].map((group) => <th key={`sex-${group}`} className="vulnerability-header" colSpan={2} />)}
               </tr>
               <tr>
-                {AGE_GROUPS.map((group) => <Fragment key={`sex-${group.label}`}><th>M</th><th>F</th></Fragment>)}
-                {Array.from({ length: 5 }, (_, index) => <Fragment key={`special-${index}`}><th>M</th><th>F</th></Fragment>)}
+                {AGE_GROUPS.map((group) => <Fragment key={`sex-${group.label}`}><th className="age-sex">M</th><th className="age-sex">F</th></Fragment>)}
+                {Array.from({ length: 5 }, (_, index) => <Fragment key={`special-${index}`}><th className="vulnerability-sex">M</th><th className="vulnerability-sex">F</th></Fragment>)}
               </tr>
             </thead>
             <tbody>
               {dromicRows.length === 0 ? (
-                <tr><td colSpan={DROMIC_COLUMN_COUNT}>No households are placed at this center for the selected event.</td></tr>
+                <tr>
+                  <td colSpan={DROMIC_COLUMN_COUNT}>
+                    {centerEvacueesAll.length === 0
+                      ? 'No evacuee households are placed at this center for the current operation.'
+                      : (startDate || endDate)
+                        ? `No evacuee households found for the selected date (${headerDate}).`
+                        : selectedBarangay && selectedBarangay !== 'ALL'
+                          ? `No evacuee households from ${selectedBarangay} are placed at this center.`
+                          : 'No households found matching the current filters.'}
+                  </td>
+                </tr>
               ) : paginatedDromicRows.map((row, index) => (
                 <tr key={`${row[0]}-${index}`}>
-                  {row.map((cell, cellIndex) => (
-                    <td key={`${index}-${cellIndex}`}>{cell || ''}</td>
-                  ))}
+                  {row.map((cell, cellIndex) => {
+                    let cellClass = 'female-cell';
+                    if (cellIndex === 0) cellClass = 'person-name';
+                    else if (MALE_COLUMNS.has(cellIndex)) cellClass = 'male-cell';
+                    return (
+                      <td key={`${index}-${cellIndex}`} className={cellClass}>
+                        {cellIndex > 0 && cell === 0 ? '' : cell || ''}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

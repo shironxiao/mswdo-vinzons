@@ -49,6 +49,8 @@
 }
 
 .vin-bga-form {
+  position: sticky;
+  top: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -482,7 +484,9 @@
 
 .vin-bga-table-wrap {
   width: 100%;
+  max-height: calc(100dvh - 280px);
   overflow-x: auto;
+  overflow-y: auto;
 }
 
 .vin-bga-table {
@@ -492,6 +496,10 @@
 }
 
 .vin-bga-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ffffff;
   padding: 11px 10px;
   border-bottom: 1px solid #e2e8f0;
   color: #64748b;
@@ -564,6 +572,15 @@
 @media (max-width: 1050px) {
   .vin-bga-layout {
     grid-template-columns: 1fr;
+  }
+
+  .vin-bga-form {
+    position: static;
+  }
+
+  .vin-bga-table-wrap {
+    max-height: none;
+    overflow-y: visible;
   }
 }
 

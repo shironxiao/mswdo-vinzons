@@ -397,7 +397,6 @@ export default function EvacueeMonitoring() {
         <table className="vin-feature-table">
           <thead>
             <tr>
-              <th>CENTER CODE</th>
               <th>EVACUATION CENTER</th>
               <th>ROOM / AREA</th>
               <th>FAMILY HEAD</th>
@@ -411,14 +410,13 @@ export default function EvacueeMonitoring() {
           <tbody>
             {paginatedMonitoring.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No monitoring records match the current filter criteria.
                 </td>
               </tr>
             ) : (
               paginatedMonitoring.map((item) => (
                 <tr key={item.id}>
-                  <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.code}</td>
                   <td style={{ fontWeight: 600 }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <Building size={15} color="#2563eb" />

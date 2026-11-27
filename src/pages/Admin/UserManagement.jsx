@@ -83,6 +83,7 @@ export default function UserManagement() {
   const [form, setForm] = useState({
     name: '',
     email: '',
+    password: '',
     role: 'Social Welfare Officer II',
     assignedCenter: 'All Centers (Command)',
   });
@@ -152,6 +153,7 @@ export default function UserManagement() {
       initials: initials || 'US',
       name: form.name.trim(),
       email: form.email.trim(),
+      password: form.password.trim() || undefined,
       role: form.role,
       roleType: getRoleType(form.role),
       assignedCenter: form.assignedCenter,
@@ -161,7 +163,7 @@ export default function UserManagement() {
     // Optimistic UI update
     setUsers([newUser, ...users]);
     const addedName = form.name.trim();
-    setForm({ name: '', email: '', role: 'Social Welfare Officer II', assignedCenter: 'All Centers (Command)' });
+    setForm({ name: '', email: '', password: '', role: 'Social Welfare Officer II', assignedCenter: 'All Centers (Command)' });
     setAddErrors({});
     setIsModalOpen(false);
     showToast(`User "${addedName}" added successfully.`);
@@ -322,6 +324,7 @@ export default function UserManagement() {
               <th>USER NAME</th>
               <th>EMAIL ADDRESS</th>
               <th>ROLE</th>
+              <th>ASSIGNED CENTER</th>
               <th>STATUS</th>
               <th style={{ textAlign: 'right' }}>ACTION</th>
             </tr>
@@ -329,7 +332,7 @@ export default function UserManagement() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                   No users match the current filter criteria.
                 </td>
               </tr>
@@ -349,6 +352,7 @@ export default function UserManagement() {
                       {item.role}
                     </span>
                   </td>
+                  <td style={{ color: '#475569' }}>{item.assignedCenter || 'All Centers (Command)'}</td>
                   <td>
                     <span className={`vin-status-tag ${item.status.toLowerCase() === 'active' ? 'active' : 'inactive'}`}>
                       {item.status}
@@ -431,6 +435,17 @@ export default function UserManagement() {
                 {addErrors.email && <span className="vin-form-error">{addErrors.email}</span>}
               </div>
 
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '14px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Password (optional)</label>
+                <input
+                  type="password"
+                  placeholder="Default: MSWDOvinzons2026!"
+                  className="vin-form-input"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Role</label>
                 <button
@@ -451,6 +466,27 @@ export default function UserManagement() {
                     {form.role}
                     {form.role === 'MSWD Officer' ? ' (Admin)' : form.role === 'Job Order' ? ' (Personnel)' : ''}
                   </span>
+                  <ChevronDown size={16} color="#64748b" />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Assigned Center</label>
+                <button
+                  type="button"
+                  className="vin-form-select"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    width: '100%',
+                  }}
+                  onClick={() => setShowCenterPicker('add')}
+                >
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{form.assignedCenter}</span>
                   <ChevronDown size={16} color="#64748b" />
                 </button>
               </div>
@@ -561,6 +597,27 @@ export default function UserManagement() {
                   <span style={{ fontWeight: 600, color: '#0f172a' }}>
                     {editForm.status}
                   </span>
+                  <ChevronDown size={16} color="#64748b" />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Assigned Center</label>
+                <button
+                  type="button"
+                  className="vin-form-select"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    width: '100%',
+                  }}
+                  onClick={() => setShowCenterPicker('add')}
+                >
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{form.assignedCenter}</span>
                   <ChevronDown size={16} color="#64748b" />
                 </button>
               </div>
