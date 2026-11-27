@@ -13,6 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { supabase } from '../../lib/supabase.js';
+import { db, isOnline } from '../../lib/offlineDb.js';
 import './MobileCommon.css';
 
 // Number of activities shown initially and per "See More" click
@@ -80,8 +81,32 @@ export default function MobileDashboard() {
   const activityLoading = activityState.scopeKey === activityScopeKey ? activityState.loading : true;
   const activityError = activityState.scopeKey === activityScopeKey ? activityState.error : false;
 
-  // Load lightweight exact HEAD counts scoped to the assigned center
+  // Load lightweight exact HEAD counts scoped to the assigned center, with Dexie fallback
   const loadScopedMetrics = useCallback(async () => {
+    // If offline, directly read from local Dexie database
+    if (!isOnline()) {
+      try {
+        const hhLocal = activeCenterId 
+          ? await db.households.where('centerId').equals(activeCenterId).count()
+          : await db.households.count();
+        const stubsLocal = activeCenterId
+          ? await db.households.where('centerId').equals(activeCenterId).filter((h) => Boolean(h.stubIssued)).count()
+          : await db.households.filter((h) => Boolean(h.stubIssued)).count();
+        const monLocal = activeCenterId
+          ? await db.monitoring_logs.where('centerId').equals(activeCenterId).count()
+          : await db.monitoring_logs.count();
+        setMetrics({
+          householdsCount: hhLocal,
+          stubsCount: stubsLocal,
+          monitoringCount: monLocal,
+          loading: false,
+        });
+        return;
+      } catch (e) {
+        console.warn('Dexie offline metrics error:', e);
+      }
+    }
+
     try {
       let hhQuery = supabase.from('households').select('*', { count: 'exact', head: true });
       let stubsQuery = supabase.from('households').select('*', { count: 'exact', head: true }).eq('stub_issued', true);
@@ -106,7 +131,26 @@ export default function MobileDashboard() {
         loading: false,
       });
     } catch (err) {
-      console.warn('Error loading dashboard scoped metrics:', err);
+      console.warn('Error loading dashboard scoped metrics, falling back to Dexie:', err);
+      try {
+        const hhLocal = activeCenterId 
+          ? await db.households.where('centerId').equals(activeCenterId).count()
+          : await db.households.count();
+        const stubsLocal = activeCenterId
+          ? await db.households.where('centerId').equals(activeCenterId).filter((h) => Boolean(h.stubIssued)).count()
+          : await db.households.filter((h) => Boolean(h.stubIssued)).count();
+        const monLocal = activeCenterId
+          ? await db.monitoring_logs.where('centerId').equals(activeCenterId).count()
+          : await db.monitoring_logs.count();
+        setMetrics({
+          householdsCount: hhLocal,
+          stubsCount: stubsLocal,
+          monitoringCount: monLocal,
+          loading: false,
+        });
+      } catch {
+        setMetrics((prev) => ({ ...prev, loading: false }));
+      }
     }
   }, [activeCenterId]);
 
@@ -293,7 +337,35 @@ export default function MobileDashboard() {
       });
     } catch (err) {
       if (requestId !== activityRequestSequence.current) return;
-      console.warn('Could not fetch recent activities:', err);
+      console.warn('Could not fetch recent activities from cloud, checking Dexie:', err);
+      try {
+        const localHHs = activeCenterId
+          ? await db.households.where('centerId').equals(activeCenterId).toArray()
+          : await db.households.toArray();
+        if (localHHs.length > 0) {
+          const localActivities = localHHs.slice(0, 10).map((h) => ({
+            id: `hh-${h.id}`,
+            path: '/mobile/households',
+            type: 'Household Registered',
+            title: `${h.headName || h.name || 'Household'} Family`,
+            sub: `${h.purok || ''}, ${h.barangay || ''}`,
+            timestamp: h.updatedAt || h.createdAt || new Date().toISOString(),
+            badge: h.stubIssued ? 'Stub Issued' : 'Registered',
+            badgeVariant: 'purple',
+            icon: Home,
+            iconColor: '#7c3aed',
+            iconBgClass: 'purple',
+          }));
+          setActivityState({
+            scopeKey: activityScopeKey,
+            activities: localActivities,
+            loading: false,
+            error: false,
+          });
+          return;
+        }
+      } catch {}
+
       setActivityState((previous) => ({
         scopeKey: activityScopeKey,
         activities: previous.scopeKey === activityScopeKey ? previous.activities : [],

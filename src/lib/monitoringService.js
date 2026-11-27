@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from './supabase.js';
+import { db, isOnline, queuePendingMutation } from './offlineDb.js';
 
 const LOCAL_STORAGE_KEY = 'vinzons_cached_monitoring_logs';
 const MONITORING_CACHE_TTL_MS = 30_000;
@@ -91,6 +92,24 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
     : !cachedLogsForKey?.logs;
   const requestId = useRef(0);
 
+  // Instantly load from Dexie for offline & instant render
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const offlineList = centerId
+          ? await db.monitoring_logs.where('centerId').equals(centerId).toArray()
+          : await db.monitoring_logs.toArray();
+        if (offlineList.length > 0 && isMounted) {
+          const formatted = offlineList.map((item) => item.raw || item);
+          setLogState((prev) => ({ ...prev, logs: formatted }));
+          setLoadingState((prev) => ({ ...prev, loading: false }));
+        }
+      } catch {}
+    })();
+    return () => { isMounted = false; };
+  }, [centerId]);
+
   const fetchLogs = useCallback(async (force = false) => {
     const currentRequest = ++requestId.current;
     const cached = readMonitoringLogsCache(cacheKey);
@@ -165,6 +184,19 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
       } catch {
         // ignore
       }
+
+      // Save into Dexie database for offline use
+      try {
+        const dexieRows = normalized.map((log) => ({
+          id: log.id,
+          householdId: log.householdId,
+          centerId: log.centerId,
+          roomId: log.roomId,
+          createdAt: log.createdAt,
+          raw: log,
+        }));
+        db.monitoring_logs.bulkPut(dexieRows).catch(() => {});
+      } catch {}
     } catch (err) {
       if (currentRequest === requestId.current) {
         console.warn('Could not fetch monitoring_logs from Supabase, using cache/fallback:', err);
@@ -259,33 +291,103 @@ export function useMonitoringLogs(centersList = [], centerId = null, centerIds =
 }
 
 /**
- * Insert a new 2-3 hour monitoring verification round into Supabase
+ * Insert a new 2-3 hour monitoring verification round into Supabase or local offline queue
  */
 export async function recordMonitoringLog(logData) {
-  const { data, error } = await supabase
-    .from('monitoring_logs')
-    .insert({
-      household_id: logData.householdId,
-      center_id: logData.centerId,
-      room_id: logData.roomId || null,
-      monitoring_interval: logData.monitoringInterval || 'Every 2-3 hours',
-      checked_by: logData.checkedBy || 'MSWDO Personnel',
-      household_status: logData.householdStatus || 'Present',
-      members_attendance: logData.membersAttendance || [],
-      total_members: Number(logData.totalMembers) || 1,
-      present_count: Number(logData.presentCount) || 0,
-      absent_count: Number(logData.absentCount) || 0,
-      late_count: Number(logData.lateCount) || 0,
-      remarks: logData.remarks || null,
-    })
-    .select()
-    .single();
+  const tempId = `temp-mon-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const localLog = {
+    id: tempId,
+    householdId: logData.householdId,
+    centerId: logData.centerId,
+    roomId: logData.roomId || null,
+    monitoringInterval: logData.monitoringInterval || 'Every 2-3 hours',
+    checkedBy: logData.checkedBy || 'MSWDO Personnel',
+    householdStatus: logData.householdStatus || 'Present',
+    membersAttendance: logData.membersAttendance || [],
+    totalMembers: Number(logData.totalMembers) || 1,
+    presentCount: Number(logData.presentCount) || 0,
+    absentCount: Number(logData.absentCount) || 0,
+    lateCount: Number(logData.lateCount) || 0,
+    remarks: logData.remarks || null,
+    createdAt: new Date().toISOString(),
+    isOffline: true,
+  };
 
-  if (error) throw error;
-  if (typeof BroadcastChannel !== 'undefined') {
-    const channel = new BroadcastChannel('vinzons-monitoring-logs');
-    channel.postMessage({ type: 'updated' });
-    channel.close();
+  // 1. Immediately store in Dexie for zero latency UI update
+  try {
+    await db.monitoring_logs.put({
+      id: tempId,
+      householdId: localLog.householdId,
+      centerId: localLog.centerId,
+      roomId: localLog.roomId,
+      createdAt: localLog.createdAt,
+      raw: localLog,
+    });
+  } catch (e) {
+    console.warn('Could not save local monitoring log to Dexie:', e);
   }
-  return data;
+
+  // 2. If offline, queue mutation
+  if (!isOnline()) {
+    await queuePendingMutation('LOG_MONITORING', 'monitoring_logs', { logData, tempId });
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('vinzons-monitoring-logs');
+      channel.postMessage({ type: 'updated' });
+      channel.close();
+    }
+    return localLog;
+  }
+
+  // 3. Online with fallback
+  try {
+    const { data, error } = await supabase
+      .from('monitoring_logs')
+      .insert({
+        household_id: logData.householdId,
+        center_id: logData.centerId,
+        room_id: logData.roomId || null,
+        monitoring_interval: logData.monitoringInterval || 'Every 2-3 hours',
+        checked_by: logData.checkedBy || 'MSWDO Personnel',
+        household_status: logData.householdStatus || 'Present',
+        members_attendance: logData.membersAttendance || [],
+        total_members: Number(logData.totalMembers) || 1,
+        present_count: Number(logData.presentCount) || 0,
+        absent_count: Number(logData.absentCount) || 0,
+        late_count: Number(logData.lateCount) || 0,
+        remarks: logData.remarks || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Replace temp record in Dexie with confirmed cloud record
+    try {
+      await db.monitoring_logs.delete(tempId);
+      await db.monitoring_logs.put({
+        id: data.id,
+        householdId: data.household_id,
+        centerId: data.center_id,
+        roomId: data.room_id,
+        createdAt: data.created_at,
+        raw: data,
+      });
+    } catch {}
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('vinzons-monitoring-logs');
+      channel.postMessage({ type: 'updated' });
+      channel.close();
+    }
+    return data;
+  } catch (err) {
+    console.warn('Online monitoring log insert failed, falling back to offline queue:', err);
+    await queuePendingMutation('LOG_MONITORING', 'monitoring_logs', { logData, tempId });
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('vinzons-monitoring-logs');
+      channel.postMessage({ type: 'updated' });
+      channel.close();
+    }
+    return localLog;
+  }
 }

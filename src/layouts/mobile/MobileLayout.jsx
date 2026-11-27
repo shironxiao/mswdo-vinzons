@@ -9,6 +9,7 @@ import { MOBILE_NAV_ITEMS } from './mobileNavConfig';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import { CenterSelectSheet } from '../../components/CenterSelectSheet.jsx';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
+import { getPendingMutationsCount, SYNC_QUEUE_EVENT } from '../../lib/offlineDb.js';
 import mswoLogo from '../../assets/mswdo logo.png';
 import './MobileLayout.css';
 
@@ -29,17 +30,27 @@ export default function MobileLayout({ children }) {
       ? navigator.onLine
       : true
   );
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+    const updatePending = () => {
+      getPendingMutationsCount().then(setPendingCount).catch(() => {});
+    };
+
+    updatePending();
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener(SYNC_QUEUE_EVENT, updatePending);
+    window.addEventListener('vinzons-sync-state-changed', updatePending);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener(SYNC_QUEUE_EVENT, updatePending);
+      window.removeEventListener('vinzons-sync-state-changed', updatePending);
     };
   }, []);
 
@@ -56,10 +67,19 @@ export default function MobileLayout({ children }) {
           </div>
 
           <div className="vin-mobile-topbar-actions">
-            <div className={`vin-mobile-status-pill ${isOnline ? 'online' : 'offline'}`}>
+            <button
+              type="button"
+              onClick={() => navigate('/mobile/sync')}
+              className={`vin-mobile-status-pill ${isOnline ? 'online' : 'offline'}`}
+              style={{ border: 'none', cursor: 'pointer' }}
+              title="Click to view Sync Status"
+            >
               {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-              <span>{isOnline ? 'Online' : 'Offline'}</span>
-            </div>
+              <span>
+                {isOnline ? 'Online' : 'Offline'}
+                {pendingCount > 0 ? ` (${pendingCount})` : ''}
+              </span>
+            </button>
 
             <button
               type="button"

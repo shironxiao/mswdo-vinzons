@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase.js';
+import { db, isOnline, queuePendingMutation } from './offlineDb.js';
 
 
 const HOUSEHOLDS_CHANGED_EVENT = 'vinzons-households-changed';
@@ -180,14 +181,44 @@ export const HOUSEHOLD_JOIN_SELECT = HOUSEHOLD_SUMMARY_SELECT;
  */
 export async function fetchHouseholdDetails(id, centersList = []) {
   if (!id) return null;
-  const { data, error } = await supabase
-    .from('households')
-    .select(HOUSEHOLD_DETAIL_SELECT)
-    .eq('id', id)
-    .single();
 
-  if (error || !data) throw error || new Error('Household details not found');
-  return normalizeHousehold(data, centersList);
+  // 1. Check local offline cache first
+  try {
+    const cachedEntry = await db.household_details.get(id);
+    if (cachedEntry?.data) {
+      if (!isOnline() || Date.now() - (cachedEntry.updatedAt || 0) < 60_000) {
+        return cachedEntry.data;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read cached household details from Dexie:', err);
+  }
+
+  // 2. Fetch from Supabase cloud
+  try {
+    const { data, error } = await supabase
+      .from('households')
+      .select(HOUSEHOLD_DETAIL_SELECT)
+      .eq('id', id)
+      .single();
+
+    if (error || !data) throw error || new Error('Household details not found');
+    const normalized = normalizeHousehold(data, centersList);
+
+    // Save to local cache
+    try {
+      await db.household_details.put({ id, data: normalized, updatedAt: Date.now() });
+    } catch {}
+
+    return normalized;
+  } catch (cloudErr) {
+    // If network fails or offline, fall back to basic household from Dexie
+    try {
+      const basic = await db.households.get(id);
+      if (basic) return basic;
+    } catch {}
+    throw cloudErr;
+  }
 }
 
 export const VINZONS_BARANGAYS = [
@@ -433,6 +464,48 @@ export async function countHouseholdsForPrint({
 }
 
 /**
+ * Search and filter households directly from local IndexedDB (Dexie)
+ */
+export async function searchOfflineHouseholds(query = '', { centerId = '', roomId = '', evacueeStatus = '', stubStatus = 'All' } = {}) {
+  try {
+    let list = await db.households.toArray();
+    if (centerId && centerId !== 'All' && centerId !== 'All Centers') {
+      list = list.filter((h) => h.centerId === centerId);
+    }
+    if (roomId && roomId !== 'All Rooms' && roomId !== 'All') {
+      list = list.filter((h) => h.roomId === roomId);
+    }
+    if (evacueeStatus === 'Active') {
+      list = list.filter((h) => h.evacueeStatus === 'Active');
+    } else if (evacueeStatus === 'Not Active') {
+      list = list.filter((h) => h.evacueeStatus !== 'Active');
+    }
+    if (stubStatus === 'Issued') {
+      list = list.filter((h) => h.stubIssued);
+    } else if (stubStatus === 'Not Issued') {
+      list = list.filter((h) => !h.stubIssued);
+    }
+
+    const clean = (query || '').trim().toLowerCase();
+    if (clean) {
+      list = list.filter((h) =>
+        (h.headName && h.headName.toLowerCase().includes(clean)) ||
+        (h.name && h.name.toLowerCase().includes(clean)) ||
+        (h.householdCode && h.householdCode.toLowerCase().includes(clean)) ||
+        (h.barangay && h.barangay.toLowerCase().includes(clean)) ||
+        (h.purok && h.purok.toLowerCase().includes(clean)) ||
+        (h.stubCode && h.stubCode.toLowerCase().includes(clean))
+      );
+    }
+
+    return list.sort((a, b) => (a.headName || a.name || '').localeCompare(b.headName || b.name || ''));
+  } catch (err) {
+    console.warn('Could not query offline households:', err);
+    return [];
+  }
+}
+
+/**
  * Fast paginated hook for the Masterlist
  */
 export function usePaginatedMasterlist({
@@ -463,6 +536,22 @@ export function usePaginatedMasterlist({
     setLoading(true);
     setError(null);
 
+    // If offline, instantly query local Dexie database
+    if (!isOnline()) {
+      try {
+        const offlineMatches = await searchOfflineHouseholds(search, { centerId, roomId, evacueeStatus, stubStatus });
+        if (reqId === reqSequence.current) {
+          const from = (page - 1) * pageSize;
+          setData(offlineMatches.slice(from, from + pageSize));
+          setTotalCount(offlineMatches.length);
+          setLoading(false);
+        }
+        return;
+      } catch (e) {
+        console.warn('Offline search error:', e);
+      }
+    }
+
     try {
       if (search?.trim()) {
         const matches = await searchHouseholdsFromDatabase(search, centersList);
@@ -492,10 +581,28 @@ export function usePaginatedMasterlist({
         setData(res.data);
         setTotalCount(res.totalCount);
         setLoading(false);
+
+        // Populate local Dexie in background with newly fetched records
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          try {
+            await db.households.bulkPut(res.data);
+          } catch {}
+        }
       }
     } catch (err) {
       if (reqId === reqSequence.current) {
-        console.error('Failed to load paginated households:', err);
+        console.warn('Network error in usePaginatedMasterlist, attempting Dexie fallback:', err);
+        try {
+          const offlineMatches = await searchOfflineHouseholds(search, { centerId, roomId, evacueeStatus, stubStatus });
+          if (offlineMatches.length > 0) {
+            const from = (page - 1) * pageSize;
+            setData(offlineMatches.slice(from, from + pageSize));
+            setTotalCount(offlineMatches.length);
+            setLoading(false);
+            return;
+          }
+        } catch {}
+
         setError(err.message || 'Error loading page');
         setLoading(false);
       }
@@ -623,6 +730,26 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
   const [error, setError] = useState(null);
   const fetchSequence = useRef(0);
 
+  // Instant render from local Dexie database for offline / low-data usage
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const offlineRows = centerId
+          ? await db.households.where('centerId').equals(centerId).toArray()
+          : await db.households.toArray();
+        if (offlineRows.length > 0 && isMounted) {
+          setHouseholds((curr) => (curr.length === 0 ? offlineRows : curr));
+          setTotalCount((curr) => (curr === 0 ? offlineRows.length : curr));
+          setLoading(false);
+        }
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [centerId]);
+
   const fetchHouseholds = useCallback(async (force = false) => {
     const requestId = ++fetchSequence.current;
     const cached = householdRowsCache.get(cacheKey);
@@ -725,9 +852,26 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
       setLoading(false);
       setIsLoadingMore(false);
       setError(null);
+
+      // Async cache in Dexie for offline use
+      try {
+        db.households.bulkPut(firstNormalized).catch(() => {});
+      } catch {}
     } catch (err) {
       if (requestId !== fetchSequence.current) return;
-      console.error('Could not fetch households from Supabase:', err?.message || err);
+      console.warn('Network issue in fetchHouseholds, checking Dexie cache:', err?.message || err);
+      try {
+        const offlineRows = centerId
+          ? await db.households.where('centerId').equals(centerId).toArray()
+          : await db.households.toArray();
+        if (offlineRows.length > 0) {
+          setHouseholds(offlineRows);
+          setTotalCount(offlineRows.length);
+          setLoading(false);
+          setIsLoadingMore(false);
+          return;
+        }
+      } catch {}
       setError(err?.message || 'Failed to fetch households');
     } finally {
       if (requestId === fetchSequence.current) {
@@ -956,132 +1100,245 @@ export async function createHousehold(formData, centersList = [], eventId = null
     );
     centerId = found ? found.id : null;
   }
-  // 2. Resolve room_id
-  let roomId = null;
-  if (centerId && formData.room && formData.room !== 'Unassigned') {
-    const { data: roomData, error: roomLookupError } = await supabase
-      .from('rooms')
-      .select('id')
-      .eq('center_id', centerId)
-      .eq('room_name', formData.room)
-      .maybeSingle();
-
-    if (roomLookupError) throw roomLookupError;
-
-    if (roomData) {
-      roomId = roomData.id;
-    } else {
-      // Auto-create room if it doesn't exist
-      const { data: newRoom, error: roomCreateError } = await supabase
-        .from('rooms')
-        .insert({ center_id: centerId, room_name: formData.room, capacity_individuals: 30 })
-        .select('id')
-        .single();
-      if (roomCreateError) throw roomCreateError;
-      if (newRoom) roomId = newRoom.id;
-    }
-  }
 
   const stubCode = formData.stubCode || `STB-${String(Date.now()).slice(-6)}`;
   const householdCode = formData.householdCode || `HH-${String(Date.now()).slice(-4)}`;
 
-  // 3. Insert household
-  const { data: insertedH, error: hError } = await supabase
-    .from('households')
-    .insert({
-      household_code: householdCode,
-      head_name: formData.head,
-      head_age: Number(formData.age) || 35,
-      head_sex: formData.sex || 'Male',
-      head_occupation: formData.headOccupation || null,
+  // Handle Offline Mode directly
+  if (!isOnline()) {
+    const tempId = `temp-hh-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const localHousehold = {
+      id: tempId,
+      householdCode,
+      headName: formData.head,
+      name: formData.head,
+      age: Number(formData.age) || 35,
+      sex: formData.sex || 'Male',
+      occupation: formData.headOccupation || null,
       barangay: formData.barangay || 'Unassigned',
       purok: formData.purok || 'Unassigned',
-      evacuee_status: centerId ? 'Active' : 'Decamped',
+      evacueeStatus: centerId ? 'Active' : 'Decamped',
+      status: centerId ? 'Evacuated' : 'Decamped',
       vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
-      center_id: centerId,
-      room_id: roomId,
-      stub_code: stubCode,
-      stub_issued: Boolean(formData.stubIssued),
-      stub_issued_at: formData.stubIssued ? new Date().toISOString() : null,
-    })
-    .select()
-    .single();
+      centerId,
+      roomId: null,
+      stubCode,
+      stubIssued: Boolean(formData.stubIssued),
+      stubIssuedAt: formData.stubIssued ? new Date().toISOString() : null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      members: Array.isArray(formData.members) ? formData.members : [],
+      isOffline: true,
+    };
 
-  if (hError) throw hError;
+    try {
+      await db.households.put(localHousehold);
+      await queuePendingMutation('CREATE_HOUSEHOLD', 'households', {
+        ...formData,
+        tempId,
+        householdCode,
+        stubCode,
+        centerId,
+        roomId: null,
+      });
+    } catch (e) {
+      console.warn('Could not save offline household locally:', e);
+    }
 
-  const { error: profileError } = await supabase.from('household_profiles').upsert(
-    householdProfilePayload(insertedH.id, formData),
-    { onConflict: 'household_id' }
-  );
-  if (profileError) throw profileError;
+    notifyHouseholdChanges();
+    return localHousehold;
+  }
 
-  // 4. Insert members if any
-  if (Array.isArray(formData.members) && formData.members.length > 0) {
-    const membersWithNames = formData.members
-      .filter((m) => m && m.name && m.name.trim())
-    const memberRows = membersWithNames.map((m) => ({
-        household_id: insertedH.id,
-        full_name: m.name.trim(),
-        age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
-          ? 0
-          : Number(m.ageValue ?? m.age) || 0,
-        age_value: Number(m.ageValue ?? m.age) || 0,
-        age_unit: m.ageUnit || 'Years',
-        sex: m.sex || 'Female',
-        relationship_to_head: m.relationship || 'MEMBER',
-        occupation: m.occupation || null,
-        is_household_head: false,
-        vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
-      }));
+  try {
+    // 2. Resolve room_id
+    let roomId = null;
+    if (centerId && formData.room && formData.room !== 'Unassigned') {
+      const { data: roomData, error: roomLookupError } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('center_id', centerId)
+        .eq('room_name', formData.room)
+        .maybeSingle();
 
-    if (memberRows.length > 0) {
-      const { data: insertedMembers, error: mError } = await supabase
-        .from('household_members')
-        .insert(memberRows)
-        .select('id');
-      if (mError) throw mError;
-      const memberProfiles = (insertedMembers || []).map((member, index) =>
-        householdMemberProfilePayload(member.id, membersWithNames[index])
-      );
-      if (memberProfiles.length > 0) {
-        const { error: memberProfileError } = await supabase
-          .from('household_member_profiles')
-          .upsert(memberProfiles, { onConflict: 'household_member_id' });
-        if (memberProfileError) throw memberProfileError;
+      if (roomLookupError) throw roomLookupError;
+
+      if (roomData) {
+        roomId = roomData.id;
+      } else {
+        // Auto-create room if it doesn't exist
+        const { data: newRoom, error: roomCreateError } = await supabase
+          .from('rooms')
+          .insert({ center_id: centerId, room_name: formData.room, capacity_individuals: 30 })
+          .select('id')
+          .single();
+        if (roomCreateError) throw roomCreateError;
+        if (newRoom) roomId = newRoom.id;
       }
     }
+
+    // 3. Insert household
+    const { data: insertedH, error: hError } = await supabase
+      .from('households')
+      .insert({
+        household_code: householdCode,
+        head_name: formData.head,
+        head_age: Number(formData.age) || 35,
+        head_sex: formData.sex || 'Male',
+        head_occupation: formData.headOccupation || null,
+        barangay: formData.barangay || 'Unassigned',
+        purok: formData.purok || 'Unassigned',
+        evacuee_status: centerId ? 'Active' : 'Decamped',
+        vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
+        center_id: centerId,
+        room_id: roomId,
+        stub_code: stubCode,
+        stub_issued: Boolean(formData.stubIssued),
+        stub_issued_at: formData.stubIssued ? new Date().toISOString() : null,
+      })
+      .select()
+      .single();
+
+    if (hError) throw hError;
+
+    const { error: profileError } = await supabase.from('household_profiles').upsert(
+      householdProfilePayload(insertedH.id, formData),
+      { onConflict: 'household_id' }
+    );
+    if (profileError) throw profileError;
+
+    // 4. Insert members if any
+    if (Array.isArray(formData.members) && formData.members.length > 0) {
+      const membersWithNames = formData.members
+        .filter((m) => m && m.name && m.name.trim())
+      const memberRows = membersWithNames.map((m) => ({
+          household_id: insertedH.id,
+          full_name: m.name.trim(),
+          age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
+            ? 0
+            : Number(m.ageValue ?? m.age) || 0,
+          age_value: Number(m.ageValue ?? m.age) || 0,
+          age_unit: m.ageUnit || 'Years',
+          sex: m.sex || 'Female',
+          relationship_to_head: m.relationship || 'MEMBER',
+          occupation: m.occupation || null,
+          is_household_head: false,
+          vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
+        }));
+
+      if (memberRows.length > 0) {
+        const { data: insertedMembers, error: mError } = await supabase
+          .from('household_members')
+          .insert(memberRows)
+          .select('id');
+        if (mError) throw mError;
+        const memberProfiles = (insertedMembers || []).map((member, index) =>
+          householdMemberProfilePayload(member.id, membersWithNames[index])
+        );
+        if (memberProfiles.length > 0) {
+          const { error: memberProfileError } = await supabase
+            .from('household_member_profiles')
+            .upsert(memberProfiles, { onConflict: 'household_member_id' });
+          if (memberProfileError) throw memberProfileError;
+        }
+      }
+    }
+
+    // 5. Optionally record initial room_placement & relief stub if assigned to a center
+    if (centerId) {
+      const activeEventId = eventId && eventId !== 'default-active-event' ? eventId : null;
+      const { error: placementError } = await supabase.from('room_placements').insert({
+        household_id: insertedH.id,
+        center_id: centerId,
+        room_id: roomId,
+        event_id: activeEventId,
+        status: 'Evacuated',
+        check_in_at: new Date().toISOString(),
+      });
+      if (placementError) {
+        console.error('Household saved, but its evacuation placement could not be recorded:', placementError);
+      }
+
+      const { error: stubError } = await supabase.from('relief_goods_stubs').insert({
+        household_id: insertedH.id,
+        event_id: activeEventId,
+        stub_code: stubCode,
+        stub_issued: Boolean(formData.stubIssued),
+        stub_issued_at: formData.stubIssued ? new Date().toISOString() : null,
+      });
+      if (stubError) {
+        console.error('Household saved, but its relief stub record could not be created:', stubError);
+      }
+    }
+
+    // Save to Dexie for instant offline availability
+    try {
+      await db.households.put({
+        id: insertedH.id,
+        householdCode: insertedH.household_code,
+        headName: insertedH.head_name,
+        name: insertedH.head_name,
+        age: insertedH.head_age,
+        sex: insertedH.head_sex,
+        occupation: insertedH.head_occupation,
+        barangay: insertedH.barangay,
+        purok: insertedH.purok,
+        centerId: insertedH.center_id,
+        roomId: insertedH.room_id,
+        evacueeStatus: insertedH.evacuee_status,
+        status: insertedH.evacuee_status === 'Active' ? 'Evacuated' : 'Decamped',
+        vulnerabilities: insertedH.vulnerabilities || [],
+        stubIssued: Boolean(insertedH.stub_issued),
+        stubCode: insertedH.stub_code,
+        stubIssuedAt: insertedH.stub_issued_at,
+        createdAt: insertedH.created_at,
+        updatedAt: insertedH.updated_at || insertedH.created_at,
+      });
+    } catch {}
+
     notifyHouseholdChanges();
+    return insertedH;
+  } catch (onlineError) {
+    console.warn('Cloud create failed, saving to local Dexie and queueing mutation:', onlineError);
+    const tempId = `temp-hh-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const localHousehold = {
+      id: tempId,
+      householdCode,
+      headName: formData.head,
+      name: formData.head,
+      age: Number(formData.age) || 35,
+      sex: formData.sex || 'Male',
+      occupation: formData.headOccupation || null,
+      barangay: formData.barangay || 'Unassigned',
+      purok: formData.purok || 'Unassigned',
+      evacueeStatus: centerId ? 'Active' : 'Decamped',
+      status: centerId ? 'Evacuated' : 'Decamped',
+      vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
+      centerId,
+      roomId: null,
+      stubCode,
+      stubIssued: Boolean(formData.stubIssued),
+      stubIssuedAt: formData.stubIssued ? new Date().toISOString() : null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      members: Array.isArray(formData.members) ? formData.members : [],
+      isOffline: true,
+    };
+
+    try {
+      await db.households.put(localHousehold);
+      await queuePendingMutation('CREATE_HOUSEHOLD', 'households', {
+        ...formData,
+        tempId,
+        householdCode,
+        stubCode,
+        centerId,
+        roomId: null,
+      });
+    } catch {}
+
+    notifyHouseholdChanges();
+    return localHousehold;
   }
-
-  // 5. Optionally record initial room_placement & relief stub if assigned to a center
-  if (centerId) {
-    const activeEventId = eventId && eventId !== 'default-active-event' ? eventId : null;
-    const { error: placementError } = await supabase.from('room_placements').insert({
-      household_id: insertedH.id,
-      center_id: centerId,
-      room_id: roomId,
-      event_id: activeEventId,
-      status: 'Evacuated',
-      check_in_at: new Date().toISOString(),
-    });
-    if (placementError) {
-      console.error('Household saved, but its evacuation placement could not be recorded:', placementError);
-    }
-
-    const { error: stubError } = await supabase.from('relief_goods_stubs').insert({
-      household_id: insertedH.id,
-      event_id: activeEventId,
-      stub_code: stubCode,
-      stub_issued: Boolean(formData.stubIssued),
-      stub_issued_at: formData.stubIssued ? new Date().toISOString() : null,
-    });
-    if (stubError) {
-      console.error('Household saved, but its relief stub record could not be created:', stubError);
-    }
-  }
-
-  notifyHouseholdChanges();
-  return insertedH;
 }
 
 function householdProfilePayload(householdId, formData) {
@@ -1408,55 +1665,98 @@ export async function getHouseholdReliefHistory(householdId) {
 export async function issueHouseholdStub(id, eventId = null, options = {}) {
   const issuedAt = new Date().toISOString();
 
-  // Ensure household has a unique stub code assigned upon issuance
-  const { data: currentHH, error: fetchErr } = await supabase
-    .from('households')
-    .select('id, household_code, stub_code')
-    .eq('id', id)
-    .single();
+  // 1. Immediately update local Dexie cache so UI updates with 0ms delay
+  let localStubCode = `STB-${String(Date.now()).slice(-6)}`;
+  try {
+    const localHH = await db.households.get(id);
+    if (localHH) {
+      localStubCode = getHouseholdStubCode(localHH.stubCode, localHH.householdCode, localHH.id);
+      await db.households.update(id, {
+        stubIssued: true,
+        stubCode: localStubCode,
+        stubIssuedAt: issuedAt,
+        updatedAt: issuedAt,
+      });
+    }
+  } catch (e) {
+    console.warn('Local Dexie update error:', e);
+  }
 
-  if (fetchErr) throw fetchErr;
+  // 2. If offline, queue mutation and return immediately
+  if (!isOnline()) {
+    await queuePendingMutation('ISSUE_STUB', 'households', {
+      householdId: id,
+      stubCode: localStubCode,
+      issuedAt,
+      issuedBy: options.issuedBy || 'MSWDO Staff',
+      eventId,
+    });
+    notifyHouseholdChanges();
+    return { id, stub_code: localStubCode, stub_issued: true, issuedAt, isOffline: true };
+  }
 
-  const stubCode = getHouseholdStubCode(
-    currentHH?.stub_code,
-    currentHH?.household_code,
-    currentHH?.id
-  );
+  // 3. Cloud update with offline fallback
+  try {
+    const { data: currentHH, error: fetchErr } = await supabase
+      .from('households')
+      .select('id, household_code, stub_code')
+      .eq('id', id)
+      .single();
 
-  const { data, error } = await supabase
-    .from('households')
-    .update({
+    if (fetchErr) throw fetchErr;
+
+    const stubCode = getHouseholdStubCode(
+      currentHH?.stub_code,
+      currentHH?.household_code,
+      currentHH?.id
+    );
+
+    const { data, error } = await supabase
+      .from('households')
+      .update({
+        stub_code: stubCode,
+        stub_issued: true,
+        stub_issued_at: issuedAt,
+        updated_at: issuedAt,
+      })
+      .eq('id', id)
+      .select('id, stub_code')
+      .single();
+
+    if (error) throw error;
+
+    // Insert a new record in relief_goods_stubs to record this distribution wave permanently in history
+    const stubRecord = {
+      household_id: id,
+      event_id: eventId || null,
       stub_code: stubCode,
       stub_issued: true,
       stub_issued_at: issuedAt,
-      updated_at: issuedAt,
-    })
-    .eq('id', id)
-    .select('id, stub_code')
-    .single();
+      stub_issued_by: options.issuedBy || 'MSWDO Staff',
+    };
 
-  if (error) throw error;
+    const { error: insertError } = await supabase
+      .from('relief_goods_stubs')
+      .insert(stubRecord);
 
-  // Insert a new record in relief_goods_stubs to record this distribution wave permanently in history
-  const stubRecord = {
-    household_id: id,
-    event_id: eventId || null,
-    stub_code: stubCode,
-    stub_issued: true,
-    stub_issued_at: issuedAt,
-    stub_issued_by: options.issuedBy || 'MSWDO Staff',
-  };
+    if (insertError) {
+      console.warn('Could not insert into relief_goods_stubs:', insertError.message);
+    }
 
-  const { error: insertError } = await supabase
-    .from('relief_goods_stubs')
-    .insert(stubRecord);
-
-  if (insertError) {
-    console.warn('Could not insert into relief_goods_stubs:', insertError.message);
+    notifyHouseholdChanges();
+    return { ...data, issuedAt };
+  } catch (err) {
+    console.warn('Cloud stub issue failed, queued offline mutation:', err);
+    await queuePendingMutation('ISSUE_STUB', 'households', {
+      householdId: id,
+      stubCode: localStubCode,
+      issuedAt,
+      issuedBy: options.issuedBy || 'MSWDO Staff',
+      eventId,
+    });
+    notifyHouseholdChanges();
+    return { id, stub_code: localStubCode, stub_issued: true, issuedAt, isOffline: true };
   }
-
-  notifyHouseholdChanges();
-  return { ...data, issuedAt };
 }
 
 /**
@@ -1569,82 +1869,121 @@ export async function transferHouseholdRoom({
   if (!householdId) throw new Error('Household ID is required for transfer.');
   if (!centerId) throw new Error('Target evacuation center is required.');
 
-  // 1. Resolve room ID
-  let resolvedRoomId = roomId;
-  if (!resolvedRoomId && roomName) {
-    const { data: existingRoom, error: roomLookupError } = await supabase
-      .from('rooms')
-      .select('id')
-      .eq('center_id', centerId)
-      .eq('room_name', roomName)
-      .maybeSingle();
-
-    if (roomLookupError) throw roomLookupError;
-    if (existingRoom) {
-      resolvedRoomId = existingRoom.id;
-    } else {
-      const { data: newRoom, error: createRoomError } = await supabase
-        .from('rooms')
-        .insert({ center_id: centerId, room_name: roomName, capacity_individuals: 30 })
-        .select('id')
-        .single();
-      if (createRoomError) throw createRoomError;
-      resolvedRoomId = newRoom.id;
+  // 1. Immediately update Dexie locally so UI responds instantly
+  try {
+    const local = await db.households.get(householdId);
+    if (local) {
+      await db.households.update(householdId, {
+        centerId,
+        roomId: roomId || local.roomId,
+        evacueeStatus: 'Active',
+        status: 'Evacuated',
+        updatedAt: new Date().toISOString(),
+      });
     }
+  } catch (e) {
+    console.warn('Local Dexie transfer update error:', e);
   }
 
-  if (!resolvedRoomId) throw new Error('Target room is required.');
-
-  const now = new Date().toISOString();
-
-  // 2. Update existing active placement in room_placements
-  let placementQuery = supabase
-    .from('room_placements')
-    .update({
-      center_id: centerId,
-      room_id: resolvedRoomId,
-      status: 'Evacuated',
-    })
-    .eq('household_id', householdId)
-    .eq('status', 'Evacuated');
-
-  if (eventId && eventId !== 'default-active-event') {
-    placementQuery = placementQuery.eq('event_id', eventId);
+  // 2. If offline, queue mutation
+  if (!isOnline()) {
+    await queuePendingMutation('TRANSFER_ROOM', 'households', {
+      householdId,
+      eventId,
+      centerId,
+      roomId,
+      roomName,
+    });
+    notifyHouseholdChanges();
+    return { success: true, centerId, roomId, isOffline: true };
   }
 
-  const { data: updatedPlacements, error: placementError } = await placementQuery.select('id');
-  if (placementError) throw placementError;
+  // 3. Online flow with offline fallback
+  try {
+    let resolvedRoomId = roomId;
+    if (!resolvedRoomId && roomName) {
+      const { data: existingRoom, error: roomLookupError } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('center_id', centerId)
+        .eq('room_name', roomName)
+        .maybeSingle();
 
-  // If no active placement was updated, insert a new placement
-  if (!updatedPlacements || updatedPlacements.length === 0) {
-    const { error: insertPlacementError } = await supabase
+      if (roomLookupError) throw roomLookupError;
+      if (existingRoom) {
+        resolvedRoomId = existingRoom.id;
+      } else {
+        const { data: newRoom, error: createRoomError } = await supabase
+          .from('rooms')
+          .insert({ center_id: centerId, room_name: roomName, capacity_individuals: 30 })
+          .select('id')
+          .single();
+        if (createRoomError) throw createRoomError;
+        resolvedRoomId = newRoom.id;
+      }
+    }
+
+    if (!resolvedRoomId) throw new Error('Target room is required.');
+
+    const now = new Date().toISOString();
+
+    let placementQuery = supabase
       .from('room_placements')
-      .insert({
-        household_id: householdId,
+      .update({
         center_id: centerId,
         room_id: resolvedRoomId,
-        event_id: eventId && eventId !== 'default-active-event' ? eventId : null,
         status: 'Evacuated',
-        check_in_at: now,
-      });
-    if (insertPlacementError) throw insertPlacementError;
+      })
+      .eq('household_id', householdId)
+      .eq('status', 'Evacuated');
+
+    if (eventId && eventId !== 'default-active-event') {
+      placementQuery = placementQuery.eq('event_id', eventId);
+    }
+
+    const { data: updatedPlacements, error: placementError } = await placementQuery.select('id');
+    if (placementError) throw placementError;
+
+    if (!updatedPlacements || updatedPlacements.length === 0) {
+      const { error: insertPlacementError } = await supabase
+        .from('room_placements')
+        .insert({
+          household_id: householdId,
+          center_id: centerId,
+          room_id: resolvedRoomId,
+          event_id: eventId && eventId !== 'default-active-event' ? eventId : null,
+          status: 'Evacuated',
+          check_in_at: now,
+        });
+      if (insertPlacementError) throw insertPlacementError;
+    }
+
+    const { error: householdError } = await supabase
+      .from('households')
+      .update({
+        center_id: centerId,
+        room_id: resolvedRoomId,
+        evacuee_status: 'Active',
+        updated_at: now,
+      })
+      .eq('id', householdId);
+
+    if (householdError) throw householdError;
+
+    notifyHouseholdChanges();
+    return { success: true, centerId, roomId: resolvedRoomId };
+  } catch (cloudErr) {
+    console.warn('Cloud transfer failed, queued offline mutation:', cloudErr);
+    await queuePendingMutation('TRANSFER_ROOM', 'households', {
+      householdId,
+      eventId,
+      centerId,
+      roomId,
+      roomName,
+    });
+    notifyHouseholdChanges();
+    return { success: true, centerId, roomId, isOffline: true };
   }
-
-  // 3. Update the household table
-  const { error: householdError } = await supabase
-    .from('households')
-    .update({
-      center_id: centerId,
-      room_id: resolvedRoomId,
-      evacuee_status: 'Active',
-      updated_at: now,
-    })
-    .eq('id', householdId);
-
-  if (householdError) throw householdError;
-
-  notifyHouseholdChanges();
-  return { success: true, centerId, roomId: resolvedRoomId };
 }
 
 export async function decampHousehold(householdId, eventId = null) {
