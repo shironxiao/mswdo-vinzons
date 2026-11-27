@@ -468,10 +468,9 @@ export async function countHouseholdsForPrint({
  */
 export async function searchOfflineHouseholds(query = '', { centerId = '', roomId = '', evacueeStatus = '', stubStatus = 'All' } = {}) {
   try {
-    let list = await db.households.toArray();
-    if (centerId && centerId !== 'All' && centerId !== 'All Centers') {
-      list = list.filter((h) => h.centerId === centerId);
-    }
+    let list = (centerId && centerId !== 'All' && centerId !== 'All Centers')
+      ? await db.households.where('centerId').equals(centerId).toArray()
+      : await db.households.toArray();
     if (roomId && roomId !== 'All Rooms' && roomId !== 'All') {
       list = list.filter((h) => h.roomId === roomId);
     }

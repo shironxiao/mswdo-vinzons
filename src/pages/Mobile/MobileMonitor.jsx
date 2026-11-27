@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   Search, X, Clock, CheckCircle2, XCircle, ChevronDown,
   ChevronLeft, ChevronRight, SlidersHorizontal, AlertTriangle, Building,
@@ -24,7 +24,8 @@ import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { useMonitoringLogs, recordMonitoringLog } from '../../lib/monitoringService.js';
 import { RoomSelectSheet } from '../../components/CenterSelectSheet';
-import QrScannerModal from '../../components/QrScannerModal';
+
+const QrScannerModal = lazy(() => import('../../components/QrScannerModal'));
 
 export default function MobileMonitor() {
   const { centers, assignedCenter, assignedCenterId, assignedCenterObj } = useMobileCenter();
@@ -1271,12 +1272,14 @@ export default function MobileMonitor() {
 
       {/* ── QR SCANNER MODAL ── */}
       {showScanner && (
-        <QrScannerModal
-          title="Scan Relief Goods Stub"
-          hint="Point camera at evacuee stub QR code to verify relief pack eligibility"
-          onScan={handleReliefScan}
-          onClose={() => setShowScanner(false)}
-        />
+        <Suspense fallback={null}>
+          <QrScannerModal
+            title="Scan Relief Goods Stub"
+            hint="Point camera at evacuee stub QR code to verify relief pack eligibility"
+            onScan={handleReliefScan}
+            onClose={() => setShowScanner(false)}
+          />
+        </Suspense>
       )}
 
       {/* ── RELIEF DISTRIBUTION VERIFICATION MODAL ── */}

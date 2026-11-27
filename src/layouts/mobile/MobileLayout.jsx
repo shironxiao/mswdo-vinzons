@@ -69,7 +69,7 @@ export default function MobileLayout({ children }) {
           <div className="vin-mobile-topbar-actions">
             <button
               type="button"
-              onClick={() => navigate('/mobile/sync')}
+              onClick={() => navigate('/mobile/sync-status')}
               className={`vin-mobile-status-pill ${isOnline ? 'online' : 'offline'}`}
               style={{ border: 'none', cursor: 'pointer' }}
               title="Click to view Sync Status"

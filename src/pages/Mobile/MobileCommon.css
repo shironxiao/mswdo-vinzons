@@ -524,6 +524,8 @@
   justify-content: space-between;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: border-color 0.15s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 84px;
 }
 
 .vin-mob-card-item:hover {
@@ -870,9 +872,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: #ffffff;
   border-top: 1.5px solid #dce5df;
   box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
   z-index: 38; /* above content rows, below bottom-nav (40) and modals (70+) */
