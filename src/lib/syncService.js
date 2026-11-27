@@ -177,38 +177,129 @@ export async function flushPendingMutations() {
           });
         }
       } else if (type === 'TRANSFER_ROOM') {
-        const { householdId, centerId, roomId, eventId } = payload;
-        await supabase
+        const { householdId, centerId, roomId, roomName, eventId } = payload;
+        let resolvedRoomId = roomId;
+        if (!resolvedRoomId && roomName) {
+          const { data: existingRoom, error: roomLookupErr } = await supabase
+            .from('rooms')
+            .select('id')
+            .eq('center_id', centerId)
+            .eq('room_name', roomName)
+            .maybeSingle();
+          if (roomLookupErr) throw roomLookupErr;
+          if (existingRoom) {
+            resolvedRoomId = existingRoom.id;
+          } else {
+            const { data: newRoom, error: createRoomErr } = await supabase
+              .from('rooms')
+              .insert({ center_id: centerId, room_name: roomName, capacity_individuals: 30 })
+              .select('id')
+              .single();
+            if (createRoomErr) throw createRoomErr;
+            resolvedRoomId = newRoom.id;
+          }
+        }
+
+        const now = new Date().toISOString();
+        let placementQuery = supabase
+          .from('room_placements')
+          .update({
+            center_id: centerId,
+            room_id: resolvedRoomId,
+            status: 'Evacuated',
+          })
+          .eq('household_id', householdId)
+          .eq('status', 'Evacuated');
+
+        if (eventId && eventId !== 'default-active-event') {
+          placementQuery = placementQuery.eq('event_id', eventId);
+        }
+
+        const { data: updatedPlacements, error: placementErr } = await placementQuery.select('id');
+        if (placementErr) throw placementErr;
+
+        if (!updatedPlacements || updatedPlacements.length === 0) {
+          const { error: insertPlacementErr } = await supabase
+            .from('room_placements')
+            .insert({
+              household_id: householdId,
+              center_id: centerId,
+              room_id: resolvedRoomId,
+              event_id: eventId && eventId !== 'default-active-event' ? eventId : null,
+              status: 'Evacuated',
+              check_in_at: now,
+            });
+          if (insertPlacementErr) throw insertPlacementErr;
+        }
+
+        const { error: hhUpdateErr } = await supabase
           .from('households')
           .update({
             center_id: centerId,
-            room_id: roomId,
+            room_id: resolvedRoomId,
             evacuee_status: 'Active',
-            updated_at: new Date().toISOString(),
+            updated_at: now,
           })
           .eq('id', householdId);
-
-        if (eventId) {
-          await supabase
-            .from('room_placements')
-            .upsert({
-              household_id: householdId,
-              center_id: centerId,
-              room_id: roomId,
-              event_id: eventId,
-              status: 'Evacuated',
-            });
-        }
+        if (hhUpdateErr) throw hhUpdateErr;
 
         const localHH = await db.households.get(householdId);
         if (localHH) {
           await db.households.update(householdId, {
             centerId,
-            roomId,
+            roomId: resolvedRoomId,
+            room: roomName || localHH.room,
             evacueeStatus: 'Active',
-            updatedAt: new Date().toISOString(),
+            status: 'Evacuated',
+            updatedAt: now,
           });
         }
+      } else if (type === 'UPDATE_HOUSEHOLD') {
+        const { id, formData, preservePlacement } = payload;
+        const now = new Date().toISOString();
+        const centerId = formData.centerId || null;
+        let roomId = null;
+
+        if (!preservePlacement && centerId && formData.room && formData.room !== 'Unassigned') {
+          const { data: existingRoom } = await supabase
+            .from('rooms')
+            .select('id')
+            .eq('center_id', centerId)
+            .eq('room_name', formData.room)
+            .maybeSingle();
+          if (existingRoom) {
+            roomId = existingRoom.id;
+          } else {
+            const { data: newRoom } = await supabase
+              .from('rooms')
+              .insert({ center_id: centerId, room_name: formData.room, capacity_individuals: 30 })
+              .select('id')
+              .maybeSingle();
+            if (newRoom) roomId = newRoom.id;
+          }
+        }
+
+        const updatePayload = {
+          head_name: formData.head,
+          head_age: Number(formData.age) || 35,
+          head_sex: formData.sex || 'Male',
+          head_occupation: formData.headOccupation || null,
+          barangay: formData.barangay || 'Unassigned',
+          purok: formData.purok || 'Unassigned',
+          vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
+          updated_at: now,
+        };
+        if (!preservePlacement) {
+          updatePayload.center_id = centerId;
+          updatePayload.room_id = roomId;
+          updatePayload.evacuee_status = centerId ? 'Active' : 'Decamped';
+        }
+
+        const { error: updErr } = await supabase
+          .from('households')
+          .update(updatePayload)
+          .eq('id', id);
+        if (updErr) throw updErr;
       } else if (type === 'LOG_MONITORING') {
         const { logData } = payload;
         const { data: insertedLog, error: logErr } = await supabase
@@ -306,10 +397,16 @@ export async function pullCloudData(options = {}) {
       await db.rooms.bulkPut(formattedRooms);
     }
 
-    // 2. Pull Households for active center (or top 300 if all centers)
+    // 2. Pull Households for active center (or top 500 if all centers)
     let hhQuery = supabase
       .from('households')
-      .select('id, household_code, head_name, head_age, head_sex, head_occupation, barangay, purok, evacuee_status, vulnerabilities, center_id, room_id, stub_code, stub_issued, stub_issued_at, created_at, updated_at')
+      .select(`
+        id, household_code, head_name, head_age, head_sex, head_occupation,
+        barangay, purok, evacuee_status, vulnerabilities, center_id, room_id,
+        stub_code, stub_issued, stub_issued_at, created_at, updated_at,
+        center:evacuation_centers!households_center_id_fkey ( id, name, location ),
+        room:rooms ( id, room_name )
+      `)
       .order('created_at', { ascending: false });
 
     if (centerId && centerId !== 'all') {
@@ -332,7 +429,9 @@ export async function pullCloudData(options = {}) {
         barangay: h.barangay,
         purok: h.purok,
         centerId: h.center_id,
+        center: h.center?.name || 'Unassigned Center',
         roomId: h.room_id,
+        room: h.room?.room_name || 'Unassigned',
         evacueeStatus: h.evacuee_status,
         status: h.evacuee_status === 'Active' ? 'Evacuated' : 'Decamped',
         vulnerabilities: h.vulnerabilities || [],
@@ -379,6 +478,9 @@ export async function syncNow(options = {}) {
 
     isSyncing = false;
     notifySyncState();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('vinzons-households-changed'));
+    }
 
     return {
       status: 'success',

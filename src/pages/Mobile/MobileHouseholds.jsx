@@ -915,17 +915,26 @@ export default function MobileHouseholds() {
       return;
     }
 
+    const household =
+      masterlistHouseholds.find((item) => item.id === hhId) ||
+      households.find((item) => item.id === hhId) ||
+      (selectedHousehold?.id === hhId ? selectedHousehold : null) ||
+      (assigningHousehold?.id === hhId ? assigningHousehold : null);
+    const resolvedRoomName = room.name || roomId;
+    const resolvedCenterName = center.displayName || center.name;
+
     try {
       if (activeEvent?.status === 'Active' && activeEvent.id !== 'default-active-event') {
         await transferHouseholdRoom({
           householdId: hhId,
           eventId: activeEvent.id,
           centerId: center.id,
+          centerName: resolvedCenterName,
           roomId: room.dbId || null,
-          roomName: room.name || roomId,
+          roomName: resolvedRoomName,
+          householdSnapshot: household,
         });
-      } else {
-        const household = households.find((item) => item.id === hhId);
+      } else if (household) {
         await updateHousehold(hhId, {
           head: household.name,
           age: household.age,
@@ -945,13 +954,36 @@ export default function MobileHouseholds() {
           otherIncomeSource: household.otherIncomeSource,
           floodDepthLevel: household.floodDepthLevel,
           characteristicsRemarks: household.characteristicsRemarks,
-          center: center.displayName || center.name,
+          center: resolvedCenterName,
           centerId: center.id,
-          room: room.name || roomId,
+          room: resolvedRoomName,
         }, centers);
+      } else {
+        await transferHouseholdRoom({
+          householdId: hhId,
+          eventId: activeEvent?.id || null,
+          centerId: center.id,
+          centerName: resolvedCenterName,
+          roomId: room.dbId || null,
+          roomName: resolvedRoomName,
+          householdSnapshot: household,
+        });
       }
+
+      if (selectedHousehold?.id === hhId) {
+        setSelectedHousehold((prev) => (prev ? {
+          ...prev,
+          centerId: center.id,
+          center: resolvedCenterName,
+          roomId: room.dbId || prev.roomId,
+          room: resolvedRoomName,
+          evacueeStatus: 'Active',
+          status: 'Evacuated',
+        } : prev));
+      }
+
       await Promise.all([refreshHouseholds(), refreshPlacements(), refreshMasterlist?.()]);
-      setToastMsg(`Assigned to ${room.name || roomId}.`);
+      setToastMsg(`Assigned to ${resolvedRoomName}.`);
     } catch (error) {
       console.error('Could not save household room assignment:', error);
       setToastMsg(`Could not assign room: ${error.message || 'Please try again.'}`);

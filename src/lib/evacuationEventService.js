@@ -8,10 +8,33 @@ export const FALLBACK_EVENT = {
   status: 'Active',
 };
 
+const ACTIVE_EVENT_CACHE_KEY = 'vinzons_cached_active_event';
+
+function readCachedActiveEvent() {
+  try {
+    const raw = localStorage.getItem(ACTIVE_EVENT_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedActiveEvent(event) {
+  try {
+    if (event) {
+      localStorage.setItem(ACTIVE_EVENT_CACHE_KEY, JSON.stringify(event));
+    }
+  } catch {}
+}
+
 /**
  * Fetches the currently active disaster event from Supabase
  */
 export async function getActiveEvent() {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return readCachedActiveEvent() || FALLBACK_EVENT;
+  }
+
   try {
     const { data, error } = await supabase
       .from('evacuation_events')
@@ -23,10 +46,13 @@ export async function getActiveEvent() {
 
     if (error) {
       console.warn('Could not fetch active event from Supabase:', error.message);
-      return FALLBACK_EVENT;
+      return readCachedActiveEvent() || FALLBACK_EVENT;
     }
 
-    if (data) return data;
+    if (data) {
+      writeCachedActiveEvent(data);
+      return data;
+    }
 
     // If table exists but has no active events, return fallback or most recent
     const { data: recent } = await supabase
@@ -36,10 +62,12 @@ export async function getActiveEvent() {
       .limit(1)
       .maybeSingle();
 
-    return recent || FALLBACK_EVENT;
+    const resolved = recent || readCachedActiveEvent() || FALLBACK_EVENT;
+    if (recent) writeCachedActiveEvent(recent);
+    return resolved;
   } catch (err) {
     console.warn('Error querying evacuation_events:', err);
-    return FALLBACK_EVENT;
+    return readCachedActiveEvent() || FALLBACK_EVENT;
   }
 }
 

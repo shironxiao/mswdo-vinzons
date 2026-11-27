@@ -174,6 +174,41 @@ export default function MobileDashboard() {
       return;
     }
 
+    if (!isOnline()) {
+      try {
+        const localHHs = activeCenterId
+          ? await db.households.where('centerId').equals(activeCenterId).toArray()
+          : await db.households.toArray();
+        const localActivities = localHHs
+          .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+          .slice(0, 15)
+          .map((h) => ({
+            id: `hh-${h.id}`,
+            path: '/mobile/households',
+            type: h.room && h.room !== 'Unassigned' ? 'Assigned to Center' : 'Household Registered',
+            title: `${h.headName || h.name || 'Household'} Family`,
+            sub: h.room && h.room !== 'Unassigned'
+              ? `${h.room} • ${h.center || 'Assigned Center'}`
+              : `${h.purok || ''}, ${h.barangay || ''}`,
+            timestamp: h.updatedAt || h.createdAt || new Date().toISOString(),
+            badge: h.stubIssued ? 'Stub Issued' : (h.room && h.room !== 'Unassigned' ? 'Assigned' : 'Registered'),
+            badgeVariant: h.room && h.room !== 'Unassigned' ? 'mint' : 'purple',
+            icon: Home,
+            iconColor: '#7c3aed',
+            iconBgClass: 'purple',
+          }));
+        if (requestId === activityRequestSequence.current) {
+          setActivityState({
+            scopeKey: activityScopeKey,
+            activities: localActivities,
+            loading: false,
+            error: false,
+          });
+        }
+        return;
+      } catch {}
+    }
+
     try {
       let hhQuery = supabase
         .from('households')
@@ -406,10 +441,13 @@ export default function MobileDashboard() {
       .on('postgres_changes', placementChanges, scheduleRefresh)
       .subscribe();
 
+    window.addEventListener('vinzons-households-changed', scheduleRefresh);
+
     return () => {
       activityRequestSequence.current += 1;
       window.clearTimeout(initialFetch);
       window.clearTimeout(refreshTimeout);
+      window.removeEventListener('vinzons-households-changed', scheduleRefresh);
       supabase.removeChannel(channel);
     };
   }, [fetchRecentActivities, loadScopedMetrics, activeCenterId]);

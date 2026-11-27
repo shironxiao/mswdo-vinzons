@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { db, isOnline } from './offlineDb.js';
 
 const ASSIGNMENTS_TABLE = 'barangay_evacuation_assignments';
 
@@ -16,19 +17,48 @@ function findMatchingAssignments(rows, barangay, purok) {
 }
 
 export async function fetchBarangayEvacuationAssignments() {
-  const { data, error } = await supabase
-    .from(ASSIGNMENTS_TABLE)
-    .select('id, barangay, purok, center_id, center_ids, notes, created_at, updated_at')
-    .order('barangay', { ascending: true })
-    .order('purok', { ascending: true });
+  if (!isOnline()) {
+    try {
+      const cached = await db.barangay_assignments.toArray();
+      return cached;
+    } catch {
+      return [];
+    }
+  }
 
-  if (error) throw error;
-  return (data || []).map((assignment) => ({
-    ...assignment,
-    center_ids: Array.isArray(assignment.center_ids) && assignment.center_ids.length
-      ? assignment.center_ids
-      : [assignment.center_id].filter(Boolean),
-  }));
+  try {
+    const { data, error } = await supabase
+      .from(ASSIGNMENTS_TABLE)
+      .select('id, barangay, purok, center_id, center_ids, notes, created_at, updated_at')
+      .order('barangay', { ascending: true })
+      .order('purok', { ascending: true });
+
+    if (error) throw error;
+    const normalized = (data || []).map((assignment) => ({
+      ...assignment,
+      center_ids: Array.isArray(assignment.center_ids) && assignment.center_ids.length
+        ? assignment.center_ids
+        : [assignment.center_id].filter(Boolean),
+    }));
+
+    try {
+      await db.barangay_assignments.clear();
+      if (normalized.length > 0) {
+        await db.barangay_assignments.bulkPut(normalized);
+      }
+    } catch (cacheErr) {
+      console.warn('Could not cache barangay assignments in Dexie:', cacheErr);
+    }
+
+    return normalized;
+  } catch (err) {
+    console.warn('Network error fetching barangay assignments, using Dexie cache:', err);
+    try {
+      const cached = await db.barangay_assignments.toArray();
+      if (cached.length > 0) return cached;
+    } catch {}
+    throw err;
+  }
 }
 
 async function findAssignmentPair(barangay, purok) {

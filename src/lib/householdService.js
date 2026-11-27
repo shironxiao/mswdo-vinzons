@@ -12,6 +12,8 @@ const householdSyncChannel = typeof BroadcastChannel === 'undefined'
   : new BroadcastChannel('vinzons-households');
 
 function notifyHouseholdChanges() {
+  householdRowsCache.clear();
+  roomPlacementsCache.clear();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(HOUSEHOLDS_CHANGED_EVENT));
   }
@@ -466,13 +468,24 @@ export async function countHouseholdsForPrint({
 /**
  * Search and filter households directly from local IndexedDB (Dexie)
  */
-export async function searchOfflineHouseholds(query = '', { centerId = '', roomId = '', evacueeStatus = '', stubStatus = 'All' } = {}) {
+export async function searchOfflineHouseholds(query = '', { centerId = '', assignedLocations = null, roomId = '', evacueeStatus = '', stubStatus = 'All' } = {}) {
   try {
     let list = (centerId && centerId !== 'All' && centerId !== 'All Centers')
       ? await db.households.where('centerId').equals(centerId).toArray()
       : await db.households.toArray();
+    if (Array.isArray(assignedLocations)) {
+      if (assignedLocations.length === 0) return [];
+      list = list.filter((h) =>
+        assignedLocations.some((loc) => {
+          const bMatch = String(loc.barangay || '').trim().toLowerCase() === String(h.barangay || '').trim().toLowerCase();
+          const pLoc = String(loc.purok || '').trim().toLowerCase();
+          const pH = String(h.purok || '').trim().toLowerCase();
+          return bMatch && (pLoc === 'all' || pLoc === pH);
+        })
+      );
+    }
     if (roomId && roomId !== 'All Rooms' && roomId !== 'All') {
-      list = list.filter((h) => h.roomId === roomId);
+      list = list.filter((h) => h.roomId === roomId || h.room === roomId);
     }
     if (evacueeStatus === 'Active') {
       list = list.filter((h) => h.evacueeStatus === 'Active');
@@ -538,7 +551,13 @@ export function usePaginatedMasterlist({
     // If offline, instantly query local Dexie database
     if (!isOnline()) {
       try {
-        const offlineMatches = await searchOfflineHouseholds(search, { centerId, roomId, evacueeStatus, stubStatus });
+        const offlineMatches = await searchOfflineHouseholds(search, {
+          centerId,
+          assignedLocations: search?.trim() ? null : assignedLocations,
+          roomId,
+          evacueeStatus,
+          stubStatus,
+        });
         if (reqId === reqSequence.current) {
           const from = (page - 1) * pageSize;
           setData(offlineMatches.slice(from, from + pageSize));
@@ -592,7 +611,13 @@ export function usePaginatedMasterlist({
       if (reqId === reqSequence.current) {
         console.warn('Network error in usePaginatedMasterlist, attempting Dexie fallback:', err);
         try {
-          const offlineMatches = await searchOfflineHouseholds(search, { centerId, roomId, evacueeStatus, stubStatus });
+          const offlineMatches = await searchOfflineHouseholds(search, {
+            centerId,
+            assignedLocations: search?.trim() ? null : assignedLocations,
+            roomId,
+            evacueeStatus,
+            stubStatus,
+          });
           if (offlineMatches.length > 0) {
             const from = (page - 1) * pageSize;
             setData(offlineMatches.slice(from, from + pageSize));
@@ -751,6 +776,27 @@ export function useHouseholds(centersList = [], { centerId = null, fetchAll = fa
 
   const fetchHouseholds = useCallback(async (force = false) => {
     const requestId = ++fetchSequence.current;
+    if (!isOnline()) {
+      try {
+        const offlineRows = centerId
+          ? await db.households.where('centerId').equals(centerId).toArray()
+          : await db.households.toArray();
+        if (requestId === fetchSequence.current) {
+          setHouseholds(offlineRows);
+          setTotalCount(offlineRows.length);
+          setLoading(false);
+          setIsLoadingMore(false);
+          setError(null);
+        }
+      } catch {
+        if (requestId === fetchSequence.current) {
+          setLoading(false);
+          setIsLoadingMore(false);
+        }
+      }
+      return;
+    }
+
     const cached = householdRowsCache.get(cacheKey);
     if (
       !force &&
@@ -1392,105 +1438,163 @@ export async function updateHousehold(id, formData, centersList = [], { preserve
     centerId = found ? found.id : null;
   }
 
-  let roomId = null;
-  if (!preservePlacement && centerId && formData.room && formData.room !== 'Unassigned') {
-    const { data: roomData } = await supabase
-      .from('rooms')
-      .select('id')
-      .eq('center_id', centerId)
-      .eq('room_name', formData.room)
-      .maybeSingle();
+  const now = new Date().toISOString();
 
-    if (roomData) {
-      roomId = roomData.id;
-    } else {
-      const { data: newRoom } = await supabase
-        .from('rooms')
-        .insert({ center_id: centerId, room_name: formData.room, capacity_individuals: 30 })
-        .select('id')
-        .single();
-      if (newRoom) roomId = newRoom.id;
+  // Always update local Dexie cache immediately so UI reflects edits offline & online
+  try {
+    const existing = (await db.households.get(id)) || {};
+    const detailEntry = await db.household_details.get(id);
+    const base = detailEntry?.data || existing;
+    const updatedLocal = {
+      ...base,
+      id,
+      name: formData.head ?? base.name,
+      headName: formData.head ?? base.headName,
+      age: Number(formData.age) || base.age || 35,
+      sex: formData.sex || base.sex || 'Male',
+      headOccupation: formData.headOccupation ?? base.headOccupation ?? null,
+      barangay: formData.barangay || base.barangay || 'Unassigned',
+      purok: formData.purok || base.purok || 'Unassigned',
+      vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : (base.vulnerabilities || []),
+      members: Array.isArray(formData.members) ? formData.members : (base.members || []),
+      ...(!preservePlacement ? {
+        centerId: centerId || null,
+        center: formData.center || base.center || 'Unassigned Center',
+        room: formData.room || base.room || 'Unassigned',
+        evacueeStatus: centerId ? 'Active' : (base.evacueeStatus || 'Decamped'),
+        status: centerId ? 'Evacuated' : (base.status || 'Decamped'),
+      } : {}),
+      updatedAt: now,
+    };
+    await db.households.put(updatedLocal);
+    if (detailEntry) {
+      await db.household_details.put({ id, data: updatedLocal, updatedAt: Date.now() });
     }
+  } catch (e) {
+    console.warn('Local Dexie updateHousehold error:', e);
   }
 
-  const payload = {
-    head_name: formData.head,
-    head_age: Number(formData.age) || 35,
-    head_sex: formData.sex || 'Male',
-    head_occupation: formData.headOccupation || null,
-    barangay: formData.barangay || 'Unassigned',
-    purok: formData.purok || 'Unassigned',
-    vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
-    updated_at: new Date().toISOString(),
-  };
-  if (!preservePlacement) {
-    payload.center_id = centerId || null;
-    payload.room_id = roomId;
+  if (!isOnline()) {
+    await queuePendingMutation('UPDATE_HOUSEHOLD', 'households', {
+      id,
+      formData,
+      preservePlacement,
+    });
+    notifyHouseholdChanges();
+    return { id, isOffline: true };
   }
 
-  const { error: hError } = await supabase.from('households').update(payload).eq('id', id);
-  if (hError) throw hError;
+  try {
+    let roomId = null;
+    if (!preservePlacement && centerId && formData.room && formData.room !== 'Unassigned') {
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('center_id', centerId)
+        .eq('room_name', formData.room)
+        .maybeSingle();
 
-  const hasProfileFields = [
-    'monthlyIncome',
-    'hasWorkedDole',
-    'doleEmploymentYear',
-    'hasReceivedGovernmentAssistance',
-    'govAssistanceAvailed',
-    'governmentAssistanceYear',
-    'hasReceivedReliefAssistance',
-    'otherIncomeSource',
-    'floodDepthLevel',
-    'characteristicsRemarks',
-  ].some((field) => Object.prototype.hasOwnProperty.call(formData, field));
-  if (hasProfileFields) {
-    const { error: profileError } = await supabase.from('household_profiles').upsert(
-      householdProfilePayload(id, formData),
-      { onConflict: 'household_id' }
-    );
-    if (profileError) throw profileError;
-  }
-
-  // Replace members
-  if (Array.isArray(formData.members)) {
-    const { error: deleteMembersError } = await supabase
-      .from('household_members')
-      .delete()
-      .eq('household_id', id);
-    if (deleteMembersError) throw deleteMembersError;
-    const membersWithNames = formData.members
-      .filter((m) => m && m.name && m.name.trim())
-    const memberRows = membersWithNames.map((m) => ({
-        household_id: id,
-        full_name: m.name.trim(),
-        age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
-          ? 0
-          : Number(m.ageValue ?? m.age) || 0,
-        age_value: Number(m.ageValue ?? m.age) || 0,
-        age_unit: m.ageUnit || 'Years',
-        sex: m.sex || 'Female',
-        relationship_to_head: m.relationship || 'MEMBER',
-        occupation: m.occupation || null,
-        is_household_head: Boolean(m.isHead),
-        vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
-      }));
-
-    if (memberRows.length > 0) {
-      const { data: insertedMembers, error: membersError } = await supabase
-        .from('household_members')
-        .insert(memberRows)
-        .select('id');
-      if (membersError) throw membersError;
-      const memberProfiles = (insertedMembers || []).map((member, index) =>
-        householdMemberProfilePayload(member.id, membersWithNames[index])
-      );
-      if (memberProfiles.length > 0) {
-        const { error: memberProfileError } = await supabase
-          .from('household_member_profiles')
-          .upsert(memberProfiles, { onConflict: 'household_member_id' });
-        if (memberProfileError) throw memberProfileError;
+      if (roomData) {
+        roomId = roomData.id;
+      } else {
+        const { data: newRoom } = await supabase
+          .from('rooms')
+          .insert({ center_id: centerId, room_name: formData.room, capacity_individuals: 30 })
+          .select('id')
+          .single();
+        if (newRoom) roomId = newRoom.id;
       }
     }
+
+    const payload = {
+      head_name: formData.head,
+      head_age: Number(formData.age) || 35,
+      head_sex: formData.sex || 'Male',
+      head_occupation: formData.headOccupation || null,
+      barangay: formData.barangay || 'Unassigned',
+      purok: formData.purok || 'Unassigned',
+      vulnerabilities: Array.isArray(formData.vulnerabilities) ? formData.vulnerabilities : [],
+      updated_at: now,
+    };
+    if (!preservePlacement) {
+      payload.center_id = centerId || null;
+      payload.room_id = roomId;
+      payload.evacuee_status = centerId ? 'Active' : 'Decamped';
+    }
+
+    const { error: hError } = await supabase.from('households').update(payload).eq('id', id);
+    if (hError) throw hError;
+
+    const hasProfileFields = [
+      'monthlyIncome',
+      'hasWorkedDole',
+      'doleEmploymentYear',
+      'hasReceivedGovernmentAssistance',
+      'govAssistanceAvailed',
+      'governmentAssistanceYear',
+      'hasReceivedReliefAssistance',
+      'otherIncomeSource',
+      'floodDepthLevel',
+      'characteristicsRemarks',
+    ].some((field) => Object.prototype.hasOwnProperty.call(formData, field));
+    if (hasProfileFields) {
+      const { error: profileError } = await supabase.from('household_profiles').upsert(
+        householdProfilePayload(id, formData),
+        { onConflict: 'household_id' }
+      );
+      if (profileError) throw profileError;
+    }
+
+    // Replace members
+    if (Array.isArray(formData.members)) {
+      const { error: deleteMembersError } = await supabase
+        .from('household_members')
+        .delete()
+        .eq('household_id', id);
+      if (deleteMembersError) throw deleteMembersError;
+      const membersWithNames = formData.members
+        .filter((m) => m && m.name && m.name.trim())
+      const memberRows = membersWithNames.map((m) => ({
+          household_id: id,
+          full_name: m.name.trim(),
+          age: ['month', 'day'].some((unit) => String(m.ageUnit || 'Years').toLowerCase().startsWith(unit))
+            ? 0
+            : Number(m.ageValue ?? m.age) || 0,
+          age_value: Number(m.ageValue ?? m.age) || 0,
+          age_unit: m.ageUnit || 'Years',
+          sex: m.sex || 'Female',
+          relationship_to_head: m.relationship || 'MEMBER',
+          occupation: m.occupation || null,
+          is_household_head: Boolean(m.isHead),
+          vulnerabilities: Array.isArray(m.vulnerabilities) ? m.vulnerabilities : [],
+        }));
+
+      if (memberRows.length > 0) {
+        const { data: insertedMembers, error: membersError } = await supabase
+          .from('household_members')
+          .insert(memberRows)
+          .select('id');
+        if (membersError) throw membersError;
+        const memberProfiles = (insertedMembers || []).map((member, index) =>
+          householdMemberProfilePayload(member.id, membersWithNames[index])
+        );
+        if (memberProfiles.length > 0) {
+          const { error: memberProfileError } = await supabase
+            .from('household_member_profiles')
+            .upsert(memberProfiles, { onConflict: 'household_member_id' });
+          if (memberProfileError) throw memberProfileError;
+        }
+      }
+    }
+    notifyHouseholdChanges();
+  } catch (err) {
+    console.warn('Cloud updateHousehold failed, queued offline mutation:', err);
+    await queuePendingMutation('UPDATE_HOUSEHOLD', 'households', {
+      id,
+      formData,
+      preservePlacement,
+    });
+    notifyHouseholdChanges();
   }
 }
 
@@ -1862,22 +1966,53 @@ export async function transferHouseholdRoom({
   householdId,
   eventId = null,
   centerId,
+  centerName = null,
   roomId = null,
   roomName = null,
+  householdSnapshot = null,
 }) {
   if (!householdId) throw new Error('Household ID is required for transfer.');
   if (!centerId) throw new Error('Target evacuation center is required.');
 
-  // 1. Immediately update Dexie locally so UI responds instantly
+  const now = new Date().toISOString();
+
+  // 1. Immediately update Dexie locally (households + household_details) so UI responds everywhere
   try {
-    const local = await db.households.get(householdId);
-    if (local) {
-      await db.households.update(householdId, {
-        centerId,
-        roomId: roomId || local.roomId,
-        evacueeStatus: 'Active',
-        status: 'Evacuated',
-        updatedAt: new Date().toISOString(),
+    const existing = await db.households.get(householdId);
+    const detailEntry = await db.household_details.get(householdId);
+    const centerRecord = !centerName ? await db.centers.get(centerId) : null;
+    const resolvedCenterName = centerName || centerRecord?.displayName || centerRecord?.name || existing?.center || householdSnapshot?.center || 'Assigned Center';
+    const resolvedRoomName = roomName || existing?.room || householdSnapshot?.room || 'Assigned Room';
+    const resolvedRoomId = roomId || existing?.roomId || null;
+
+    const baseRow = existing || detailEntry?.data || householdSnapshot || { id: householdId };
+    const updatedRow = {
+      ...baseRow,
+      id: householdId,
+      centerId,
+      center: resolvedCenterName,
+      roomId: resolvedRoomId,
+      room: resolvedRoomName,
+      evacueeStatus: 'Active',
+      status: 'Evacuated',
+      updatedAt: now,
+    };
+
+    await db.households.put(updatedRow);
+    if (detailEntry?.data) {
+      await db.household_details.put({
+        id: householdId,
+        data: {
+          ...detailEntry.data,
+          centerId,
+          center: resolvedCenterName,
+          roomId: resolvedRoomId,
+          room: resolvedRoomName,
+          evacueeStatus: 'Active',
+          status: 'Evacuated',
+          updatedAt: now,
+        },
+        updatedAt: Date.now(),
       });
     }
   } catch (e) {
@@ -1894,7 +2029,7 @@ export async function transferHouseholdRoom({
       roomName,
     });
     notifyHouseholdChanges();
-    return { success: true, centerId, roomId, isOffline: true };
+    return { success: true, centerId, roomId, roomName, isOffline: true };
   }
 
   // 3. Online flow with offline fallback
