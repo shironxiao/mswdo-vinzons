@@ -982,6 +982,18 @@ export default function MobileHouseholds() {
         } : prev));
       }
 
+      if (assigningHousehold?.id === hhId) {
+        setAssigningHousehold((prev) => (prev ? {
+          ...prev,
+          centerId: center.id,
+          center: resolvedCenterName,
+          roomId: room.dbId || prev.roomId,
+          room: resolvedRoomName,
+          evacueeStatus: 'Active',
+          status: 'Evacuated',
+        } : prev));
+      }
+
       await Promise.all([refreshHouseholds(), refreshPlacements(), refreshMasterlist?.()]);
       setToastMsg(`Assigned to ${resolvedRoomName}.`);
     } catch (error) {
