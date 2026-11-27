@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, Settings, LogOut } from 'lucide-react';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
+import { logoutMobileSession } from '../../auth/userAuth.jsx';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 
@@ -80,7 +81,8 @@ export default function MobileProfile() {
         variant="warning"
         onConfirm={() => {
           setShowLogoutModal(false);
-          navigate('/login');
+          logoutMobileSession();
+          navigate('/login', { replace: true });
         }}
         onCancel={() => setShowLogoutModal(false)}
       />

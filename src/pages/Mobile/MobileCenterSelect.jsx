@@ -53,7 +53,7 @@ export default function MobileCenterSelect() {
   const handleConfirm = () => {
     if (!selectedVal) return;
     setAssignedCenter(selectedVal, selectedId);
-    navigate('/mobile/dashboard');
+    navigate('/mobile/dashboard', { replace: true });
   };
 
   return (

@@ -1,4 +1,4 @@
-import { createElement, useState, useEffect, useMemo } from 'react';
+import { createElement, useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search, Plus, User, Edit, X, Trash2,
   AlertTriangle, ChevronDown, Building, Building2,
@@ -19,6 +19,7 @@ import {
   ChoiceSelectSheet,
 } from '../../components/CenterSelectSheet';
 import HouseholdReviewModal from '../../components/HouseholdReviewModal.jsx';
+import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import {
   HOUSEHOLD_PROFILE_OPTIONS,
   HOUSEHOLD_RELATIONSHIPS,
@@ -812,6 +813,8 @@ export default function MobileHouseholds() {
   })), [centers, placements]);
   const [toastMsg, setToastMsg] = useState('');
   const [modalMode, setModalMode] = useState(null);
+  const [showLeaveRegisterConfirm, setShowLeaveRegisterConfirm] = useState(false);
+  const registerHistoryPushedRef = useRef(false);
   const [showHouseholdReview, setShowHouseholdReview] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [registrationSaveError, setRegistrationSaveError] = useState('');
@@ -849,6 +852,56 @@ export default function MobileHouseholds() {
     governmentAssistanceYear: '', hasReceivedReliefAssistance: null,
     otherIncomeSource: '', floodDepthLevel: '', characteristicsRemarks: '',
   });
+
+  useEffect(() => {
+    if (modalMode !== 'register') {
+      if (registerHistoryPushedRef.current) {
+        registerHistoryPushedRef.current = false;
+        if (window.history.state?.mobileRegisterHousehold) {
+          window.history.back();
+        }
+      }
+      return;
+    }
+
+    if (!registerHistoryPushedRef.current) {
+      window.history.pushState({ mobileRegisterHousehold: true }, '');
+      registerHistoryPushedRef.current = true;
+    }
+
+    const handlePopState = () => {
+      window.history.pushState({ mobileRegisterHousehold: true }, '');
+      setShowLeaveRegisterConfirm(true);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [modalMode]);
+
+  const requestCloseFormModal = () => {
+    if (modalMode === 'register') {
+      setShowLeaveRegisterConfirm(true);
+      return;
+    }
+    setShowHouseholdReview(false);
+    setModalMode(null);
+  };
+
+  const confirmLeaveRegister = () => {
+    setShowLeaveRegisterConfirm(false);
+    setShowHouseholdReview(false);
+    setModalMode(null);
+    setDraftRestored(false);
+    setValidationErrors({});
+    setRegistrationSaveError('');
+    try {
+      window.sessionStorage.removeItem(MOBILE_HOUSEHOLD_DRAFT_KEY);
+    } catch (error) {
+      console.warn('Could not clear registration draft:', error);
+    }
+  };
 
   useEffect(() => {
     if (modalMode !== 'register') return;
@@ -1629,19 +1682,13 @@ export default function MobileHouseholds() {
 
       {/* ── REGISTER / EDIT MODAL ── */}
       {modalMode && (
-        <div className="vin-mob-sheet-overlay" onClick={() => {
-          setShowHouseholdReview(false);
-          setModalMode(null);
-        }}>
+        <div className="vin-mob-sheet-overlay" onClick={requestCloseFormModal}>
           <div className="vin-mob-sheet-content" onClick={(e) => e.stopPropagation()}>
             <div className="vin-mob-sheet-header">
               <h2 className="vin-mob-sheet-title">
                 {modalMode === 'register' ? 'Register Household' : 'Edit Household'}
               </h2>
-              <button type="button" className="vin-mob-sheet-close" onClick={() => {
-                setShowHouseholdReview(false);
-                setModalMode(null);
-              }}>
+              <button type="button" className="vin-mob-sheet-close" onClick={requestCloseFormModal}>
                 <X size={18} />
               </button>
             </div>
@@ -2309,6 +2356,17 @@ export default function MobileHouseholds() {
           onClose={() => setShowFormChoicePicker(null)}
         />
       )}
+
+      <ConfirmModal
+        isOpen={showLeaveRegisterConfirm}
+        title="Leave Registration?"
+        message="Are you sure you want to leave? All entered household information will be reset if you leave."
+        confirmLabel="Leave & Reset"
+        cancelLabel="Stay"
+        variant="danger"
+        onConfirm={confirmLeaveRegister}
+        onCancel={() => setShowLeaveRegisterConfirm(false)}
+      />
     </div>
   );
 }

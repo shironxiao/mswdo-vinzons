@@ -9,6 +9,7 @@ import { MOBILE_NAV_ITEMS } from './mobileNavConfig';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import { CenterSelectSheet } from '../../components/CenterSelectSheet.jsx';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
+import { logoutMobileSession } from '../../auth/userAuth.jsx';
 import { getPendingMutationsCount, SYNC_QUEUE_EVENT } from '../../lib/offlineDb.js';
 import mswoLogo from '../../assets/mswdo logo.png';
 import './MobileLayout.css';
@@ -127,7 +128,8 @@ export default function MobileLayout({ children }) {
         variant="warning"
         onConfirm={() => {
           setShowLogoutModal(false);
-          navigate('/login');
+          logoutMobileSession();
+          navigate('/login', { replace: true });
         }}
         onCancel={() => setShowLogoutModal(false)}
       />

@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { EventProvider } from './context/EventContext.jsx';
 import { MobileCenterProvider } from './context/MobileCenterContext.jsx';
+import { getMobilePostLoginRoute, isMobileLoggedIn } from './auth/userAuth.jsx';
 import PWAInstallBanner from './components/PWAInstallBanner';
 
 // Layouts (lazy-loaded so Mobile users never parse AdminLayout & vice versa)
@@ -52,6 +53,17 @@ function RouteLoader() {
   );
 }
 
+function MobileEntryRedirect() {
+  return <Navigate to={getMobilePostLoginRoute()} replace />;
+}
+
+function RequireMobileAuth({ children }) {
+  if (!isMobileLoggedIn()) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -63,8 +75,8 @@ export default function App() {
           {/* Admin Authentication */}
           <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* Default Route redirecting to Mobile Login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Default Route redirecting based on persisted mobile session */}
+          <Route path="/" element={<MobileEntryRedirect />} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/mobile" element={<Navigate to="/mobile/dashboard" replace />} />
 
@@ -72,9 +84,11 @@ export default function App() {
           <Route
             path="/mobile/select-center"
             element={
-              <MobileCenterProvider>
-                <MobileCenterSelect />
-              </MobileCenterProvider>
+              <RequireMobileAuth>
+                <MobileCenterProvider>
+                  <MobileCenterSelect />
+                </MobileCenterProvider>
+              </RequireMobileAuth>
             }
           />
 
@@ -85,9 +99,11 @@ export default function App() {
           <Route
             path="/mobile"
             element={
-              <MobileCenterProvider>
-                <MobileLayout />
-              </MobileCenterProvider>
+              <RequireMobileAuth>
+                <MobileCenterProvider>
+                  <MobileLayout />
+                </MobileCenterProvider>
+              </RequireMobileAuth>
             }
           >
             <Route path="dashboard" element={<MobileDashboard />} />
@@ -121,7 +137,7 @@ export default function App() {
           </Route>
 
           {/* Fallback route */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<MobileEntryRedirect />} />
         </Routes>
       </Suspense>
       <PWAInstallBanner />

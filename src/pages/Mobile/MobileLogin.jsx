@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { User, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import {
+  getMobilePostLoginRoute,
+  isMobileLoggedIn,
+  loginMobileSession,
+} from '../../auth/userAuth.jsx';
 import mswdoLogo from '../../assets/mswdo logo.png';
 import './MobileLogin.css';
 
@@ -12,6 +17,10 @@ export default function MobileLogin() {
     password: 'password1234',
   });
 
+  if (isMobileLoggedIn()) {
+    return <Navigate to={getMobilePostLoginRoute()} replace />;
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -19,8 +28,9 @@ export default function MobileLogin() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    loginMobileSession(formData.username);
     // Navigate to post-login Evacuation Center Selection Panel
-    navigate('/mobile/select-center');
+    navigate(getMobilePostLoginRoute(), { replace: true });
   };
 
   const handleSwitchToAdmin = () => {
