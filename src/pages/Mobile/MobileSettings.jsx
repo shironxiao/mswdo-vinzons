@@ -16,6 +16,8 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
+import { supabase } from '../../lib/supabaseClient.js';
+import { isOnline } from '../../lib/offlineDb.js';
 import {
   downloadCenterOfflinePack,
   getCenterOfflinePacks,
@@ -59,6 +61,9 @@ export default function MobileSettings() {
   const [showAllCenters, setShowAllCenters] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'center', center } | { type: 'all' }
 
+  // Cloud household counts per center (for "not downloaded yet" cards)
+  const [centerCounts, setCenterCounts] = useState({});
+
   // In-app alert / toast feedback
   const [feedback, setFeedback] = useState(null);
 
@@ -78,6 +83,42 @@ export default function MobileSettings() {
   useEffect(() => {
     loadOfflinePacks();
   }, [loadOfflinePacks]);
+
+  // Load cloud household counts for undownloaded centers (online only)
+  const loadCenterCounts = useCallback(async (packs, centersArr) => {
+    if (!isOnline() || !centersArr.length) return;
+    const undownloaded = centersArr.filter((c) => !packs[c.id]);
+    if (!undownloaded.length) return;
+    const results = await Promise.allSettled(
+      undownloaded.map(async (center) => {
+        const { count, error } = await supabase
+          .from('households')
+          .select('id', { count: 'exact', head: true })
+          .eq('center_id', center.id);
+        return { id: center.id, count: error ? null : (count ?? 0) };
+      })
+    );
+    setCenterCounts((prev) => {
+      const next = { ...prev };
+      results.forEach((r) => {
+        if (r.status === 'fulfilled' && r.value.count !== null) {
+          next[r.value.id] = r.value.count;
+        }
+      });
+      // For already-downloaded centers, use the pack's householdCount
+      centersArr.forEach((c) => {
+        if (packs[c.id]) next[c.id] = packs[c.id].householdCount;
+      });
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (orderedCenters.length > 0) {
+      loadCenterCounts(offlinePacks, orderedCenters);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderedCenters.length, Object.keys(offlinePacks).join(',')]);
 
   const orderedCenters = useMemo(() => {
     if (!Array.isArray(centers) || centers.length === 0) return [];
@@ -197,6 +238,8 @@ export default function MobileSettings() {
         setDownloadProgress(prog);
       });
       await loadOfflinePacks();
+      // Re-fetch counts so downloaded center count updates too
+      await loadCenterCounts(await getCenterOfflinePacks(), orderedCenters);
       showFeedback(
         'success',
         'Offline Data Ready',
@@ -520,7 +563,9 @@ export default function MobileSettings() {
                     <span style={{ fontSize: '0.76rem', color: pack ? '#15803d' : '#64748b', fontWeight: pack ? 600 : 400 }}>
                       {pack
                         ? `Ready Offline • ${pack.householdCount} households (${new Date(pack.downloadedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })})`
-                        : 'Not downloaded yet'}
+                        : centerCounts[center.id] !== undefined
+                          ? `Not downloaded yet — ${centerCounts[center.id]} household${centerCounts[center.id] !== 1 ? 's' : ''} available`
+                          : 'Not downloaded yet'}
                     </span>
                   </div>
 
@@ -570,7 +615,7 @@ export default function MobileSettings() {
                       }}
                     >
                       <Download size={14} />
-                      <span>{isDownloadingThis ? `${downloadProgress.percent}%` : (pack ? 'Update' : 'Download')}</span>
+                      <span>{isDownloadingThis ? `${downloadProgress.percent}%` : (pack ? 'Update' : (centerCounts[center.id] !== undefined ? `Download (${centerCounts[center.id]})` : 'Download'))}</span>
                     </button>
                   </div>
                 </div>
