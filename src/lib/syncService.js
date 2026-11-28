@@ -11,7 +11,8 @@ import {
   notifySyncQueueChanged,
   SYNC_QUEUE_EVENT,
 } from './offlineDb.js';
-import { normalizeHousehold } from './householdService.js';
+import { HOUSEHOLD_DETAIL_SELECT, normalizeHousehold } from './householdService.js';
+import { fetchBarangayEvacuationAssignments } from './barangayEvacuationAssignments.js';
 import { normalizeMonitoringLog } from './monitoringService.js';
 
 let isSyncing = false;
@@ -495,6 +496,286 @@ export async function syncNow(options = {}) {
     notifySyncState();
     return { status: 'error', error: lastSyncError };
   }
+}
+
+/**
+ * Download an entire evacuation center's data pack (rooms, assignments, households + members, logs)
+ * in lean batches with main-thread yields so low-end devices stay smooth.
+ */
+export async function downloadCenterOfflinePack(centerId, centersList = [], onProgress = null) {
+  if (!centerId || centerId === 'all') {
+    throw new Error('Select a specific evacuation center to download.');
+  }
+  if (!isOnline()) {
+    throw new Error('You are offline. Connect to WiFi or mobile data to download center data.');
+  }
+
+  const yieldToUi = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  onProgress?.({ percent: 5, label: 'Syncing pending local changes...' });
+  await flushPendingMutations();
+
+  // Protect any remaining pending mutations from being overwritten
+  const remainingPending = await getPendingMutations();
+  const protectedHouseholdIds = new Set(
+    remainingPending
+      .map((m) => m.payload?.householdId || m.payload?.id || m.payload?.tempId)
+      .filter(Boolean)
+  );
+
+  // 1. Fetch barangay & purok assignments for this center
+  onProgress?.({ percent: 15, label: 'Loading community assignments...' });
+  const allAssignments = await fetchBarangayEvacuationAssignments();
+  const centerAssignments = allAssignments.filter((a) => a.center_ids?.includes(centerId));
+  await yieldToUi();
+
+  // 2. Fetch center + rooms
+  onProgress?.({ percent: 25, label: 'Loading center rooms...' });
+  const { data: centerData, error: centerErr } = await supabase
+    .from('evacuation_centers')
+    .select('id, name, location, capacity, total_rooms, status, rooms:rooms(id, room_name, capacity_individuals)')
+    .eq('id', centerId)
+    .maybeSingle();
+
+  if (centerErr) throw centerErr;
+
+  if (centerData) {
+    await db.centers.put({
+      id: centerData.id,
+      name: centerData.name,
+      displayName: centerData.name,
+      location: centerData.location,
+      capacity: centerData.capacity,
+      totalRooms: centerData.total_rooms,
+      status: centerData.status,
+    });
+    if (Array.isArray(centerData.rooms) && centerData.rooms.length > 0) {
+      await db.rooms.bulkPut(
+        centerData.rooms.map((r) => ({
+          id: r.id,
+          centerId: centerData.id,
+          name: r.room_name,
+          capacity: r.capacity_individuals,
+        }))
+      );
+    }
+  }
+  await yieldToUi();
+
+  // 3. Build OR filter: checked-in at this center OR assigned barangay/purok
+  const quoteVal = (v) => `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  const orFilters = [`center_id.eq.${quoteVal(centerId)}`];
+  centerAssignments.forEach(({ barangay, purok }) => {
+    const cleanB = String(barangay || '').trim();
+    const cleanP = String(purok || '').trim();
+    if (!cleanB) return;
+    if (!cleanP || cleanP.toLowerCase() === 'all') {
+      orFilters.push(`barangay.eq.${quoteVal(cleanB)}`);
+    } else {
+      orFilters.push(`and(barangay.eq.${quoteVal(cleanB)},purok.eq.${quoteVal(cleanP)})`);
+    }
+  });
+  const combinedFilter = orFilters.join(',');
+
+  // Get exact count for accurate progress bar
+  const { count: expectedCount } = await supabase
+    .from('households')
+    .select('id', { count: 'exact', head: true })
+    .or(combinedFilter);
+
+  const BATCH_SIZE = 100; // Small batches keep RAM low on budget phones
+  let downloadedCount = 0;
+  const downloadedHouseholdIds = [];
+  const totalExpected = typeof expectedCount === 'number' && expectedCount > 0 ? expectedCount : 100;
+
+  for (let offset = 0; ; offset += BATCH_SIZE) {
+    const { data: batch, error: batchErr } = await supabase
+      .from('households')
+      .select(HOUSEHOLD_DETAIL_SELECT)
+      .or(combinedFilter)
+      .order('head_name', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, offset + BATCH_SIZE - 1);
+
+    if (batchErr) throw batchErr;
+    const rows = batch || [];
+    if (rows.length === 0) break;
+
+    rows.forEach((r) => {
+      if (r?.id) downloadedHouseholdIds.push(r.id);
+    });
+
+    const normalizedBatch = rows
+      .map((row) => normalizeHousehold(row, centersList))
+      .filter((h) => h && !protectedHouseholdIds.has(h.id));
+
+    if (normalizedBatch.length > 0) {
+      await db.households.bulkPut(normalizedBatch);
+      await db.household_details.bulkPut(
+        normalizedBatch.map((h) => ({
+          id: h.id,
+          data: h,
+          updatedAt: Date.now(),
+        }))
+      );
+    }
+
+    downloadedCount += rows.length;
+    const ratio = Math.min(1, downloadedCount / totalExpected);
+    const percent = Math.round(30 + ratio * 55);
+    onProgress?.({
+      percent,
+      label: `Downloading households (${downloadedCount}${expectedCount ? ` / ${expectedCount}` : ''})...`,
+    });
+
+    await yieldToUi();
+    if (rows.length < BATCH_SIZE) break;
+  }
+
+  // 4. Fetch recent monitoring logs for this center
+  onProgress?.({ percent: 90, label: 'Loading monitoring logs...' });
+  const { data: logsData, error: logsErr } = await supabase
+    .from('monitoring_logs')
+    .select(`
+      id, household_id, center_id, room_id, monitoring_interval, checked_by,
+      household_status, members_attendance, total_members, present_count,
+      absent_count, late_count, remarks, created_at,
+      household:households ( id, head_name, household_code ),
+      center:evacuation_centers ( id, name, location ),
+      room:rooms ( id, room_name )
+    `)
+    .eq('center_id', centerId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (!logsErr && Array.isArray(logsData) && logsData.length > 0) {
+    const normalizedLogs = logsData.map((r) => normalizeMonitoringLog(r, centersList)).filter(Boolean);
+    await db.monitoring_logs.bulkPut(
+      normalizedLogs.map((log) => ({
+        id: log.id,
+        householdId: log.householdId,
+        centerId: log.centerId,
+        roomId: log.roomId,
+        createdAt: log.createdAt,
+        raw: log,
+      }))
+    );
+  }
+
+  const nowIso = new Date().toISOString();
+  const matchedCenter = centersList.find((c) => c.id === centerId);
+  const packMeta = {
+    centerId,
+    centerName: centerData?.name || matchedCenter?.displayName || matchedCenter?.name || 'Evacuation Center',
+    householdCount: downloadedCount,
+    householdIds: downloadedHouseholdIds,
+    downloadedAt: nowIso,
+  };
+  await setSyncMeta(`center_pack_${centerId}`, packMeta);
+  await setSyncMeta('last_sync_timestamp', nowIso);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('vinzons-households-changed'));
+  }
+  notifySyncState();
+  onProgress?.({ percent: 100, label: 'Offline pack ready!' });
+
+  return packMeta;
+}
+
+/**
+ * List all downloaded center offline packs
+ */
+export async function getCenterOfflinePacks() {
+  try {
+    const allMeta = await db.sync_metadata.toArray();
+    const packs = {};
+    allMeta.forEach((entry) => {
+      if (entry.key && entry.key.startsWith('center_pack_') && entry.value) {
+        packs[entry.value.centerId] = entry.value;
+      }
+    });
+    return packs;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Remove a center's cached offline pack (all downloaded households, logs & metadata)
+ */
+export async function removeCenterOfflinePack(centerId) {
+  const pending = await getPendingMutations();
+  const hasPendingForCenter = pending.some((m) => m.payload?.centerId === centerId);
+  if (hasPendingForCenter) {
+    throw new Error('Please sync pending offline changes for this center before deleting its offline data.');
+  }
+
+  const packMeta = await getSyncMeta(`center_pack_${centerId}`);
+  const allPacks = await getCenterOfflinePacks();
+
+  // Keep IDs still referenced by other downloaded packs or pending mutations
+  const keepIds = new Set();
+  Object.values(allPacks).forEach((pack) => {
+    if (pack.centerId !== centerId && Array.isArray(pack.householdIds)) {
+      pack.householdIds.forEach((id) => keepIds.add(id));
+    }
+  });
+  pending.forEach((m) => {
+    const id = m.payload?.householdId || m.payload?.id || m.payload?.tempId;
+    if (id) keepIds.add(id);
+  });
+
+  const centerCheckedInIds = await db.households.where('centerId').equals(centerId).primaryKeys();
+  const packIds = Array.isArray(packMeta?.householdIds) ? packMeta.householdIds : [];
+  const idsToDelete = [...new Set([...packIds, ...centerCheckedInIds])].filter((id) => !keepIds.has(id));
+
+  if (idsToDelete.length > 0) {
+    await db.households.bulkDelete(idsToDelete);
+    await db.household_details.bulkDelete(idsToDelete);
+  }
+
+  const centerLogIds = await db.monitoring_logs.where('centerId').equals(centerId).primaryKeys();
+  if (centerLogIds.length > 0) {
+    await db.monitoring_logs.bulkDelete(centerLogIds);
+  }
+
+  await db.sync_metadata.delete(`center_pack_${centerId}`);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('vinzons-households-changed'));
+  }
+  notifySyncState();
+}
+
+/**
+ * Delete all downloaded offline data packs from this device
+ */
+export async function clearAllOfflineData() {
+  const pending = await getPendingMutations();
+  if (pending.length > 0) {
+    throw new Error(`You have ${pending.length} unsynced offline change(s). Please sync them before deleting all offline data.`);
+  }
+
+  await Promise.all([
+    db.households.clear(),
+    db.household_details.clear(),
+    db.monitoring_logs.clear(),
+    db.barangay_assignments.clear(),
+  ]);
+
+  const allMeta = await db.sync_metadata.toArray();
+  const packKeys = allMeta
+    .filter((entry) => entry.key && entry.key.startsWith('center_pack_'))
+    .map((entry) => entry.key);
+  if (packKeys.length > 0) {
+    await db.sync_metadata.bulkDelete(packKeys);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('vinzons-households-changed'));
+  }
+  notifySyncState();
 }
 
 /**

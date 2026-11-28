@@ -1,17 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Bell,
   BellOff,
   RefreshCw,
   CheckCircle2,
-  AlertCircle,
   Wifi,
   Cloud,
   Send,
   X,
   Info,
+  Download,
+  Trash2,
+  Database,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase.js';
+import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
+import {
+  downloadCenterOfflinePack,
+  getCenterOfflinePacks,
+  removeCenterOfflinePack,
+  clearAllOfflineData,
+  syncNow,
+  getSyncStatusSummary,
+} from '../../lib/syncService.js';
+import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './MobileCommon.css';
 import './MobileSubpages.css';
 
@@ -33,11 +46,46 @@ export default function MobileSettings() {
     return localStorage.getItem('mswdo_last_sync') || new Date().toLocaleString();
   });
 
+  const { centers, assignedCenterId, assignedCenterObj } = useMobileCenter();
+  const activeCenterId = assignedCenterObj?.id || assignedCenterId || '';
+
   // Syncing state
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Per-center offline pack state
+  const [offlinePacks, setOfflinePacks] = useState({});
+  const [downloadingCenterId, setDownloadingCenterId] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState({ percent: 0, label: '' });
+  const [showAllCenters, setShowAllCenters] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'center', center } | { type: 'all' }
+
   // In-app alert / toast feedback
   const [feedback, setFeedback] = useState(null);
+
+  const loadOfflinePacks = useCallback(async () => {
+    const [packs, summary] = await Promise.all([
+      getCenterOfflinePacks(),
+      getSyncStatusSummary(),
+    ]);
+    setOfflinePacks(packs);
+    if (summary?.lastSyncTime) {
+      const formatted = new Date(summary.lastSyncTime).toLocaleString();
+      setLastSyncTime(formatted);
+      localStorage.setItem('mswdo_last_sync', formatted);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOfflinePacks();
+  }, [loadOfflinePacks]);
+
+  const orderedCenters = useMemo(() => {
+    if (!Array.isArray(centers) || centers.length === 0) return [];
+    if (!activeCenterId) return centers;
+    const assigned = centers.find((c) => c.id === activeCenterId);
+    const others = centers.filter((c) => c.id !== activeCenterId);
+    return assigned ? [assigned, ...others] : centers;
+  }, [centers, activeCenterId]);
 
   const showFeedback = (type, title, message) => {
     setFeedback({ type, title, message });
@@ -114,31 +162,83 @@ export default function MobileSettings() {
     setIsSyncing(true);
 
     try {
-      // Execute live sync check with Supabase if online
-      if (supabase && typeof navigator !== 'undefined' && navigator.onLine) {
-        await Promise.allSettled([
-          supabase.from('evacuation_centers').select('id').limit(1),
-          supabase.from('households').select('id').limit(1),
-        ]);
-      }
-
-      // Small delay for clean feedback
-      await new Promise((r) => setTimeout(r, 900));
-
+      const res = await syncNow({ centerId: activeCenterId || null });
       const now = new Date().toLocaleString();
-      setLastSyncTime(now);
-      localStorage.setItem('mswdo_last_sync', now);
-
-      showFeedback(
-        'success',
-        'Sync Complete',
-        `Successfully synchronized offline records with Supabase cloud at ${now}.`
-      );
+      if (res.status === 'success') {
+        setLastSyncTime(now);
+        localStorage.setItem('mswdo_last_sync', now);
+        showFeedback(
+          'success',
+          'Sync Complete',
+          res.flushed > 0
+            ? `Uploaded ${res.flushed} offline record(s) and synced with cloud at ${now}.`
+            : `Database is up to date with Supabase cloud at ${now}.`
+        );
+      } else if (res.status === 'offline') {
+        showFeedback('info', 'Device Offline', res.message);
+      } else {
+        showFeedback('info', 'Sync Issue', res.error || 'Could not reach cloud. Changes remain saved locally.');
+      }
     } catch (err) {
       console.warn('Manual sync error:', err);
-      showFeedback('info', 'Offline Sync Completed', 'Local database updated. Cloud changes queued for reconnection.');
+      showFeedback('info', 'Offline Mode', 'Local database kept intact. Cloud changes will sync when online.');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleDownloadCenter = async (center) => {
+    if (!center?.id || downloadingCenterId) return;
+    setDownloadingCenterId(center.id);
+    setDownloadProgress({ percent: 0, label: 'Starting download...' });
+
+    try {
+      const pack = await downloadCenterOfflinePack(center.id, centers, (prog) => {
+        setDownloadProgress(prog);
+      });
+      await loadOfflinePacks();
+      showFeedback(
+        'success',
+        'Offline Data Ready',
+        `Downloaded ${pack.householdCount} household(s) for ${pack.centerName}. You can now work offline.`
+      );
+    } catch (err) {
+      showFeedback(
+        'info',
+        'Download Failed',
+        err?.message || 'Could not download center data. Check your internet connection.'
+      );
+    } finally {
+      setDownloadingCenterId('');
+      setDownloadProgress({ percent: 0, label: '' });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || downloadingCenterId) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+
+    try {
+      if (target.type === 'all') {
+        await clearAllOfflineData();
+        await loadOfflinePacks();
+        showFeedback(
+          'info',
+          'All Offline Data Deleted',
+          'Cleared all downloaded center data from this device.'
+        );
+      } else if (target.type === 'center' && target.center?.id) {
+        await removeCenterOfflinePack(target.center.id);
+        await loadOfflinePacks();
+        showFeedback(
+          'info',
+          'Offline Data Deleted',
+          `Deleted downloaded data for ${target.center.displayName || target.center.name}.`
+        );
+      }
+    } catch (err) {
+      showFeedback('info', 'Cannot Delete Data', err?.message || 'Please sync pending changes first.');
     }
   };
 
@@ -348,6 +448,217 @@ export default function MobileSettings() {
         </div>
       </div>
 
+      {/* ── Section 3: Per-Center Offline Data Download ── */}
+      <div className="vin-mob-settings-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              backgroundColor: '#f3e8ff',
+              color: '#7c3aed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Database size={20} />
+          </div>
+          <div className="vin-mob-toggle-info">
+            <span className="vin-mob-toggle-title">Offline Center Data</span>
+            <span className="vin-mob-toggle-sub">
+              Download a center&apos;s households &amp; rooms before going offline
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+          {(showAllCenters ? orderedCenters : orderedCenters.slice(0, activeCenterId ? 1 : 3)).map((center) => {
+            const pack = offlinePacks[center.id];
+            const isDownloadingThis = downloadingCenterId === center.id;
+            const isAssigned = center.id === activeCenterId;
+            const centerTitle = center.displayName || center.name;
+
+            return (
+              <div
+                key={center.id}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  backgroundColor: isAssigned ? '#faf5ff' : '#f8faf9',
+                  border: `1px solid ${isAssigned ? '#e9d5ff' : '#eef2f0'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  contentVisibility: 'auto',
+                  containIntrinsicSize: '78px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
+                        {centerTitle}
+                      </span>
+                      {isAssigned && (
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            padding: '2px 7px',
+                            borderRadius: '9999px',
+                            backgroundColor: '#7c3aed',
+                            color: '#ffffff',
+                          }}
+                        >
+                          Assigned
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: '0.76rem', color: pack ? '#15803d' : '#64748b', fontWeight: pack ? 600 : 400 }}>
+                      {pack
+                        ? `Ready Offline • ${pack.householdCount} households (${new Date(pack.downloadedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })})`
+                        : 'Not downloaded yet'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    {pack && !isDownloadingThis && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget({ type: 'center', center })}
+                        disabled={Boolean(downloadingCenterId)}
+                        title="Delete downloaded data"
+                        style={{
+                          padding: '7px 10px',
+                          borderRadius: '8px',
+                          border: '1px solid #fecaca',
+                          backgroundColor: '#fef2f2',
+                          color: '#dc2626',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <Trash2 size={13} />
+                        <span>Delete</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadCenter(center)}
+                      disabled={Boolean(downloadingCenterId)}
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        backgroundColor: isDownloadingThis ? '#581c87' : '#7c3aed',
+                        color: '#ffffff',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: downloadingCenterId ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        opacity: downloadingCenterId && !isDownloadingThis ? 0.5 : 1,
+                      }}
+                    >
+                      <Download size={14} />
+                      <span>{isDownloadingThis ? `${downloadProgress.percent}%` : (pack ? 'Update' : 'Download')}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {isDownloadingThis && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '6px',
+                        borderRadius: '9999px',
+                        backgroundColor: '#e9d5ff',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${downloadProgress.percent}%`,
+                          height: '100%',
+                          backgroundColor: '#7c3aed',
+                          transition: 'width 0.15s ease',
+                        }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#6b21a8', fontWeight: 600 }}>
+                      {downloadProgress.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {orderedCenters.length > (activeCenterId ? 1 : 3) && (
+            <button
+              type="button"
+              onClick={() => setShowAllCenters((prev) => !prev)}
+              style={{
+                padding: '9px 12px',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                backgroundColor: '#ffffff',
+                color: '#475569',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              {showAllCenters ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              <span>
+                {showAllCenters
+                  ? 'Show Fewer Centers'
+                  : `Show All Centers (${orderedCenters.length - (activeCenterId ? 1 : 3)} more)`}
+              </span>
+            </button>
+          )}
+
+          {Object.keys(offlinePacks).length > 0 && (
+            <button
+              type="button"
+              onClick={() => setDeleteTarget({ type: 'all' })}
+              disabled={Boolean(downloadingCenterId)}
+              style={{
+                padding: '9px 12px',
+                borderRadius: '10px',
+                border: '1px solid #fecaca',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: downloadingCenterId ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              <Trash2 size={15} />
+              <span>Delete All Downloaded Data</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* App Info Box */}
       <div className="vin-mob-settings-card" style={{ marginTop: '2px' }}>
         <span className="vin-mob-field-label">APPLICATION INFO</span>
@@ -375,6 +686,21 @@ export default function MobileSettings() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title={deleteTarget?.type === 'all' ? 'Delete All Offline Data?' : 'Delete Center Offline Data?'}
+        message={
+          deleteTarget?.type === 'all'
+            ? 'This will delete all downloaded center households, details, and logs stored offline on this device.'
+            : `This will delete the downloaded offline households and logs for ${deleteTarget?.center?.displayName || deleteTarget?.center?.name || 'this center'}. You can re-download it anytime while online.`
+        }
+        confirmLabel="Delete Data"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
