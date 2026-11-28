@@ -36,6 +36,7 @@ import {
   fetchHouseholdDetails,
 } from '../../lib/householdService.js';
 import { fetchBarangayEvacuationAssignments } from '../../lib/barangayEvacuationAssignments.js';
+import { getCenterCommunityBarangay } from '../../lib/syncService.js';
 import { useActiveEvent } from '../../lib/evacuationEventService.js';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { supabase } from '../../lib/supabase.js';
@@ -726,9 +727,20 @@ export default function MobileHouseholds() {
       try {
         const assignments = await fetchBarangayEvacuationAssignments();
         if (active) {
-          setCenterAssignments(assignments.filter((assignment) =>
-            assignment.center_ids?.includes(queryCenterId)
-          ));
+          const directAssignments = assignments.filter((assignment) =>
+            assignment.center_ids?.includes(queryCenterId) || assignment.center_id === queryCenterId
+          );
+          if (directAssignments.length === 0 && assignedCenterObj) {
+            const fallbackB = getCenterCommunityBarangay(assignedCenterObj);
+            if (fallbackB) {
+              directAssignments.push({
+                barangay: fallbackB,
+                purok: 'ALL',
+                center_ids: [queryCenterId],
+              });
+            }
+          }
+          setCenterAssignments(directAssignments);
           setAssignmentsLoadedCenterId(queryCenterId);
           setCurrentPage(1);
         }

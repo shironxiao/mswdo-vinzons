@@ -18,6 +18,7 @@ import {
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
 import { supabase } from '../../lib/supabase.js';
 import { isOnline } from '../../lib/offlineDb.js';
+import { fetchBarangayEvacuationAssignments } from '../../lib/barangayEvacuationAssignments.js';
 import {
   downloadCenterOfflinePack,
   getCenterOfflinePacks,
@@ -25,6 +26,7 @@ import {
   clearAllOfflineData,
   syncNow,
   getSyncStatusSummary,
+  buildCenterHouseholdFilter,
 } from '../../lib/syncService.js';
 import { ConfirmModal } from '../../components/ConfirmModal.jsx';
 import './MobileCommon.css';
@@ -92,19 +94,22 @@ export default function MobileSettings() {
     loadOfflinePacks();
   }, [loadOfflinePacks]);
 
-  // Load cloud household counts for undownloaded centers (online only)
+  // Load cloud household counts for undownloaded centers (all households in DB for each center)
   const loadCenterCounts = useCallback(async (packs = {}, centersArr = []) => {
     try {
       if (!isOnline() || !Array.isArray(centersArr) || centersArr.length === 0) return;
       const undownloaded = centersArr.filter((c) => c && c.id && !packs?.[c.id]);
       if (!undownloaded.length) return;
+
+      const allAssignments = await fetchBarangayEvacuationAssignments();
       const results = await Promise.allSettled(
         undownloaded.map(async (center) => {
           try {
+            const filter = buildCenterHouseholdFilter(center.id, center, allAssignments);
             const { count, error } = await supabase
               .from('households')
               .select('id', { count: 'exact', head: true })
-              .eq('center_id', center.id);
+              .or(filter);
             return { id: center.id, count: error ? null : (count ?? 0) };
           } catch {
             return { id: center.id, count: null };

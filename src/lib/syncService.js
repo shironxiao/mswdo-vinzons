@@ -11,9 +11,8 @@ import {
   notifySyncQueueChanged,
   SYNC_QUEUE_EVENT,
 } from './offlineDb.js';
-import { HOUSEHOLD_DETAIL_SELECT, normalizeHousehold } from './householdService.js';
+import { HOUSEHOLD_DETAIL_SELECT, normalizeHousehold, VINZONS_BARANGAYS } from './householdService.js';
 import { fetchBarangayEvacuationAssignments } from './barangayEvacuationAssignments.js';
-import { normalizeMonitoringLog } from './monitoringService.js';
 
 let isSyncing = false;
 let lastSyncError = null;
@@ -499,8 +498,85 @@ export async function syncNow(options = {}) {
 }
 
 /**
- * Download an entire evacuation center's data pack (rooms, assignments, households + members, logs)
+ * Infer the community barangay of an evacuation center from its name and location
+ */
+export function getCenterCommunityBarangay(center) {
+  if (!center) return null;
+  const loc = (center.location || '').toLowerCase();
+  const name = (center.displayName || center.name || '').toLowerCase();
+  const combined = `${name} ${loc}`;
+
+  if (
+    combined.includes('poblacion iii') ||
+    combined.includes('poblacion 3') ||
+    combined.includes('barangay iii') ||
+    combined.includes('barangay 3')
+  ) {
+    return 'Barangay III (Poblacion)';
+  }
+  if (
+    combined.includes('poblacion ii') ||
+    combined.includes('poblacion 2') ||
+    combined.includes('barangay ii') ||
+    combined.includes('barangay 2')
+  ) {
+    return 'Barangay II (Poblacion)';
+  }
+  if (
+    combined.includes('poblacion i') ||
+    combined.includes('poblacion 1') ||
+    combined.includes('barangay i') ||
+    combined.includes('barangay 1')
+  ) {
+    return 'Barangay I (Poblacion)';
+  }
+  if (combined.includes('sto. domingo') || combined.includes('santo domingo')) {
+    return 'Santo Domingo';
+  }
+
+  for (const b of VINZONS_BARANGAYS) {
+    const bClean = b.toLowerCase().replace(/\s*\(poblacion\)/, '');
+    if (combined.includes(bClean)) return b;
+  }
+  return null;
+}
+
+/**
+ * Build the Supabase OR filter to select ALL households in the database belonging to a center
+ * (via official barangay/purok assignments, center community fallback, or current center_id assignment).
+ */
+export function buildCenterHouseholdFilter(centerId, center, assignments = []) {
+  const quoteVal = (v) => `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  const orFilters = [`center_id.eq.${quoteVal(centerId)}`];
+  const centerAssignments = (assignments || []).filter(
+    (a) => (a.center_ids || []).includes(centerId) || a.center_id === centerId
+  );
+
+  if (centerAssignments.length > 0) {
+    centerAssignments.forEach(({ barangay, purok }) => {
+      const cleanB = String(barangay || '').trim();
+      const cleanP = String(purok || '').trim();
+      if (!cleanB) return;
+      if (!cleanP || cleanP.toLowerCase() === 'all') {
+        orFilters.push(`barangay.eq.${quoteVal(cleanB)}`);
+      } else {
+        orFilters.push(`and(barangay.eq.${quoteVal(cleanB)},purok.eq.${quoteVal(cleanP)})`);
+      }
+    });
+  } else {
+    const fallbackB = getCenterCommunityBarangay(center);
+    if (fallbackB) {
+      orFilters.push(`barangay.eq.${quoteVal(fallbackB)}`);
+    }
+  }
+
+  return orFilters.join(',');
+}
+
+/**
+ * Download an entire evacuation center's data pack (rooms, assignments, all community households)
  * in lean batches with main-thread yields so low-end devices stay smooth.
+ * Does NOT fetch current evacuee monitoring logs of the active operation.
  */
 export async function downloadCenterOfflinePack(centerId, centersList = [], onProgress = null) {
   if (!centerId || centerId === 'all') {
@@ -526,7 +602,6 @@ export async function downloadCenterOfflinePack(centerId, centersList = [], onPr
   // 1. Fetch barangay & purok assignments for this center
   onProgress?.({ percent: 15, label: 'Loading community assignments...' });
   const allAssignments = await fetchBarangayEvacuationAssignments();
-  const centerAssignments = allAssignments.filter((a) => a.center_ids?.includes(centerId));
   await yieldToUi();
 
   // 2. Fetch center + rooms
@@ -562,20 +637,11 @@ export async function downloadCenterOfflinePack(centerId, centersList = [], onPr
   }
   await yieldToUi();
 
-  // 3. Build OR filter: checked-in at this center OR assigned barangay/purok
-  const quoteVal = (v) => `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-  const orFilters = [`center_id.eq.${quoteVal(centerId)}`];
-  centerAssignments.forEach(({ barangay, purok }) => {
-    const cleanB = String(barangay || '').trim();
-    const cleanP = String(purok || '').trim();
-    if (!cleanB) return;
-    if (!cleanP || cleanP.toLowerCase() === 'all') {
-      orFilters.push(`barangay.eq.${quoteVal(cleanB)}`);
-    } else {
-      orFilters.push(`and(barangay.eq.${quoteVal(cleanB)},purok.eq.${quoteVal(cleanP)})`);
-    }
-  });
-  const combinedFilter = orFilters.join(',');
+  const matchedCenter = centersList.find((c) => c.id === centerId);
+  const targetCenter = centerData || matchedCenter;
+
+  // 3. Build comprehensive filter for ALL households in the database belonging to this center
+  const combinedFilter = buildCenterHouseholdFilter(centerId, targetCenter, allAssignments);
 
   // Get exact count for accurate progress bar
   const { count: expectedCount } = await supabase
@@ -622,7 +688,7 @@ export async function downloadCenterOfflinePack(centerId, centersList = [], onPr
 
     downloadedCount += rows.length;
     const ratio = Math.min(1, downloadedCount / totalExpected);
-    const percent = Math.round(30 + ratio * 55);
+    const percent = Math.round(30 + ratio * 65);
     onProgress?.({
       percent,
       label: `Downloading households (${downloadedCount}${expectedCount ? ` / ${expectedCount}` : ''})...`,
@@ -632,38 +698,7 @@ export async function downloadCenterOfflinePack(centerId, centersList = [], onPr
     if (rows.length < BATCH_SIZE) break;
   }
 
-  // 4. Fetch recent monitoring logs for this center
-  onProgress?.({ percent: 90, label: 'Loading monitoring logs...' });
-  const { data: logsData, error: logsErr } = await supabase
-    .from('monitoring_logs')
-    .select(`
-      id, household_id, center_id, room_id, monitoring_interval, checked_by,
-      household_status, members_attendance, total_members, present_count,
-      absent_count, late_count, remarks, created_at,
-      household:households ( id, head_name, household_code ),
-      center:evacuation_centers ( id, name, location ),
-      room:rooms ( id, room_name )
-    `)
-    .eq('center_id', centerId)
-    .order('created_at', { ascending: false })
-    .limit(200);
-
-  if (!logsErr && Array.isArray(logsData) && logsData.length > 0) {
-    const normalizedLogs = logsData.map((r) => normalizeMonitoringLog(r, centersList)).filter(Boolean);
-    await db.monitoring_logs.bulkPut(
-      normalizedLogs.map((log) => ({
-        id: log.id,
-        householdId: log.householdId,
-        centerId: log.centerId,
-        roomId: log.roomId,
-        createdAt: log.createdAt,
-        raw: log,
-      }))
-    );
-  }
-
   const nowIso = new Date().toISOString();
-  const matchedCenter = centersList.find((c) => c.id === centerId);
   const packMeta = {
     centerId,
     centerName: centerData?.name || matchedCenter?.displayName || matchedCenter?.name || 'Evacuation Center',
