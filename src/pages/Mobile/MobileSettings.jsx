@@ -16,7 +16,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { useMobileCenter } from '../../context/MobileCenterContext.jsx';
-import { supabase } from '../../lib/supabaseClient.js';
+import { supabase } from '../../lib/supabase.js';
 import { isOnline } from '../../lib/offlineDb.js';
 import {
   downloadCenterOfflinePack,
