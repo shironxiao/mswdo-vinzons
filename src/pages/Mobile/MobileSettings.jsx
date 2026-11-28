@@ -51,6 +51,14 @@ export default function MobileSettings() {
   const { centers, assignedCenterId, assignedCenterObj } = useMobileCenter();
   const activeCenterId = assignedCenterObj?.id || assignedCenterId || '';
 
+  const orderedCenters = useMemo(() => {
+    if (!Array.isArray(centers) || centers.length === 0) return [];
+    if (!activeCenterId) return centers;
+    const assigned = centers.find((c) => c.id === activeCenterId);
+    const others = centers.filter((c) => c.id !== activeCenterId);
+    return assigned ? [assigned, ...others] : centers;
+  }, [centers, activeCenterId]);
+
   // Syncing state
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -85,48 +93,48 @@ export default function MobileSettings() {
   }, [loadOfflinePacks]);
 
   // Load cloud household counts for undownloaded centers (online only)
-  const loadCenterCounts = useCallback(async (packs, centersArr) => {
-    if (!isOnline() || !centersArr.length) return;
-    const undownloaded = centersArr.filter((c) => !packs[c.id]);
-    if (!undownloaded.length) return;
-    const results = await Promise.allSettled(
-      undownloaded.map(async (center) => {
-        const { count, error } = await supabase
-          .from('households')
-          .select('id', { count: 'exact', head: true })
-          .eq('center_id', center.id);
-        return { id: center.id, count: error ? null : (count ?? 0) };
-      })
-    );
-    setCenterCounts((prev) => {
-      const next = { ...prev };
-      results.forEach((r) => {
-        if (r.status === 'fulfilled' && r.value.count !== null) {
-          next[r.value.id] = r.value.count;
-        }
+  const loadCenterCounts = useCallback(async (packs = {}, centersArr = []) => {
+    try {
+      if (!isOnline() || !Array.isArray(centersArr) || centersArr.length === 0) return;
+      const undownloaded = centersArr.filter((c) => c && c.id && !packs?.[c.id]);
+      if (!undownloaded.length) return;
+      const results = await Promise.allSettled(
+        undownloaded.map(async (center) => {
+          try {
+            const { count, error } = await supabase
+              .from('households')
+              .select('id', { count: 'exact', head: true })
+              .eq('center_id', center.id);
+            return { id: center.id, count: error ? null : (count ?? 0) };
+          } catch {
+            return { id: center.id, count: null };
+          }
+        })
+      );
+      setCenterCounts((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => {
+          if (r.status === 'fulfilled' && r.value && r.value.count !== null) {
+            next[r.value.id] = r.value.count;
+          }
+        });
+        // For already-downloaded centers, use the pack's householdCount
+        centersArr.forEach((c) => {
+          if (c?.id && packs?.[c.id]) next[c.id] = packs[c.id].householdCount;
+        });
+        return next;
       });
-      // For already-downloaded centers, use the pack's householdCount
-      centersArr.forEach((c) => {
-        if (packs[c.id]) next[c.id] = packs[c.id].householdCount;
-      });
-      return next;
-    });
+    } catch (err) {
+      console.warn('Failed to fetch center counts:', err);
+    }
   }, []);
 
   useEffect(() => {
-    if (orderedCenters.length > 0) {
+    if (orderedCenters && orderedCenters.length > 0) {
       loadCenterCounts(offlinePacks, orderedCenters);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderedCenters.length, Object.keys(offlinePacks).join(',')]);
-
-  const orderedCenters = useMemo(() => {
-    if (!Array.isArray(centers) || centers.length === 0) return [];
-    if (!activeCenterId) return centers;
-    const assigned = centers.find((c) => c.id === activeCenterId);
-    const others = centers.filter((c) => c.id !== activeCenterId);
-    return assigned ? [assigned, ...others] : centers;
-  }, [centers, activeCenterId]);
+  }, [orderedCenters?.length, Object.keys(offlinePacks || {}).join(',')]);
 
   const showFeedback = (type, title, message) => {
     setFeedback({ type, title, message });
@@ -562,7 +570,7 @@ export default function MobileSettings() {
                     </div>
                     <span style={{ fontSize: '0.76rem', color: pack ? '#15803d' : '#64748b', fontWeight: pack ? 600 : 400 }}>
                       {pack
-                        ? `Ready Offline • ${pack.householdCount} households (${new Date(pack.downloadedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })})`
+                        ? `Ready Offline • ${pack.householdCount || 0} households${pack.downloadedAt ? ` (${new Date(pack.downloadedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })})` : ''}`
                         : centerCounts[center.id] !== undefined
                           ? `Not downloaded yet — ${centerCounts[center.id]} household${centerCounts[center.id] !== 1 ? 's' : ''} available`
                           : 'Not downloaded yet'}
